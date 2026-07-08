@@ -109,11 +109,11 @@
           Provider
           <select name="provider">
             <option value="mock">mock</option>
-            <option value="direct">direct (Navidrome)</option>
+            <option value="subsonic">subsonic (Navidrome / any Subsonic)</option>
           </select>
         </label>
         <fieldset>
-          <legend>Navidrome / Subsonic (for "direct")</legend>
+          <legend>Subsonic / OpenSubsonic (for "subsonic")</legend>
           <label>Base URL <input name="baseUrl" placeholder="https://music.example.com" /></label>
           <label>API key <input name="apiKey" autocomplete="off" /></label>
           <p class="or">— or —</p>
@@ -225,7 +225,7 @@
           const url = URL.createObjectURL(
             new Blob([JSON.stringify(jspf)], { type: 'application/json' }),
           );
-          mount({ ...cfg, provider: 'direct', manifestUrl: url });
+          mount({ ...cfg, provider: 'subsonic', manifestUrl: url });
           status.textContent = `Loaded ${songs.length} random songs — press play.`;
         } catch (err) {
           status.textContent = 'Error: ' + (err?.message ?? err);

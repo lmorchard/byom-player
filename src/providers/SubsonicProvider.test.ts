@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { DirectProvider } from './DirectProvider';
+import { SubsonicProvider } from './SubsonicProvider';
 import type { ProviderState } from './types';
 
 function mockSearch(song: unknown) {
@@ -22,10 +22,10 @@ function okResponse(song: unknown) {
 
 afterEach(() => vi.restoreAllMocks());
 
-describe('DirectProvider', () => {
+describe('SubsonicProvider', () => {
   it('resolve builds a search3 URL from "{artist} {title}" and returns the top song id', async () => {
     const fetchMock = mockSearch({ id: 'song-42', title: 'Nightcall' });
-    const p = new DirectProvider({
+    const p = new SubsonicProvider({
       baseUrl: 'https://nav.example',
       username: 'les',
       password: 'pw',
@@ -46,7 +46,11 @@ describe('DirectProvider', () => {
   it('emits unavailable (not error) when the server has no match', async () => {
     mockSearch(null);
     const states: ProviderState[] = [];
-    const p = new DirectProvider({ baseUrl: 'https://nav.example', username: 'u', password: 'p' });
+    const p = new SubsonicProvider({
+      baseUrl: 'https://nav.example',
+      username: 'u',
+      password: 'p',
+    });
     p.onStateChange((s) => states.push(s));
     await p.load({ title: 'X', artist: 'Y' });
     expect(states).toContain('unavailable');
@@ -54,7 +58,7 @@ describe('DirectProvider', () => {
   });
 
   it('streamUrl includes id + auth + client params', () => {
-    const p = new DirectProvider({ baseUrl: 'https://nav.example/', apiKey: 'KEY123' });
+    const p = new SubsonicProvider({ baseUrl: 'https://nav.example/', apiKey: 'KEY123' });
     const u = new URL(p.streamUrl('song-42'));
     expect(u.pathname).toBe('/rest/stream.view');
     expect(u.searchParams.get('id')).toBe('song-42');
@@ -63,7 +67,7 @@ describe('DirectProvider', () => {
   });
 
   it('supports token + salt auth', () => {
-    const p = new DirectProvider({
+    const p = new SubsonicProvider({
       baseUrl: 'https://nav.example',
       username: 'les',
       token: 'abc123',
@@ -78,7 +82,7 @@ describe('DirectProvider', () => {
 
   it('maps HTML audio events to provider states', () => {
     const states: ProviderState[] = [];
-    const p = new DirectProvider({ baseUrl: 'https://nav.example', apiKey: 'K' });
+    const p = new SubsonicProvider({ baseUrl: 'https://nav.example', apiKey: 'K' });
     p.onStateChange((s) => states.push(s));
     const audio = (p as any).audio as HTMLAudioElement;
     audio.dispatchEvent(new Event('playing'));
@@ -94,7 +98,11 @@ describe('DirectProvider', () => {
       .mockRejectedValueOnce(new Error('network blip'))
       .mockRejectedValueOnce(new Error('network blip'))
       .mockResolvedValue(okResponse({ id: 's9' }));
-    const p = new DirectProvider({ baseUrl: 'https://nav.example', apiKey: 'K', retryDelayMs: 0 });
+    const p = new SubsonicProvider({
+      baseUrl: 'https://nav.example',
+      apiKey: 'K',
+      retryDelayMs: 0,
+    });
     const id = await p.resolve({ title: 'T', artist: 'A' });
     expect(id).toBe('s9');
     expect(fetchMock).toHaveBeenCalledTimes(3);
@@ -103,14 +111,22 @@ describe('DirectProvider', () => {
   it('gives up after exhausting retries; load emits error', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('server down'));
     const states: ProviderState[] = [];
-    const p = new DirectProvider({ baseUrl: 'https://nav.example', apiKey: 'K', retryDelayMs: 0 });
+    const p = new SubsonicProvider({
+      baseUrl: 'https://nav.example',
+      apiKey: 'K',
+      retryDelayMs: 0,
+    });
     p.onStateChange((s) => states.push(s));
     await p.load({ title: 'T', artist: 'A' });
     expect(states).toContain('error');
   });
 
   it('checkAvailability: available / unavailable / unknown', async () => {
-    const p = new DirectProvider({ baseUrl: 'https://nav.example', apiKey: 'K', retryDelayMs: 0 });
+    const p = new SubsonicProvider({
+      baseUrl: 'https://nav.example',
+      apiKey: 'K',
+      retryDelayMs: 0,
+    });
 
     mockSearch({ id: 's1' });
     expect(await p.checkAvailability({ title: 'T', artist: 'A' })).toBe('available');
@@ -126,7 +142,7 @@ describe('DirectProvider', () => {
 
   it('sets the audio source to the stream URL on successful load', async () => {
     mockSearch({ id: 'song-99' });
-    const p = new DirectProvider({ baseUrl: 'https://nav.example', apiKey: 'K' });
+    const p = new SubsonicProvider({ baseUrl: 'https://nav.example', apiKey: 'K' });
     await p.load({ title: 'T', artist: 'A' });
     const audio = (p as any).audio as HTMLAudioElement;
     expect(audio.src).toContain('/rest/stream.view');

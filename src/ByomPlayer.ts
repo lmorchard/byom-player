@@ -13,7 +13,7 @@ type ProviderFactory = (name: string, config: Record<string, unknown>) => AudioP
 export class ByomPlayer extends LitElement {
   /** URL to the JSPF manifest. */
   @property() src = '';
-  /** Which audio provider to use ('mock' | 'direct'). */
+  /** Which audio provider to use ('mock' | 'subsonic'). */
   @property() provider = 'mock';
   /** Provider-specific configuration (e.g. Navidrome credentials). */
   @property({ attribute: false }) providerConfig: Record<string, unknown> = {};
@@ -80,6 +80,8 @@ export class ByomPlayer extends LitElement {
         this.playlist.tracks,
         (i, status) => {
           this.availability = new Map(this.availability).set(i, status);
+          // Let the queue skip known-missing tracks (shuffle + advance).
+          if (status === 'unavailable') this.controller?.markUnavailable(i, true);
         },
         { signal: this.sweepAbort.signal, delayMs: this.prescanDelayMs },
       );
@@ -155,8 +157,9 @@ export class ByomPlayer extends LitElement {
           @click=${this.toggleShuffle}
           aria-label="Shuffle"
           aria-pressed=${this.shuffle ? 'true' : 'false'}
+          title=${this.shuffle ? 'Shuffle: on' : 'Shuffle: off'}
         >
-          🔀
+          🔀 ${this.shuffle ? 'On' : 'Off'}
         </button>
       </div>
       <div class="status">
@@ -200,8 +203,19 @@ export class ByomPlayer extends LitElement {
     .controls button {
       cursor: pointer;
     }
+    .controls .shuffle {
+      border: 1px solid var(--byom-accent);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--byom-text);
+      padding: 0.1rem 0.6rem;
+      font-size: 0.8rem;
+      opacity: 0.6;
+    }
     .controls .shuffle.on {
-      color: var(--byom-accent);
+      background: var(--byom-accent);
+      color: var(--byom-bg);
+      opacity: 1;
     }
     .tracklist {
       list-style: none;

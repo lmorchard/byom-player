@@ -188,6 +188,46 @@ describe('PlaybackController shuffle', () => {
   });
 });
 
+describe('PlaybackController availability skipping', () => {
+  it('skips tracks marked unavailable when advancing', async () => {
+    const p = new FakeProvider();
+    const c = new PlaybackController(p, tracks, () => {});
+    c.markUnavailable(1);
+    await c.start(0);
+    await c.next();
+    expect(c.index).toBe(2); // skipped 1
+  });
+
+  it('skips unavailable tracks going backward too', async () => {
+    const p = new FakeProvider();
+    const c = new PlaybackController(p, tracks, () => {});
+    c.markUnavailable(1);
+    await c.start(2);
+    await c.prev();
+    expect(c.index).toBe(0); // skipped 1
+  });
+
+  it('still plays an unavailable track on an explicit start (manual override)', async () => {
+    const p = new FakeProvider();
+    const c = new PlaybackController(p, tracks, () => {});
+    c.markUnavailable(1);
+    await c.start(1);
+    expect(c.index).toBe(1);
+    expect(p.loaded).toEqual([tracks[1]]);
+  });
+
+  it('clears the skip-mark once a track actually plays', async () => {
+    const p = new FakeProvider();
+    const c = new PlaybackController(p, tracks, () => {});
+    c.markUnavailable(1);
+    await c.start(1);
+    p.emit('playing'); // it plays after all
+    await c.start(0);
+    await c.next();
+    expect(c.index).toBe(1); // no longer skipped
+  });
+});
+
 describe('PlaybackController error handling', () => {
   const long = [tracks[0], tracks[1], tracks[2], tracks[0], tracks[1]];
 

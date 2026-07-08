@@ -1,11 +1,13 @@
 import type { Track } from '../types';
 import type { AudioProvider, AvailabilityStatus, ProviderState } from './types';
 
-// Configuration for a Navidrome / Subsonic server. Supply exactly one auth mode:
-//   - apiKey (newest Navidrome), or
+// Configuration for a Subsonic / OpenSubsonic server (Navidrome, gonic, Airsonic,
+// LMS, …). Uses only core Subsonic endpoints, so it's not Navidrome-specific.
+// Supply exactly one auth mode:
+//   - apiKey (OpenSubsonic extension; not all servers support it), or
 //   - token + salt (classic Subsonic: token = md5(password + salt)), or
 //   - username + password (legacy; plaintext over HTTPS).
-export interface DirectConfig {
+export interface SubsonicConfig {
   baseUrl: string;
   username?: string;
   password?: string;
@@ -21,18 +23,18 @@ export interface DirectConfig {
 const API_VERSION = '1.16.1';
 const CLIENT_NAME = 'byom-player';
 
-// DirectProvider resolves a Track against a Navidrome/Subsonic server and plays
-// the resulting stream via an HTML5 Audio element.
-export class DirectProvider implements AudioProvider {
-  name = 'direct';
+// SubsonicProvider resolves a Track against a Subsonic/OpenSubsonic server and
+// plays the resulting stream via an HTML5 Audio element.
+export class SubsonicProvider implements AudioProvider {
+  name = 'subsonic';
 
   private readonly audio = new Audio();
-  private readonly cfg: DirectConfig;
+  private readonly cfg: SubsonicConfig;
   private readonly listeners = new AbortController();
   private callback: (state: ProviderState) => void = () => {};
 
   constructor(config: Record<string, unknown>) {
-    this.cfg = config as unknown as DirectConfig;
+    this.cfg = config as unknown as SubsonicConfig;
     const opts = { signal: this.listeners.signal };
     this.audio.addEventListener('playing', () => this.callback('playing'), opts);
     this.audio.addEventListener('pause', () => this.callback('paused'), opts);

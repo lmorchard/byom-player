@@ -22,6 +22,10 @@ export class PlaybackController {
   halted = false;
   shuffle = false;
   readonly failed = new Set<number>();
+  // Track indices known to be unavailable (from the background prescan or a
+  // playback miss). Auto-advance / next / prev skip these; an explicit start()
+  // still tries them (manual override).
+  private readonly unavailable = new Set<number>();
 
   private order: number[];
   private pos = 0;
@@ -76,10 +80,18 @@ export class PlaybackController {
 
   async prev(): Promise<void> {
     this.resetBreaker();
-    if (this.pos > 0) {
-      this.pos -= 1;
+    const p = this.step(-1);
+    if (p !== null) {
+      this.pos = p;
       await this.loadCurrent();
     }
+  }
+
+  // markUnavailable records (or clears) foreknowledge that a track can't be
+  // played, so the queue skips it. Fed by the background availability prescan.
+  markUnavailable(trackIndex: number, value = true): void {
+    if (value) this.unavailable.add(trackIndex);
+    else this.unavailable.delete(trackIndex);
   }
 
   // setShuffle rebuilds the play order, keeping the current track playing.
@@ -122,10 +134,22 @@ export class PlaybackController {
   }
 
   private async advance(): Promise<void> {
-    if (this.pos < this.order.length - 1) {
-      this.pos += 1;
+    const p = this.step(1);
+    if (p !== null) {
+      this.pos = p;
       await this.loadCurrent();
     }
+  }
+
+  // step finds the next position in the given direction whose track is not
+  // known-unavailable, or null if there's none.
+  private step(direction: 1 | -1): number | null {
+    let p = this.pos + direction;
+    while (p >= 0 && p < this.order.length) {
+      if (!this.unavailable.has(this.order[p])) return p;
+      p += direction;
+    }
+    return null;
   }
 
   private scheduleAutoSkip(delay: number): void {
@@ -149,14 +173,17 @@ export class PlaybackController {
       case 'playing':
         // Success clears any stale unavailable mark and resets the breaker.
         this.failed.delete(this.index);
+        this.unavailable.delete(this.index);
         this.consecutiveErrors = 0;
         break;
       case 'ended':
         void this.advance();
         break;
       case 'unavailable':
-        // Clean miss — skip freely (does NOT count toward the breaker).
+        // Clean miss — skip freely (does NOT count toward the breaker) and
+        // remember it so future advances skip it too.
         this.failed.add(this.index);
+        this.unavailable.add(this.index);
         this.scheduleAutoSkip(this.skipDelayMs);
         break;
       case 'error':
