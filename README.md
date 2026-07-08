@@ -23,6 +23,13 @@ delegated to pluggable **Audio Provider** adapters.
 
 ## Usage
 
+Grab the latest built module from the rolling release (updated on every push to
+`main`), or build it yourself (see Development):
+
+```
+https://github.com/lmorchard/byom-player/releases/download/latest/byom-player.js
+```
+
 ```html
 <script type="module" src="/path/to/byom-player.js"></script>
 
