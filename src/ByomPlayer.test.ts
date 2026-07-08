@@ -150,6 +150,26 @@ describe('<byom-player>', () => {
     expect(btn.getAttribute('aria-pressed')).toBe('true');
   });
 
+  it('shows a pending state for tracks the prescan has not reached yet', async () => {
+    const provider = new ControllableProvider();
+    // Track A resolves immediately; the rest hang, so the sweep stalls on track 1.
+    (provider as AudioProvider).checkAvailability = (t) =>
+      t.title === 'A' ? Promise.resolve('available') : new Promise(() => {});
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = () => provider;
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(lis(el)[0].classList.contains('pending')).toBe(false); // checked (available)
+    expect(lis(el)[1].classList.contains('pending')).toBe(true); // not yet reached
+    expect(lis(el)[2].classList.contains('pending')).toBe(true);
+  });
+
   it('disposes the provider when disconnected (no audio outliving the element)', async () => {
     const { el, provider } = await mount();
     el.remove();

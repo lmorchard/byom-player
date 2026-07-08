@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { SubsonicProvider } from './SubsonicProvider';
 import type { ProviderState } from './types';
+import { md5 } from '../md5';
 
 function mockSearch(song: unknown) {
   return vi.spyOn(globalThis, 'fetch').mockResolvedValue({
@@ -38,9 +39,22 @@ describe('SubsonicProvider', () => {
     expect(url.pathname).toBe('/rest/search3.view');
     expect(url.searchParams.get('query')).toBe('Kavinsky Nightcall');
     expect(url.searchParams.get('u')).toBe('les');
-    expect(url.searchParams.get('p')).toBe('pw');
     expect(url.searchParams.get('c')).toBe('byom-player');
     expect(url.searchParams.get('f')).toBe('json');
+  });
+
+  it('derives token+salt from a password (plaintext never sent)', () => {
+    const p = new SubsonicProvider({
+      baseUrl: 'https://nav.example',
+      username: 'les',
+      password: 'pw',
+    });
+    const url = new URL(p.streamUrl('x'));
+    expect(url.searchParams.get('p')).toBeNull(); // no plaintext password
+    const salt = url.searchParams.get('s');
+    const token = url.searchParams.get('t');
+    expect(salt).toBeTruthy();
+    expect(token).toBe(md5('pw' + salt)); // token = md5(password + salt)
   });
 
   it('emits unavailable (not error) when the server has no match', async () => {

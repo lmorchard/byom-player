@@ -1,12 +1,14 @@
 import type { Track } from '../types';
 import type { AudioProvider, AvailabilityStatus, ProviderState } from './types';
+import { md5 } from '../md5';
 
 // Configuration for a Subsonic / OpenSubsonic server (Navidrome, gonic, Airsonic,
 // LMS, …). Uses only core Subsonic endpoints, so it's not Navidrome-specific.
 // Supply exactly one auth mode:
 //   - apiKey (OpenSubsonic extension; not all servers support it), or
 //   - token + salt (classic Subsonic: token = md5(password + salt)), or
-//   - username + password (legacy; plaintext over HTTPS).
+//   - username + password — the password is converted to a random-salted token
+//     in the browser, so the plaintext password is never sent on the wire.
 export interface SubsonicConfig {
   baseUrl: string;
   username?: string;
@@ -32,9 +34,22 @@ export class SubsonicProvider implements AudioProvider {
   private readonly cfg: SubsonicConfig;
   private readonly listeners = new AbortController();
   private callback: (state: ProviderState) => void = () => {};
+  // Resolved token auth: provided directly, or derived from a password + salt.
+  private readonly authToken?: string;
+  private readonly authSalt?: string;
 
   constructor(config: Record<string, unknown>) {
     this.cfg = config as unknown as SubsonicConfig;
+
+    if (this.cfg.token && this.cfg.salt) {
+      this.authToken = this.cfg.token;
+      this.authSalt = this.cfg.salt;
+    } else if (this.cfg.password) {
+      // Derive token+salt so the plaintext password never leaves the browser.
+      this.authSalt = randomSalt();
+      this.authToken = md5(this.cfg.password + this.authSalt);
+    }
+
     const opts = { signal: this.listeners.signal };
     this.audio.addEventListener('playing', () => this.callback('playing'), opts);
     this.audio.addEventListener('pause', () => this.callback('paused'), opts);
@@ -142,16 +157,12 @@ export class SubsonicProvider implements AudioProvider {
 
   private authParams(): URLSearchParams {
     const params = new URLSearchParams({ v: API_VERSION, c: CLIENT_NAME, f: 'json' });
-    const { apiKey, username, token, salt, password } = this.cfg;
-    if (apiKey) {
-      params.set('apiKey', apiKey);
-    } else if (token && salt) {
-      if (username) params.set('u', username);
-      params.set('t', token);
-      params.set('s', salt);
-    } else if (username && password) {
-      params.set('u', username);
-      params.set('p', password);
+    if (this.cfg.apiKey) {
+      params.set('apiKey', this.cfg.apiKey);
+    } else if (this.authToken && this.authSalt) {
+      if (this.cfg.username) params.set('u', this.cfg.username);
+      params.set('t', this.authToken);
+      params.set('s', this.authSalt);
     }
     return params;
   }
@@ -162,4 +173,11 @@ export class SubsonicProvider implements AudioProvider {
     const base = this.cfg.baseUrl.replace(/\/$/, '');
     return `${base}/rest/${view}?${params.toString()}`;
   }
+}
+
+// randomSalt returns a random hex salt for Subsonic token auth.
+function randomSalt(): string {
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }

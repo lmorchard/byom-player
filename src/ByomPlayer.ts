@@ -35,6 +35,7 @@ export class ByomPlayer extends LitElement {
   @state() private halted = false;
   @state() private shuffle = false;
   @state() private availability = new Map<number, AvailabilityStatus>();
+  @state() private scanning = false;
 
   private controller: PlaybackController | null = null;
   private sweepAbort: AbortController | null = null;
@@ -75,6 +76,7 @@ export class ByomPlayer extends LitElement {
     );
     if (this.prescan && prov.checkAvailability) {
       this.sweepAbort = new AbortController();
+      this.scanning = true;
       void sweepAvailability(
         prov,
         this.playlist.tracks,
@@ -84,7 +86,9 @@ export class ByomPlayer extends LitElement {
           if (status === 'unavailable') this.controller?.markUnavailable(i, true);
         },
         { signal: this.sweepAbort.signal, delayMs: this.prescanDelayMs },
-      );
+      ).finally(() => {
+        this.scanning = false;
+      });
     }
   }
 
@@ -120,10 +124,13 @@ export class ByomPlayer extends LitElement {
 
   private trackClasses(index: number, orphaned: boolean): string {
     const unavailable = this.failed.has(index) || this.availability.get(index) === 'unavailable';
+    // Not yet reached by the background prescan.
+    const pending = this.scanning && !this.availability.has(index) && !this.failed.has(index);
     return [
       index === this.currentIndex ? 'active' : '',
       orphaned ? 'orphan' : '',
       unavailable ? 'unavailable' : '',
+      pending ? 'pending' : '',
     ]
       .filter(Boolean)
       .join(' ');
@@ -241,6 +248,13 @@ export class ByomPlayer extends LitElement {
     .tracklist li.unavailable {
       text-decoration: line-through;
       opacity: 0.4;
+    }
+    .tracklist li.pending {
+      opacity: 0.5;
+    }
+    .tracklist li.pending .t-title::before {
+      content: '⋯ ';
+      color: var(--byom-accent);
     }
     .status .halted {
       color: var(--byom-accent);
