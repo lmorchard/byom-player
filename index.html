@@ -144,6 +144,7 @@
       const AUTH_KEYS = ['baseUrl', 'username', 'password', 'token', 'salt', 'apiKey'];
 
       const saved = JSON.parse(localStorage.getItem(KEY) || '{}');
+      if (saved.provider === 'direct') saved.provider = 'subsonic'; // migrate old saved config
       for (const [k, v] of Object.entries(saved)) {
         if (form.elements[k]) form.elements[k].value = v;
       }
