@@ -115,13 +115,10 @@
         <fieldset>
           <legend>Subsonic / OpenSubsonic (for "subsonic")</legend>
           <label>Base URL <input name="baseUrl" placeholder="https://music.example.com" /></label>
-          <label>API key <input name="apiKey" autocomplete="off" /></label>
-          <p class="or">— or —</p>
           <label>Username <input name="username" autocomplete="off" /></label>
           <label>Password <input name="password" type="password" autocomplete="off" /></label>
-          <p class="or">— or token + salt —</p>
-          <label>Token <input name="token" autocomplete="off" /></label>
-          <label>Salt <input name="salt" autocomplete="off" /></label>
+          <p class="or">— or —</p>
+          <label>API key <input name="apiKey" autocomplete="off" /></label>
         </fieldset>
         <button type="submit">Connect</button>
         <button type="button" id="random">🎲 Play random from Navidrome</button>
@@ -141,7 +138,7 @@
       const KEY = 'byom-player-dev-config';
       const form = document.getElementById('cfg');
       const host = document.getElementById('host');
-      const AUTH_KEYS = ['baseUrl', 'username', 'password', 'token', 'salt', 'apiKey'];
+      const AUTH_KEYS = ['baseUrl', 'username', 'password', 'apiKey'];
 
       const saved = JSON.parse(localStorage.getItem(KEY) || '{}');
       if (saved.provider === 'direct') saved.provider = 'subsonic'; // migrate old saved config
@@ -172,15 +169,12 @@
         mount(cfg);
       });
 
-      // Build Subsonic auth query params from the form config (mirrors DirectProvider).
+      // Build Subsonic auth query params for the harness-only getRandomSongs call.
+      // (Sends plaintext p for simplicity; the player itself uses salted tokens.)
       function authParams(cfg) {
         const p = new URLSearchParams({ v: '1.16.1', c: 'byom-player-dev', f: 'json' });
         if (cfg.apiKey) p.set('apiKey', cfg.apiKey);
-        else if (cfg.token && cfg.salt) {
-          if (cfg.username) p.set('u', cfg.username);
-          p.set('t', cfg.token);
-          p.set('s', cfg.salt);
-        } else if (cfg.username && cfg.password) {
+        else if (cfg.username && cfg.password) {
           p.set('u', cfg.username);
           p.set('p', cfg.password);
         }
