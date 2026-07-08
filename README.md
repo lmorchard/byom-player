@@ -23,18 +23,23 @@ delegated to pluggable **Audio Provider** adapters.
 
 ## Usage
 
-Grab the latest built module from the rolling release (updated on every push to
-`main`), or build it yourself (see Development):
-
-```
-https://github.com/lmorchard/byom-player/releases/download/latest/byom-player.js
-```
+Load the latest build via jsDelivr (rebuilt on every push to `main`), self-host
+the downloadable release asset, or build it yourself (see Development):
 
 ```html
-<script type="module" src="/path/to/byom-player.js"></script>
+<script
+  type="module"
+  src="https://cdn.jsdelivr.net/gh/lmorchard/byom-player@dist/byom-player.js"
+></script>
 
 <byom-player src="/playlists/road-trip.jspf.json" provider="subsonic"></byom-player>
 ```
+
+> jsDelivr serves the module from the `dist` branch with the correct MIME type
+> and CORS headers. The GitHub release asset (`…/releases/download/latest/…`) is
+> a download for self-hosting — it can't be used directly in a `<script>` tag
+> (served as `application/octet-stream`). npm publishing is planned once the
+> component matures.
 
 Provider config (e.g. Subsonic credentials) is set as a JS property:
 

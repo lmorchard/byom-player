@@ -32,6 +32,19 @@ jobs:
       - name: Generate checksums
         run: cd dist && sha256sum byom-player.js > checksums.txt
 
+      - name: Publish build to the dist branch (served by jsDelivr)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q -b dist
+          git add byom-player.js checksums.txt
+          git commit -q -m "Rolling build ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" dist:dist
+
       - name: Delete existing rolling release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -52,9 +65,11 @@ jobs:
             Rolling build of the `<byom-player>` ES module from the latest `main`
             (commit ${{ github.sha }}).
 
-            Drop-in usage:
+            The attached `byom-player.js` is a download for self-hosting. For a
+            live `<script>` tag, load it via jsDelivr (correct MIME + CORS) from
+            the `dist` branch:
             ```html
             <script type="module"
-              src="https://github.com/lmorchard/byom-player/releases/download/latest/byom-player.js"></script>
+              src="https://cdn.jsdelivr.net/gh/lmorchard/byom-player@dist/byom-player.js"></script>
             <byom-player src="/playlist.jspf.json" provider="subsonic"></byom-player>
             ```

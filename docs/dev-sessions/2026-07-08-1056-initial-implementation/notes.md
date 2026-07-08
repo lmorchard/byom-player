@@ -63,5 +63,12 @@ Config saved to localStorage only. Test manifests live in gitignored
 - **byom-sync JSPF `sync_state` extension**: small PR in the byom-sync repo so
   the orphan indicator has real data end-to-end (player already reads it).
 - **YouTube provider**: fast-follow (public-visitor path; needs a search backend).
+- **Distribution**: rolling-release publishes the built ES module to a `dist`
+  branch, served live via jsDelivr (`cdn.jsdelivr.net/gh/lmorchard/byom-player@dist/
+  byom-player.js`) with correct MIME + CORS. The GitHub release asset is
+  download-only (octet-stream, unusable as a live `<script>`). **TODO: publish to
+  npm once the component matures** — then jsDelivr/unpkg serve it conventionally
+  and consumers can version-pin. (jsDelivr `@dist` is a moving branch with ~12h
+  CDN caching; fine for now, not for pinned production use.)
 - **Navidrome cookie warning** in console is harmless (we auth via query params,
   not cookies).
