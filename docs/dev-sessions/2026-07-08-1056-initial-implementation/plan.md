@@ -210,14 +210,17 @@ export class DirectProvider implements AudioProvider {
 ```
 
 **Verification — automated:**
-- [ ] `npm test`: `resolve` builds the correct `search3` URL from providerConfig +
+- [x] `npm test`: `resolve` builds the correct `search3` URL from providerConfig +
       `"{artist} {title}"` query, and picks `song[0].id` (mock fetch)
-- [ ] `npm test`: empty search result → emits `'error'`
-- [ ] `npm test`: `streamUrl` includes id + auth + client params
-- [ ] `npm test`: HTMLAudio event → ProviderState mapping (dispatch fake events)
-- [ ] `npm run lint` passes
+- [x] `npm test`: empty search result → emits `'error'`
+- [x] `npm test`: `streamUrl` includes id + auth + client params
+- [x] `npm test`: HTMLAudio event → ProviderState mapping (dispatch fake events)
+- [x] `npm test`: token+salt auth mode; audio.src set to stream URL on load
+- [x] `npm run lint` passes
 
-**Verification — manual (needs Les's Navidrome + CORS):**
+_Auth layer accepts apiKey OR token+salt OR username+password (per brainstorm)._
+
+**Verification — manual (DEFERRED — needs Les's Navidrome + CORS):**
 - [ ] `providerConfig` pointed at real Navidrome resolves and streams a known track
 - [ ] Auto-advance and click-to-play work with real audio
 - [ ] A track absent from Navidrome flags `.unavailable` and skips

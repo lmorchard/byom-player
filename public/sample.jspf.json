@@ -9,24 +9,16 @@
         "creator": "Gerard McMann",
         "album": "The Lost Boys Original Motion Picture Soundtrack",
         "duration": 286,
-        "identifier": [
-          "urn:isrc:USAT20108641"
-        ],
-        "location": [
-          "https://open.spotify.com/track/1IA1bevX8DfUY86sN3o3CH"
-        ]
+        "identifier": ["urn:isrc:USAT20108641"],
+        "location": ["https://open.spotify.com/track/1IA1bevX8DfUY86sN3o3CH"]
       },
       {
         "title": "Cry Little Sister",
         "creator": "CHVRCHES",
         "album": "Nightbooks (Music from the Netflix Film)",
         "duration": 257,
-        "identifier": [
-          "urn:isrc:QZ8BZ2100512"
-        ],
-        "location": [
-          "https://open.spotify.com/track/3FgmRSXJrHXoECwBgf2qXM"
-        ],
+        "identifier": ["urn:isrc:QZ8BZ2100512"],
+        "location": ["https://open.spotify.com/track/3FgmRSXJrHXoECwBgf2qXM"],
         "extension": {
           "https://github.com/lmorchard/byom-sync": [
             {
@@ -41,48 +33,32 @@
         "creator": "Marilyn Manson",
         "album": "Cry Little Sister",
         "duration": 275,
-        "identifier": [
-          "urn:isrc:USC4R1802420"
-        ],
-        "location": [
-          "https://open.spotify.com/track/1zmEuFmMP46w1RW3sFXywK"
-        ]
+        "identifier": ["urn:isrc:USC4R1802420"],
+        "location": ["https://open.spotify.com/track/1zmEuFmMP46w1RW3sFXywK"]
       },
       {
         "title": "Cry Little Sister",
         "creator": "Blutengel",
         "album": "The Oxidising Angel",
         "duration": 289,
-        "identifier": [
-          "urn:isrc:DEBZ70500076"
-        ],
-        "location": [
-          "https://open.spotify.com/track/61Y0zrZNr5V50ZJ3PJk4hZ"
-        ]
+        "identifier": ["urn:isrc:DEBZ70500076"],
+        "location": ["https://open.spotify.com/track/61Y0zrZNr5V50ZJ3PJk4hZ"]
       },
       {
         "title": "Cry Little Sister",
         "creator": "Tangerine Dream",
         "album": "Under Cover",
         "duration": 340,
-        "identifier": [
-          "urn:isrc:USA561312076"
-        ],
-        "location": [
-          "https://open.spotify.com/track/1ozXZ8u9403zo7ntKtvX5i"
-        ]
+        "identifier": ["urn:isrc:USA561312076"],
+        "location": ["https://open.spotify.com/track/1ozXZ8u9403zo7ntKtvX5i"]
       },
       {
         "title": "Cry Little Sister",
         "creator": "The Anix",
         "album": "Sleepwalker",
         "duration": 212,
-        "identifier": [
-          "urn:isrc:USA371365706"
-        ],
-        "location": [
-          "https://open.spotify.com/track/5K5Utc0wDsKW8YZojPYM52"
-        ]
+        "identifier": ["urn:isrc:USA371365706"],
+        "location": ["https://open.spotify.com/track/5K5Utc0wDsKW8YZojPYM52"]
       }
     ]
   }
