@@ -258,7 +258,10 @@ class YtIframeEngine implements YouTubeEngine {
   }
 
   cue(videoId: string): void {
-    this.player?.cueVideoById(videoId);
+    // loadVideoById loads AND starts playback; cueVideoById only loads (and the
+    // controller's follow-up playVideo() races the cue). Since the controller
+    // always follows load() with play(), autoplay-on-load is the intended flow.
+    this.player?.loadVideoById(videoId);
   }
   play(): void {
     this.player?.playVideo();

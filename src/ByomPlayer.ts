@@ -38,6 +38,7 @@ export class ByomPlayer extends LitElement {
   @state() private scanning = false;
   @state() private positionMs = 0;
   @state() private durationMs = 0;
+  @state() private hasVideo = false;
 
   private controller: PlaybackController | null = null;
   private sweepAbort: AbortController | null = null;
@@ -60,6 +61,7 @@ export class ByomPlayer extends LitElement {
     if (!this.src) return;
     this.sweepAbort?.abort();
     this.availability = new Map();
+    this.hasVideo = false;
     try {
       const res = await fetch(this.src);
       this.playlist = loadManifest(await res.json());
@@ -74,7 +76,10 @@ export class ByomPlayer extends LitElement {
       // Ensure the .video region is rendered, then let the provider mount into it.
       await this.updateComplete;
       const host = this.renderRoot.querySelector('.video');
-      if (host) prov.attach(host as HTMLElement);
+      if (host) {
+        prov.attach(host as HTMLElement);
+        this.hasVideo = true; // reserve space + shorten the tracklist
+      }
     }
     await prov.initialize();
     this.controller = new PlaybackController(
@@ -222,7 +227,7 @@ export class ByomPlayer extends LitElement {
             : nothing
         }
       </div>
-      <ol class="tracklist">
+      <ol class="tracklist ${this.hasVideo ? 'with-video' : ''}">
         ${pl.tracks.map((t, i) => {
           const orphaned = t.syncState?.spotifyPresent === false;
           return html`
@@ -306,6 +311,9 @@ export class ByomPlayer extends LitElement {
       padding: 0;
       max-height: 60vh;
       overflow: auto;
+    }
+    .tracklist.with-video {
+      max-height: 30vh;
     }
     .tracklist li {
       cursor: pointer;
