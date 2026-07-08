@@ -36,9 +36,12 @@ export class ByomPlayer extends LitElement {
   @state() private shuffle = false;
   @state() private availability = new Map<number, AvailabilityStatus>();
   @state() private scanning = false;
+  @state() private positionMs = 0;
+  @state() private durationMs = 0;
 
   private controller: PlaybackController | null = null;
   private sweepAbort: AbortController | null = null;
+  private seeking = false; // user is dragging the progress bar
 
   async connectedCallback(): Promise<void> {
     super.connectedCallback();
@@ -99,6 +102,9 @@ export class ByomPlayer extends LitElement {
     this.failed = new Set(this.controller.failed);
     this.halted = this.controller.halted;
     this.shuffle = this.controller.shuffle;
+    this.durationMs = this.controller.durationMs;
+    // Don't yank the thumb out from under an active drag.
+    if (!this.seeking) this.positionMs = this.controller.positionMs;
   }
 
   private selectTrack(index: number): void {
@@ -120,6 +126,23 @@ export class ByomPlayer extends LitElement {
 
   private toggleShuffle(): void {
     if (this.controller) this.controller.setShuffle(!this.controller.shuffle);
+  }
+
+  private onSeekInput(): void {
+    this.seeking = true;
+  }
+
+  private onSeekChange(e: Event): void {
+    const ms = Number((e.currentTarget as HTMLInputElement).value);
+    this.seeking = false;
+    this.controller?.seek(ms);
+  }
+
+  private static formatTime(ms: number): string {
+    const total = Math.max(0, Math.floor(ms / 1000));
+    const m = Math.floor(total / 60);
+    const s = String(total % 60).padStart(2, '0');
+    return `${m}:${s}`;
   }
 
   private trackClasses(index: number, orphaned: boolean): string {
@@ -152,6 +175,21 @@ export class ByomPlayer extends LitElement {
                 <span class="np-artist">${current.artist}</span>`
             : nothing
         }
+      </div>
+      <div class="progress-row">
+        <span class="time">${ByomPlayer.formatTime(this.positionMs)}</span>
+        <input
+          class="progress"
+          type="range"
+          min="0"
+          max=${this.durationMs || 0}
+          .value=${String(this.positionMs)}
+          ?disabled=${!this.durationMs}
+          aria-label="Seek"
+          @input=${this.onSeekInput}
+          @change=${this.onSeekChange}
+        />
+        <span class="time">${ByomPlayer.formatTime(this.durationMs)}</span>
       </div>
       <div class="controls">
         <button class="prev" @click=${this.prev} aria-label="Previous">⏮</button>
@@ -206,6 +244,21 @@ export class ByomPlayer extends LitElement {
       font-family: var(--byom-font);
       border-radius: var(--byom-border-radius);
       padding: 1rem;
+    }
+    .progress-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0.5rem 0;
+    }
+    .progress-row .progress {
+      flex: 1;
+      accent-color: var(--byom-accent);
+    }
+    .progress-row .time {
+      font-variant-numeric: tabular-nums;
+      font-size: 0.75rem;
+      opacity: 0.7;
     }
     .controls button {
       cursor: pointer;

@@ -9,7 +9,9 @@ class ControllableProvider implements AudioProvider {
   name = 'ctrl';
   loadedIndex: string[] = [];
   disposed = false;
+  seekedMs: number | null = null;
   private cb: (s: ProviderState) => void = () => {};
+  private progressCb: (pos: number, dur: number) => void = () => {};
   async initialize(): Promise<void> {}
   async load(t: { title: string }): Promise<void> {
     this.loadedIndex.push(t.title);
@@ -20,15 +22,23 @@ class ControllableProvider implements AudioProvider {
   pause(): void {
     this.cb('paused');
   }
-  seek(): void {}
+  seek(ms: number): void {
+    this.seekedMs = ms;
+  }
   onStateChange(cb: (s: ProviderState) => void): void {
     this.cb = cb;
+  }
+  onProgress(cb: (pos: number, dur: number) => void): void {
+    this.progressCb = cb;
   }
   dispose(): void {
     this.disposed = true;
   }
   emit(s: ProviderState): void {
     this.cb(s);
+  }
+  emitProgress(pos: number, dur: number): void {
+    this.progressCb(pos, dur);
   }
 }
 
@@ -168,6 +178,22 @@ describe('<byom-player>', () => {
     expect(lis(el)[0].classList.contains('pending')).toBe(false); // checked (available)
     expect(lis(el)[1].classList.contains('pending')).toBe(true); // not yet reached
     expect(lis(el)[2].classList.contains('pending')).toBe(true);
+  });
+
+  it('renders progress from the provider and seeks on change', async () => {
+    const { el, provider } = await mount();
+    await el['controller']!.start(0);
+    provider.emitProgress(30000, 120000);
+    await el.updateComplete;
+    const bar = el.shadowRoot!.querySelector('.progress') as HTMLInputElement;
+    expect(bar.value).toBe('30000');
+    expect(bar.max).toBe('120000');
+    const times = [...el.shadowRoot!.querySelectorAll('.time')].map((n) => n.textContent!.trim());
+    expect(times).toEqual(['0:30', '2:00']);
+    // simulate a seek
+    bar.value = '60000';
+    bar.dispatchEvent(new Event('change'));
+    expect(provider.seekedMs).toBe(60000);
   });
 
   it('disposes the provider when disconnected (no audio outliving the element)', async () => {

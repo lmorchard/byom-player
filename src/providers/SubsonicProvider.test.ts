@@ -154,6 +154,24 @@ describe('SubsonicProvider', () => {
     expect(await p.checkAvailability({ title: 'T', artist: 'A' })).toBe('unknown');
   });
 
+  it('seek sets the audio currentTime (ms -> s)', () => {
+    const p = new SubsonicProvider({ baseUrl: 'https://nav.example', apiKey: 'K' });
+    p.seek(30000);
+    expect((p as any).audio.currentTime).toBe(30);
+  });
+
+  it('emits progress on timeupdate (position in ms)', () => {
+    const p = new SubsonicProvider({ baseUrl: 'https://nav.example', apiKey: 'K' });
+    const events: [number, number][] = [];
+    p.onProgress((pos, dur) => events.push([pos, dur]));
+    const audio = (p as any).audio as HTMLAudioElement;
+    audio.currentTime = 12;
+    audio.dispatchEvent(new Event('timeupdate'));
+    expect(events.length).toBeGreaterThan(0);
+    expect(events.at(-1)![0]).toBe(12000);
+    expect(typeof events.at(-1)![1]).toBe('number');
+  });
+
   it('sets the audio source to the stream URL on successful load', async () => {
     mockSearch({ id: 'song-99' });
     const p = new SubsonicProvider({ baseUrl: 'https://nav.example', apiKey: 'K' });

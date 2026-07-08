@@ -22,6 +22,10 @@ export interface AudioProvider {
   pause(): void;
   seek(positionMs: number): void;
   onStateChange(callback: (state: ProviderState) => void): void;
+  // Optional: report playback position + duration (ms) as they change. HTML5
+  // Audio uses `timeupdate`; a YouTube iframe would poll; the mock derives it
+  // from its timer. durationMs is 0 when not yet known.
+  onProgress?(callback: (positionMs: number, durationMs: number) => void): void;
   // Release resources (stop audio, clear timers, remove listeners). Called when
   // the host element is disconnected so playback never outlives the component.
   dispose(): void;

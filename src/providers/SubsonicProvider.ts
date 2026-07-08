@@ -34,6 +34,7 @@ export class SubsonicProvider implements AudioProvider {
   private readonly cfg: SubsonicConfig;
   private readonly listeners = new AbortController();
   private callback: (state: ProviderState) => void = () => {};
+  private progressCallback: (positionMs: number, durationMs: number) => void = () => {};
   // Resolved token auth: provided directly, or derived from a password + salt.
   private readonly authToken?: string;
   private readonly authSalt?: string;
@@ -55,6 +56,13 @@ export class SubsonicProvider implements AudioProvider {
     this.audio.addEventListener('pause', () => this.callback('paused'), opts);
     this.audio.addEventListener('ended', () => this.callback('ended'), opts);
     this.audio.addEventListener('error', () => this.callback('error'), opts);
+    this.audio.addEventListener('timeupdate', () => this.emitProgress(), opts);
+    this.audio.addEventListener('durationchange', () => this.emitProgress(), opts);
+  }
+
+  private emitProgress(): void {
+    const duration = Number.isFinite(this.audio.duration) ? this.audio.duration * 1000 : 0;
+    this.progressCallback(this.audio.currentTime * 1000, duration);
   }
 
   async initialize(): Promise<void> {
@@ -100,6 +108,10 @@ export class SubsonicProvider implements AudioProvider {
 
   onStateChange(callback: (state: ProviderState) => void): void {
     this.callback = callback;
+  }
+
+  onProgress(callback: (positionMs: number, durationMs: number) => void): void {
+    this.progressCallback = callback;
   }
 
   dispose(): void {

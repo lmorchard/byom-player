@@ -9,7 +9,9 @@ class FakeProvider implements AudioProvider {
   playCount = 0;
   pausedCount = 0;
   disposed = false;
+  seekedMs: number | null = null;
   private cb: (s: ProviderState) => void = () => {};
+  private progressCb: (pos: number, dur: number) => void = () => {};
 
   async initialize(): Promise<void> {}
   async load(t: Track): Promise<void> {
@@ -21,15 +23,23 @@ class FakeProvider implements AudioProvider {
   pause(): void {
     this.pausedCount++;
   }
-  seek(): void {}
+  seek(ms: number): void {
+    this.seekedMs = ms;
+  }
   onStateChange(cb: (s: ProviderState) => void): void {
     this.cb = cb;
+  }
+  onProgress(cb: (pos: number, dur: number) => void): void {
+    this.progressCb = cb;
   }
   dispose(): void {
     this.disposed = true;
   }
   emit(s: ProviderState): void {
     this.cb(s);
+  }
+  emitProgress(pos: number, dur: number): void {
+    this.progressCb(pos, dur);
   }
 }
 
@@ -114,6 +124,15 @@ describe('PlaybackController', () => {
     await c.start(0);
     c.pause();
     expect(p.pausedCount).toBe(1);
+  });
+
+  it('tracks progress from the provider and forwards seek', async () => {
+    await c.start(0);
+    p.emitProgress(12000, 240000);
+    expect(c.positionMs).toBe(12000);
+    expect(c.durationMs).toBe(240000);
+    c.seek(30000);
+    expect(p.seekedMs).toBe(30000);
   });
 
   it('dispose releases the provider', () => {

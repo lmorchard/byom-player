@@ -21,6 +21,8 @@ export class PlaybackController {
   state: ProviderState = 'uninitialized';
   halted = false;
   shuffle = false;
+  positionMs = 0;
+  durationMs = 0;
   readonly failed = new Set<number>();
   // Track indices known to be unavailable (from the background prescan or a
   // playback miss). Auto-advance / next / prev skip these; an explicit start()
@@ -48,6 +50,11 @@ export class PlaybackController {
     this.random = opts.random ?? Math.random;
     this.order = tracks.map((_, i) => i);
     this.provider.onStateChange((s) => this.handle(s));
+    this.provider.onProgress?.((pos, dur) => {
+      this.positionMs = pos;
+      this.durationMs = dur;
+      this.onChange();
+    });
   }
 
   // The current TRACK index (into `tracks`), for the UI's active marker.
@@ -71,6 +78,10 @@ export class PlaybackController {
 
   pause(): void {
     this.provider.pause();
+  }
+
+  seek(positionMs: number): void {
+    this.provider.seek(positionMs);
   }
 
   async next(): Promise<void> {
@@ -128,6 +139,8 @@ export class PlaybackController {
   private async loadCurrent(): Promise<void> {
     const trackIndex = this.order[this.pos];
     if (trackIndex === undefined) return;
+    this.positionMs = 0;
+    this.durationMs = 0;
     await this.provider.load(this.tracks[trackIndex]);
     this.loadedIndex = trackIndex;
     await this.provider.play();
