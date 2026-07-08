@@ -38,6 +38,7 @@ export class ByomPlayer extends LitElement {
   @state() private scanning = false;
   @state() private positionMs = 0;
   @state() private durationMs = 0;
+  @state() private hasVideo = false;
 
   private controller: PlaybackController | null = null;
   private sweepAbort: AbortController | null = null;
@@ -60,6 +61,7 @@ export class ByomPlayer extends LitElement {
     if (!this.src) return;
     this.sweepAbort?.abort();
     this.availability = new Map();
+    this.hasVideo = false;
     try {
       const res = await fetch(this.src);
       this.playlist = loadManifest(await res.json());
@@ -70,6 +72,15 @@ export class ByomPlayer extends LitElement {
     const factory = this.providerFactory ?? createProvider;
     const config = this.debug ? { ...this.providerConfig, debug: true } : this.providerConfig;
     const prov = factory(this.provider, config);
+    if (prov.attach) {
+      // Ensure the .video region is rendered, then let the provider mount into it.
+      await this.updateComplete;
+      const host = this.renderRoot.querySelector('.video');
+      if (host) {
+        prov.attach(host as HTMLElement);
+        this.hasVideo = true; // reserve space + shorten the tracklist
+      }
+    }
     await prov.initialize();
     this.controller = new PlaybackController(
       prov,
@@ -216,7 +227,7 @@ export class ByomPlayer extends LitElement {
             : nothing
         }
       </div>
-      <ol class="tracklist">
+      <ol class="tracklist ${this.hasVideo ? 'with-video' : ''}">
         ${pl.tracks.map((t, i) => {
           const orphaned = t.syncState?.spotifyPresent === false;
           return html`
@@ -227,6 +238,7 @@ export class ByomPlayer extends LitElement {
           `;
         })}
       </ol>
+      <div class="video" part="video"></div>
     `;
   }
 
@@ -260,6 +272,22 @@ export class ByomPlayer extends LitElement {
       font-size: 0.75rem;
       opacity: 0.7;
     }
+    .video {
+      aspect-ratio: 16 / 9;
+      margin-top: 0.5rem;
+      background: #000;
+      border-radius: calc(var(--byom-border-radius) / 2);
+      overflow: hidden;
+    }
+    .video:empty {
+      display: none;
+    }
+    .video iframe {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
     .controls button {
       cursor: pointer;
     }
@@ -283,6 +311,9 @@ export class ByomPlayer extends LitElement {
       padding: 0;
       max-height: 60vh;
       overflow: auto;
+    }
+    .tracklist.with-video {
+      max-height: 30vh;
     }
     .tracklist li {
       cursor: pointer;

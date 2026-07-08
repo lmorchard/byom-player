@@ -196,6 +196,23 @@ describe('<byom-player>', () => {
     expect(provider.seekedMs).toBe(60000);
   });
 
+  it('attaches a video-capable provider to the .video region', async () => {
+    let attachedEl: HTMLElement | null = null;
+    const provider = new ControllableProvider();
+    (provider as AudioProvider).attach = (el: HTMLElement) => {
+      attachedEl = el;
+    };
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = () => provider;
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(attachedEl).toBe(el.shadowRoot!.querySelector('.video'));
+  });
+
   it('disposes the provider when disconnected (no audio outliving the element)', async () => {
     const { el, provider } = await mount();
     el.remove();

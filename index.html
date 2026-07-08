@@ -50,6 +50,9 @@
         display: grid;
         gap: 0.5rem;
       }
+      [hidden] {
+        display: none !important;
+      }
       legend {
         font-size: 0.75rem;
         color: #888;
@@ -110,15 +113,26 @@
           <select name="provider">
             <option value="mock">mock</option>
             <option value="subsonic">subsonic (Navidrome / any Subsonic)</option>
+            <option value="youtube">youtube</option>
           </select>
         </label>
-        <fieldset>
-          <legend>Subsonic / OpenSubsonic (for "subsonic")</legend>
+        <fieldset id="fs-subsonic">
+          <legend>Subsonic / OpenSubsonic</legend>
           <label>Base URL <input name="baseUrl" placeholder="https://music.example.com" /></label>
           <label>Username <input name="username" autocomplete="off" /></label>
           <label>Password <input name="password" type="password" autocomplete="off" /></label>
           <p class="or">— or —</p>
           <label>API key <input name="apiKey" autocomplete="off" /></label>
+        </fieldset>
+        <fieldset id="fs-youtube">
+          <legend>YouTube</legend>
+          <label>
+            Search endpoint
+            <input name="searchEndpoint" placeholder="https://your-proxy/yt-search" />
+          </label>
+          <p class="or">GET ?q=… → { videoId } — keeps the key server-side. Or:</p>
+          <label>YouTube Data API key <input name="ytApiKey" autocomplete="off" /></label>
+          <p class="or">(client-visible — dev/personal use only)</p>
         </fieldset>
         <button type="submit">Connect</button>
         <button type="button" id="random">🎲 Play random from Navidrome</button>
@@ -138,7 +152,6 @@
       const KEY = 'byom-player-dev-config';
       const form = document.getElementById('cfg');
       const host = document.getElementById('host');
-      const AUTH_KEYS = ['baseUrl', 'username', 'password', 'apiKey'];
 
       const saved = JSON.parse(localStorage.getItem(KEY) || '{}');
       if (saved.provider === 'direct') saved.provider = 'subsonic'; // migrate old saved config
@@ -146,19 +159,44 @@
         if (form.elements[k]) form.elements[k].value = v;
       }
 
+      // Show only the selected provider's config fields (and the Navidrome-only
+      // random button).
+      function syncProviderUI() {
+        const provider = form.elements['provider'].value;
+        document.getElementById('fs-subsonic').hidden = provider !== 'subsonic';
+        document.getElementById('fs-youtube').hidden = provider !== 'youtube';
+        document.getElementById('random').hidden = provider !== 'subsonic';
+      }
+      form.elements['provider'].addEventListener('change', syncProviderUI);
+      syncProviderUI();
+
       // Preset dropdown fills the manifest URL field.
       form.elements['preset'].addEventListener('change', (e) => {
         if (e.target.value) form.elements['manifestUrl'].value = e.target.value;
       });
+
+      // Build the per-provider config (keeps each provider's fields separate).
+      function buildProviderConfig(cfg) {
+        if (cfg.provider === 'subsonic') {
+          const c = {};
+          for (const k of ['baseUrl', 'username', 'password', 'apiKey']) if (cfg[k]) c[k] = cfg[k];
+          return c;
+        }
+        if (cfg.provider === 'youtube') {
+          const c = {};
+          if (cfg.searchEndpoint) c.searchEndpoint = cfg.searchEndpoint;
+          if (cfg.ytApiKey) c.apiKey = cfg.ytApiKey; // YouTube's own key field
+          return c;
+        }
+        return {};
+      }
 
       function mount(cfg) {
         host.innerHTML = '';
         const el = document.createElement('byom-player');
         el.src = cfg.manifestUrl || '/sample.jspf.json';
         el.provider = cfg.provider || 'mock';
-        const providerConfig = {};
-        for (const k of AUTH_KEYS) if (cfg[k]) providerConfig[k] = cfg[k];
-        el.providerConfig = providerConfig;
+        el.providerConfig = buildProviderConfig(cfg);
         host.appendChild(el);
       }
 
