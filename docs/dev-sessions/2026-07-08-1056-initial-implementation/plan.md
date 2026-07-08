@@ -110,15 +110,15 @@ export class PlaybackController {
 ```
 
 **Verification — automated:**
-- [ ] `npm test`: MockProvider transitions ready→playing→ended (fake timers),
+- [x] `npm test`: MockProvider transitions ready→playing→ended (fake timers),
       pause→paused
-- [ ] `npm test`: controller advances index on `ended`; stops at last track (no overrun)
-- [ ] `npm test`: controller skips to next on `error`
-- [ ] `npm test`: `select(i)` loads+plays track i
-- [ ] `npm run lint` passes
+- [x] `npm test`: controller advances index on `ended`; stops at last track (no overrun)
+- [x] `npm test`: controller skips to next on `error`
+- [x] `npm test`: `start(i)` loads+plays track i (also prev/pause/onChange)
+- [x] `npm run lint` passes
 
 **Verification — manual:**
-- [ ] None (headless logic; covered by tests)
+- [x] None (headless logic; covered by tests)
 
 ---
 

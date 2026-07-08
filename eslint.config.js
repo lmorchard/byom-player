@@ -15,6 +15,11 @@ export default [
     rules: {
       ...tseslint.configs.recommended.rules,
       '@typescript-eslint/no-explicit-any': 'off',
+      // Allow intentionally-unused args/vars prefixed with underscore.
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
       // TypeScript handles undefined-symbol checking; the core rule misfires
       // on DOM/browser globals in flat config.
       'no-undef': 'off',
