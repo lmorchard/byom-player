@@ -39,6 +39,10 @@ export class MockProvider implements AudioProvider {
     // no-op for the mock
   }
 
+  dispose(): void {
+    this.clearTimer();
+  }
+
   onStateChange(callback: (state: ProviderState) => void): void {
     this.callback = callback;
   }

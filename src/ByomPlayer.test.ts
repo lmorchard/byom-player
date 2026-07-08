@@ -8,6 +8,7 @@ import type { AudioProvider, ProviderState } from './providers/types';
 class ControllableProvider implements AudioProvider {
   name = 'ctrl';
   loadedIndex: string[] = [];
+  disposed = false;
   private cb: (s: ProviderState) => void = () => {};
   async initialize(): Promise<void> {}
   async load(t: { title: string }): Promise<void> {
@@ -22,6 +23,9 @@ class ControllableProvider implements AudioProvider {
   seek(): void {}
   onStateChange(cb: (s: ProviderState) => void): void {
     this.cb = cb;
+  }
+  dispose(): void {
+    this.disposed = true;
   }
   emit(s: ProviderState): void {
     this.cb(s);
@@ -49,6 +53,7 @@ async function mount(): Promise<{ el: ByomPlayer; provider: ControllableProvider
   const el = document.createElement('byom-player') as ByomPlayer;
   el.src = '/playlist.jspf.json';
   el.providerFactory = () => provider;
+  el.skipDelayMs = 0; // deterministic in tests (no throttle wait)
   document.body.appendChild(el);
   // let connectedCallback's async fetch/init settle
   await new Promise((r) => setTimeout(r, 0));
@@ -114,6 +119,12 @@ describe('<byom-player>', () => {
     await el.updateComplete;
     expect(lis(el)[0].classList.contains('unavailable')).toBe(true);
     expect(lis(el)[1].classList.contains('active')).toBe(true);
+  });
+
+  it('disposes the provider when disconnected (no audio outliving the element)', async () => {
+    const { el, provider } = await mount();
+    el.remove();
+    expect(provider.disposed).toBe(true);
   });
 
   it('toggles play/pause via the control button', async () => {

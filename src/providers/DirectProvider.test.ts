@@ -4,10 +4,20 @@ import type { ProviderState } from './types';
 
 function mockSearch(song: unknown) {
   return vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+    ok: true,
     json: async () => ({
-      'subsonic-response': { searchResult3: song ? { song: [song] } : {} },
+      'subsonic-response': { status: 'ok', searchResult3: song ? { song: [song] } : {} },
     }),
   } as Response);
+}
+
+function okResponse(song: unknown) {
+  return {
+    ok: true,
+    json: async () => ({
+      'subsonic-response': { status: 'ok', searchResult3: { song: [song] } },
+    }),
+  } as Response;
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -33,13 +43,14 @@ describe('DirectProvider', () => {
     expect(url.searchParams.get('f')).toBe('json');
   });
 
-  it('emits error when no song matches', async () => {
+  it('emits unavailable (not error) when the server has no match', async () => {
     mockSearch(null);
     const states: ProviderState[] = [];
     const p = new DirectProvider({ baseUrl: 'https://nav.example', username: 'u', password: 'p' });
     p.onStateChange((s) => states.push(s));
     await p.load({ title: 'X', artist: 'Y' });
-    expect(states).toContain('error');
+    expect(states).toContain('unavailable');
+    expect(states).not.toContain('error');
   });
 
   it('streamUrl includes id + auth + client params', () => {
@@ -75,6 +86,27 @@ describe('DirectProvider', () => {
     audio.dispatchEvent(new Event('ended'));
     audio.dispatchEvent(new Event('error'));
     expect(states).toEqual(['playing', 'paused', 'ended', 'error']);
+  });
+
+  it('retries transient failures before resolving', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockRejectedValueOnce(new Error('network blip'))
+      .mockRejectedValueOnce(new Error('network blip'))
+      .mockResolvedValue(okResponse({ id: 's9' }));
+    const p = new DirectProvider({ baseUrl: 'https://nav.example', apiKey: 'K', retryDelayMs: 0 });
+    const id = await p.resolve({ title: 'T', artist: 'A' });
+    expect(id).toBe('s9');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('gives up after exhausting retries; load emits error', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('server down'));
+    const states: ProviderState[] = [];
+    const p = new DirectProvider({ baseUrl: 'https://nav.example', apiKey: 'K', retryDelayMs: 0 });
+    p.onStateChange((s) => states.push(s));
+    await p.load({ title: 'T', artist: 'A' });
+    expect(states).toContain('error');
   });
 
   it('sets the audio source to the stream URL on successful load', async () => {

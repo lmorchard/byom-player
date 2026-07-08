@@ -3,22 +3,212 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>byom-player dev</title>
+    <title>byom-player dev harness</title>
     <style>
       body {
         margin: 0;
         padding: 2rem;
         background: #111;
+        color: #eee;
         font-family: system-ui, sans-serif;
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: 22rem 1fr;
+        align-items: start;
+      }
+      .panel {
+        background: #1b1b1b;
+        border: 1px solid #333;
+        border-radius: 8px;
+        padding: 1rem;
+      }
+      .panel h1 {
+        font-size: 1rem;
+        margin: 0 0 0.75rem;
+      }
+      form {
+        display: grid;
+        gap: 0.5rem;
+      }
+      label {
+        display: grid;
+        gap: 0.15rem;
+        font-size: 0.8rem;
+        color: #aaa;
+      }
+      input,
+      select {
+        padding: 0.35rem;
+        background: #111;
+        color: #eee;
+        border: 1px solid #444;
+        border-radius: 4px;
+      }
+      fieldset {
+        border: 1px solid #333;
+        border-radius: 6px;
+        display: grid;
+        gap: 0.5rem;
+      }
+      legend {
+        font-size: 0.75rem;
+        color: #888;
+      }
+      .or {
+        margin: 0;
+        font-size: 0.7rem;
+        color: #666;
+        text-align: center;
+      }
+      button {
+        padding: 0.5rem;
+        cursor: pointer;
+        background: #ff0055;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        font-weight: bold;
+      }
+      .hint {
+        font-size: 0.7rem;
+        color: #666;
       }
       byom-player {
         max-width: 32rem;
-        margin: 0 auto;
       }
     </style>
   </head>
   <body>
-    <byom-player src="/sample.jspf.json" provider="mock"></byom-player>
-    <script type="module" src="/src/index.ts"></script>
+    <div class="panel">
+      <h1>byom-player dev harness</h1>
+      <form id="cfg">
+        <label>
+          Manifest URL
+          <input name="manifestUrl" value="/sample.jspf.json" />
+        </label>
+        <label>
+          Provider
+          <select name="provider">
+            <option value="mock">mock</option>
+            <option value="direct">direct (Navidrome)</option>
+          </select>
+        </label>
+        <fieldset>
+          <legend>Navidrome / Subsonic (for "direct")</legend>
+          <label>Base URL <input name="baseUrl" placeholder="https://music.example.com" /></label>
+          <label>API key <input name="apiKey" autocomplete="off" /></label>
+          <p class="or">— or —</p>
+          <label>Username <input name="username" autocomplete="off" /></label>
+          <label>Password <input name="password" type="password" autocomplete="off" /></label>
+          <p class="or">— or token + salt —</p>
+          <label>Token <input name="token" autocomplete="off" /></label>
+          <label>Salt <input name="salt" autocomplete="off" /></label>
+        </fieldset>
+        <button type="submit">Connect</button>
+        <button type="button" id="random">🎲 Play random from Navidrome</button>
+      </form>
+      <p class="hint">
+        Saved to this browser's localStorage only — never committed or sent anywhere but your
+        Navidrome server.
+      </p>
+      <p class="hint" id="status"></p>
+    </div>
+
+    <div id="host"></div>
+
+    <script type="module">
+      import '/src/index.ts';
+
+      const KEY = 'byom-player-dev-config';
+      const form = document.getElementById('cfg');
+      const host = document.getElementById('host');
+      const AUTH_KEYS = ['baseUrl', 'username', 'password', 'token', 'salt', 'apiKey'];
+
+      const saved = JSON.parse(localStorage.getItem(KEY) || '{}');
+      for (const [k, v] of Object.entries(saved)) {
+        if (form.elements[k]) form.elements[k].value = v;
+      }
+
+      function mount(cfg) {
+        host.innerHTML = '';
+        const el = document.createElement('byom-player');
+        el.src = cfg.manifestUrl || '/sample.jspf.json';
+        el.provider = cfg.provider || 'mock';
+        const providerConfig = {};
+        for (const k of AUTH_KEYS) if (cfg[k]) providerConfig[k] = cfg[k];
+        el.providerConfig = providerConfig;
+        host.appendChild(el);
+      }
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const cfg = Object.fromEntries(new FormData(form).entries());
+        localStorage.setItem(KEY, JSON.stringify(cfg));
+        mount(cfg);
+      });
+
+      // Build Subsonic auth query params from the form config (mirrors DirectProvider).
+      function authParams(cfg) {
+        const p = new URLSearchParams({ v: '1.16.1', c: 'byom-player-dev', f: 'json' });
+        if (cfg.apiKey) p.set('apiKey', cfg.apiKey);
+        else if (cfg.token && cfg.salt) {
+          if (cfg.username) p.set('u', cfg.username);
+          p.set('t', cfg.token);
+          p.set('s', cfg.salt);
+        } else if (cfg.username && cfg.password) {
+          p.set('u', cfg.username);
+          p.set('p', cfg.password);
+        }
+        return p;
+      }
+
+      const status = document.getElementById('status');
+
+      // Pull random songs straight from Navidrome and feed them to the player as a
+      // synthetic JSPF (via a blob URL). Guarantees resolvable tracks for a real
+      // playback test.
+      document.getElementById('random').addEventListener('click', async () => {
+        const cfg = Object.fromEntries(new FormData(form).entries());
+        localStorage.setItem(KEY, JSON.stringify(cfg));
+        if (!cfg.baseUrl) {
+          status.textContent = 'Set a Base URL first.';
+          return;
+        }
+        status.textContent = 'Fetching random songs…';
+        try {
+          const base = cfg.baseUrl.replace(/\/$/, '');
+          const params = authParams(cfg);
+          params.set('size', '15');
+          const res = await fetch(`${base}/rest/getRandomSongs.view?${params.toString()}`);
+          const data = await res.json();
+          const songs = data?.['subsonic-response']?.randomSongs?.song ?? [];
+          if (!songs.length) {
+            status.textContent = 'No songs returned (check auth / server).';
+            return;
+          }
+          const jspf = {
+            playlist: {
+              title: 'Random from Navidrome',
+              creator: cfg.username || 'navidrome',
+              track: songs.map((s) => ({
+                title: s.title,
+                creator: s.artist,
+                album: s.album,
+                duration: s.duration,
+              })),
+            },
+          };
+          const url = URL.createObjectURL(
+            new Blob([JSON.stringify(jspf)], { type: 'application/json' }),
+          );
+          mount({ ...cfg, provider: 'direct', manifestUrl: url });
+          status.textContent = `Loaded ${songs.length} random songs — press play.`;
+        } catch (err) {
+          status.textContent = 'Error: ' + (err?.message ?? err);
+        }
+      });
+
+      mount(saved);
+    </script>
   </body>
 </html>

@@ -18,17 +18,28 @@ export class ByomPlayer extends LitElement {
   @property({ attribute: false }) providerConfig: Record<string, unknown> = {};
   /** Optional override for provider construction (host-supplied custom providers / tests). */
   @property({ attribute: false }) providerFactory?: ProviderFactory;
+  /** Delay (ms) between auto-skips when tracks fail to resolve, to avoid hammering the server. */
+  @property({ type: Number }) skipDelayMs = 400;
+  /** Emit console.debug diagnostics from the provider + controller. */
+  @property({ type: Boolean }) debug = false;
 
   @state() private playlist: Playlist | null = null;
   @state() private currentIndex = 0;
   @state() private playbackState: ProviderState = 'uninitialized';
   @state() private failed = new Set<number>();
+  @state() private halted = false;
 
   private controller: PlaybackController | null = null;
 
   async connectedCallback(): Promise<void> {
     super.connectedCallback();
     await this.loadAndInit();
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this.controller?.dispose();
+    this.controller = null;
   }
 
   private async loadAndInit(): Promise<void> {
@@ -41,10 +52,14 @@ export class ByomPlayer extends LitElement {
       return;
     }
     const factory = this.providerFactory ?? createProvider;
-    const prov = factory(this.provider, this.providerConfig);
+    const config = this.debug ? { ...this.providerConfig, debug: true } : this.providerConfig;
+    const prov = factory(this.provider, config);
     await prov.initialize();
-    this.controller = new PlaybackController(prov, this.playlist.tracks, () =>
-      this.syncFromController(),
+    this.controller = new PlaybackController(
+      prov,
+      this.playlist.tracks,
+      () => this.syncFromController(),
+      { skipDelayMs: this.skipDelayMs, debug: this.debug },
     );
   }
 
@@ -53,6 +68,7 @@ export class ByomPlayer extends LitElement {
     this.currentIndex = this.controller.index;
     this.playbackState = this.controller.state;
     this.failed = new Set(this.controller.failed);
+    this.halted = this.controller.halted;
   }
 
   private selectTrack(index: number): void {
@@ -105,6 +121,15 @@ export class ByomPlayer extends LitElement {
           ${this.playbackState === 'playing' ? '⏸' : '▶'}
         </button>
         <button class="next" @click=${this.next} aria-label="Next">⏭</button>
+      </div>
+      <div class="status">
+        ${
+          this.halted
+            ? html`<span class="halted"
+                >Playback stopped after repeated errors — pick a track to retry.</span
+              >`
+            : nothing
+        }
       </div>
       <ol class="tracklist">
         ${pl.tracks.map((t, i) => {
@@ -162,6 +187,10 @@ export class ByomPlayer extends LitElement {
     .tracklist li.unavailable {
       text-decoration: line-through;
       opacity: 0.4;
+    }
+    .status .halted {
+      color: var(--byom-accent);
+      font-size: 0.85rem;
     }
   `;
 }
