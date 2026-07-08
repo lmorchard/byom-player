@@ -1,10 +1,11 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { Playlist } from './types';
-import type { AudioProvider, ProviderState } from './providers/types';
+import type { AudioProvider, AvailabilityStatus, ProviderState } from './providers/types';
 import { loadManifest } from './manifest';
 import { PlaybackController } from './controller';
 import { createProvider } from './providers/registry';
+import { sweepAvailability } from './availability';
 
 type ProviderFactory = (name: string, config: Record<string, unknown>) => AudioProvider;
 
@@ -22,14 +23,21 @@ export class ByomPlayer extends LitElement {
   @property({ type: Number }) skipDelayMs = 400;
   /** Emit console.debug diagnostics from the provider + controller. */
   @property({ type: Boolean }) debug = false;
+  /** Gently pre-check each track's availability in the background after load. */
+  @property({ type: Boolean }) prescan = true;
+  /** Delay (ms) between background availability checks. */
+  @property({ type: Number }) prescanDelayMs = 300;
 
   @state() private playlist: Playlist | null = null;
   @state() private currentIndex = 0;
   @state() private playbackState: ProviderState = 'uninitialized';
   @state() private failed = new Set<number>();
   @state() private halted = false;
+  @state() private shuffle = false;
+  @state() private availability = new Map<number, AvailabilityStatus>();
 
   private controller: PlaybackController | null = null;
+  private sweepAbort: AbortController | null = null;
 
   async connectedCallback(): Promise<void> {
     super.connectedCallback();
@@ -38,12 +46,16 @@ export class ByomPlayer extends LitElement {
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    this.sweepAbort?.abort();
+    this.sweepAbort = null;
     this.controller?.dispose();
     this.controller = null;
   }
 
   private async loadAndInit(): Promise<void> {
     if (!this.src) return;
+    this.sweepAbort?.abort();
+    this.availability = new Map();
     try {
       const res = await fetch(this.src);
       this.playlist = loadManifest(await res.json());
@@ -61,6 +73,17 @@ export class ByomPlayer extends LitElement {
       () => this.syncFromController(),
       { skipDelayMs: this.skipDelayMs, debug: this.debug },
     );
+    if (this.prescan && prov.checkAvailability) {
+      this.sweepAbort = new AbortController();
+      void sweepAvailability(
+        prov,
+        this.playlist.tracks,
+        (i, status) => {
+          this.availability = new Map(this.availability).set(i, status);
+        },
+        { signal: this.sweepAbort.signal, delayMs: this.prescanDelayMs },
+      );
+    }
   }
 
   private syncFromController(): void {
@@ -69,6 +92,7 @@ export class ByomPlayer extends LitElement {
     this.playbackState = this.controller.state;
     this.failed = new Set(this.controller.failed);
     this.halted = this.controller.halted;
+    this.shuffle = this.controller.shuffle;
   }
 
   private selectTrack(index: number): void {
@@ -88,11 +112,16 @@ export class ByomPlayer extends LitElement {
     void this.controller?.prev();
   }
 
+  private toggleShuffle(): void {
+    if (this.controller) this.controller.setShuffle(!this.controller.shuffle);
+  }
+
   private trackClasses(index: number, orphaned: boolean): string {
+    const unavailable = this.failed.has(index) || this.availability.get(index) === 'unavailable';
     return [
       index === this.currentIndex ? 'active' : '',
       orphaned ? 'orphan' : '',
-      this.failed.has(index) ? 'unavailable' : '',
+      unavailable ? 'unavailable' : '',
     ]
       .filter(Boolean)
       .join(' ');
@@ -121,6 +150,14 @@ export class ByomPlayer extends LitElement {
           ${this.playbackState === 'playing' ? '⏸' : '▶'}
         </button>
         <button class="next" @click=${this.next} aria-label="Next">⏭</button>
+        <button
+          class="shuffle ${this.shuffle ? 'on' : ''}"
+          @click=${this.toggleShuffle}
+          aria-label="Shuffle"
+          aria-pressed=${this.shuffle ? 'true' : 'false'}
+        >
+          🔀
+        </button>
       </div>
       <div class="status">
         ${
@@ -163,11 +200,14 @@ export class ByomPlayer extends LitElement {
     .controls button {
       cursor: pointer;
     }
+    .controls .shuffle.on {
+      color: var(--byom-accent);
+    }
     .tracklist {
       list-style: none;
       margin: 0;
       padding: 0;
-      max-height: 20rem;
+      max-height: 60vh;
       overflow: auto;
     }
     .tracklist li {

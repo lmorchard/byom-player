@@ -152,6 +152,42 @@ describe('PlaybackController skip throttling', () => {
   });
 });
 
+describe('PlaybackController shuffle', () => {
+  const five = [tracks[0], tracks[1], tracks[2], tracks[0], tracks[1]];
+
+  it('keeps the current track, then plays the rest in shuffled order (each once)', async () => {
+    const p = new FakeProvider();
+    // deterministic RNG so the shuffle is stable in the test
+    const seq = [0.1, 0.7, 0.3, 0.9, 0.5];
+    let k = 0;
+    const c = new PlaybackController(p, five, () => {}, { random: () => seq[k++ % seq.length] });
+    await c.start(2);
+    c.setShuffle(true);
+    expect(c.shuffle).toBe(true);
+    expect(c.index).toBe(2); // current track preserved as first
+
+    const seen = [c.index];
+    for (let n = 0; n < 4; n++) {
+      await c.next();
+      seen.push(c.index);
+    }
+    expect(seen[0]).toBe(2);
+    expect([...seen].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]); // every track once
+  });
+
+  it('restores sequential order when shuffle is turned off', async () => {
+    const p = new FakeProvider();
+    const c = new PlaybackController(p, five, () => {}, { random: () => 0.5 });
+    await c.start(3);
+    c.setShuffle(true);
+    c.setShuffle(false);
+    expect(c.shuffle).toBe(false);
+    expect(c.index).toBe(3); // still on the same track
+    await c.next();
+    expect(c.index).toBe(4); // sequential again
+  });
+});
+
 describe('PlaybackController error handling', () => {
   const long = [tracks[0], tracks[1], tracks[2], tracks[0], tracks[1]];
 

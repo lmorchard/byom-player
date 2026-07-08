@@ -109,6 +109,21 @@ describe('DirectProvider', () => {
     expect(states).toContain('error');
   });
 
+  it('checkAvailability: available / unavailable / unknown', async () => {
+    const p = new DirectProvider({ baseUrl: 'https://nav.example', apiKey: 'K', retryDelayMs: 0 });
+
+    mockSearch({ id: 's1' });
+    expect(await p.checkAvailability({ title: 'T', artist: 'A' })).toBe('available');
+
+    vi.restoreAllMocks();
+    mockSearch(null);
+    expect(await p.checkAvailability({ title: 'T', artist: 'A' })).toBe('unavailable');
+
+    vi.restoreAllMocks();
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('down'));
+    expect(await p.checkAvailability({ title: 'T', artist: 'A' })).toBe('unknown');
+  });
+
   it('sets the audio source to the stream URL on successful load', async () => {
     mockSearch({ id: 'song-99' });
     const p = new DirectProvider({ baseUrl: 'https://nav.example', apiKey: 'K' });

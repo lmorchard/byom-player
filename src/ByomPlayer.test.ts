@@ -121,6 +121,35 @@ describe('<byom-player>', () => {
     expect(lis(el)[1].classList.contains('active')).toBe(true);
   });
 
+  it('marks tracks unavailable from the background availability sweep', async () => {
+    const provider = new ControllableProvider();
+    (provider as AudioProvider).checkAvailability = async (t) =>
+      t.title === 'B' ? 'unavailable' : 'available';
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = () => provider;
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    // let the sweep finish
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(lis(el)[1].classList.contains('unavailable')).toBe(true);
+    expect(lis(el)[0].classList.contains('unavailable')).toBe(false);
+  });
+
+  it('toggles shuffle via the control button', async () => {
+    const { el } = await mount();
+    const btn = el.shadowRoot!.querySelector('.shuffle') as HTMLButtonElement;
+    expect(btn.classList.contains('on')).toBe(false);
+    btn.click();
+    await el.updateComplete;
+    expect(btn.classList.contains('on')).toBe(true);
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
+  });
+
   it('disposes the provider when disconnected (no audio outliving the element)', async () => {
     const { el, provider } = await mount();
     el.remove();

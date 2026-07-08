@@ -8,24 +8,29 @@ export interface ControllerOptions {
   // Clean misses ('unavailable') do NOT count toward this. Default 3.
   errorLimit?: number;
   debug?: boolean;
+  // Injectable RNG for deterministic shuffle in tests. Default Math.random.
+  random?: () => number;
 }
 
-// PlaybackController owns the queue and reacts to provider state. It advances
-// when a track ends, skips freely past tracks the source doesn't have
-// ('unavailable'), and — crucially — trips a circuit breaker after a run of
-// transient errors so a flaky/rate-limiting source isn't hammered by a cascade
-// of doomed skips.
+// PlaybackController owns the play queue and reacts to provider state. It plays
+// through an `order` of track indices (identity, or shuffled), advances when a
+// track ends, skips freely past tracks the source doesn't have ('unavailable'),
+// and trips a circuit breaker after a run of transient errors so a flaky source
+// isn't hammered by a cascade of doomed skips.
 export class PlaybackController {
-  index = 0;
   state: ProviderState = 'uninitialized';
   halted = false;
+  shuffle = false;
   readonly failed = new Set<number>();
 
+  private order: number[];
+  private pos = 0;
   private loadedIndex: number | null = null;
   private consecutiveErrors = 0;
   private readonly skipDelayMs: number;
   private readonly errorLimit: number;
   private readonly debug: boolean;
+  private readonly random: () => number;
 
   constructor(
     private readonly provider: AudioProvider,
@@ -36,19 +41,27 @@ export class PlaybackController {
     this.skipDelayMs = opts.skipDelayMs ?? 0;
     this.errorLimit = opts.errorLimit ?? 3;
     this.debug = opts.debug ?? false;
+    this.random = opts.random ?? Math.random;
+    this.order = tracks.map((_, i) => i);
     this.provider.onStateChange((s) => this.handle(s));
+  }
+
+  // The current TRACK index (into `tracks`), for the UI's active marker.
+  get index(): number {
+    return this.order[this.pos] ?? 0;
   }
 
   // --- user-initiated actions (reset the circuit breaker) ---
 
-  async start(index = 0): Promise<void> {
+  async start(trackIndex = 0): Promise<void> {
     this.resetBreaker();
-    await this.load(index);
+    this.pos = this.posOf(trackIndex);
+    await this.loadCurrent();
   }
 
   async play(): Promise<void> {
     this.resetBreaker();
-    if (this.loadedIndex !== this.index) await this.load(this.index);
+    if (this.loadedIndex !== this.index) await this.loadCurrent();
     else await this.provider.play();
   }
 
@@ -63,7 +76,25 @@ export class PlaybackController {
 
   async prev(): Promise<void> {
     this.resetBreaker();
-    if (this.index > 0) await this.load(this.index - 1);
+    if (this.pos > 0) {
+      this.pos -= 1;
+      await this.loadCurrent();
+    }
+  }
+
+  // setShuffle rebuilds the play order, keeping the current track playing.
+  setShuffle(on: boolean): void {
+    if (on === this.shuffle) return;
+    const current = this.index;
+    if (on) {
+      const others = this.order.filter((i) => i !== current);
+      this.order = [current, ...this.shuffled(others)];
+    } else {
+      this.order = this.tracks.map((_, i) => i);
+    }
+    this.pos = this.posOf(current);
+    this.shuffle = on;
+    this.onChange();
   }
 
   dispose(): void {
@@ -72,26 +103,43 @@ export class PlaybackController {
 
   // --- internals ---
 
+  private posOf(trackIndex: number): number {
+    const p = this.order.indexOf(trackIndex);
+    return p >= 0 ? p : 0;
+  }
+
   private resetBreaker(): void {
     this.consecutiveErrors = 0;
     this.halted = false;
   }
 
-  private async load(index: number): Promise<void> {
-    if (index < 0 || index >= this.tracks.length) return;
-    this.index = index;
-    await this.provider.load(this.tracks[index]);
-    this.loadedIndex = index;
+  private async loadCurrent(): Promise<void> {
+    const trackIndex = this.order[this.pos];
+    if (trackIndex === undefined) return;
+    await this.provider.load(this.tracks[trackIndex]);
+    this.loadedIndex = trackIndex;
     await this.provider.play();
   }
 
   private async advance(): Promise<void> {
-    if (this.index < this.tracks.length - 1) await this.load(this.index + 1);
+    if (this.pos < this.order.length - 1) {
+      this.pos += 1;
+      await this.loadCurrent();
+    }
   }
 
   private scheduleAutoSkip(delay: number): void {
     if (delay > 0) setTimeout(() => void this.advance(), delay);
     else void this.advance();
+  }
+
+  private shuffled(input: number[]): number[] {
+    const arr = input.slice();
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(this.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
   }
 
   private handle(state: ProviderState): void {

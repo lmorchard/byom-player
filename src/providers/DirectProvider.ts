@@ -1,5 +1,5 @@
 import type { Track } from '../types';
-import type { AudioProvider, ProviderState } from './types';
+import type { AudioProvider, AvailabilityStatus, ProviderState } from './types';
 
 // Configuration for a Navidrome / Subsonic server. Supply exactly one auth mode:
 //   - apiKey (newest Navidrome), or
@@ -127,6 +127,15 @@ export class DirectProvider implements AudioProvider {
 
   streamUrl(id: string): string {
     return this.url('stream.view', { id });
+  }
+
+  async checkAvailability(track: Track): Promise<AvailabilityStatus> {
+    try {
+      const id = await this.resolve(track);
+      return id ? 'available' : 'unavailable';
+    } catch {
+      return 'unknown'; // transient failure — don't mark the track missing
+    }
   }
 
   private authParams(): URLSearchParams {

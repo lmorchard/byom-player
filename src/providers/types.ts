@@ -8,6 +8,10 @@ import type { Track } from '../types';
 export type ProviderState =
   'uninitialized' | 'ready' | 'playing' | 'paused' | 'ended' | 'unavailable' | 'error';
 
+// Result of a lightweight, no-playback availability check.
+//   unknown = couldn't determine (transient error) — don't penalize the track
+export type AvailabilityStatus = 'available' | 'unavailable' | 'unknown';
+
 // AudioProvider decouples the UI from the audio source. An implementation owns
 // both resolution (turning a Track into something playable) and playback.
 export interface AudioProvider {
@@ -21,4 +25,7 @@ export interface AudioProvider {
   // Release resources (stop audio, clear timers, remove listeners). Called when
   // the host element is disconnected so playback never outlives the component.
   dispose(): void;
+  // Optional: cheaply check whether a track can be resolved, without loading or
+  // playing it. Providers that can't (e.g. the mock) simply omit this.
+  checkAvailability?(track: Track): Promise<AvailabilityStatus>;
 }
