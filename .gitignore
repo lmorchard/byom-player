@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Disposable prototype/scratch work
+tmp/
+
+# Logs / OS
+*.log
+.DS_Store
+
+# Editors
+.idea/
+.vscode/
