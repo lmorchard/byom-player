@@ -170,7 +170,6 @@ export class ByomPlayer extends LitElement {
     if (!pl) return html`<div class="loading">Loading…</div>`;
     const current = pl.tracks[this.currentIndex];
     return html`
-      <div class="video" part="video"></div>
       <header class="header">
         <h2 class="title">${pl.title}</h2>
         ${pl.creator ? html`<p class="creator">${pl.creator}</p>` : nothing}
@@ -234,6 +233,7 @@ export class ByomPlayer extends LitElement {
           `;
         })}
       </ol>
+      <div class="video" part="video"></div>
     `;
   }
 
@@ -269,7 +269,7 @@ export class ByomPlayer extends LitElement {
     }
     .video {
       aspect-ratio: 16 / 9;
-      margin-bottom: 0.5rem;
+      margin-top: 0.5rem;
       background: #000;
       border-radius: calc(var(--byom-border-radius) / 2);
       overflow: hidden;
