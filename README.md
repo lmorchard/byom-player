@@ -12,8 +12,9 @@ delegated to pluggable **Audio Provider** adapters.
 
 - Loads a standard JSPF manifest and renders header, now-playing, controls, and a
   clickable tracklist
-- Swappable providers: `mock` (no infra, for demos/dev) and `subsonic` (any
-  Subsonic / OpenSubsonic server — Navidrome, gonic, Airsonic, LMS, …)
+- Swappable providers: `mock` (no infra, for demos/dev), `subsonic` (any
+  Subsonic / OpenSubsonic server — Navidrome, gonic, Airsonic, LMS, …), and
+  `youtube` (hidden or **visible** iframe; the universal public-visitor fallback)
 - Auto-advance, prev/next, click-to-play, and **shuffle**
 - Resilience for real-world libraries: retry with backoff, a circuit breaker for
   flaky/rate-limiting servers, and lazy-skip past tracks you don't have
@@ -58,7 +59,7 @@ player.providerConfig = {
 | Property         | Default  | Notes                                          |
 | ---------------- | -------- | ---------------------------------------------- |
 | `src`            | `''`     | URL to the JSPF manifest                       |
-| `provider`       | `'mock'` | `'mock'` or `'subsonic'`                       |
+| `provider`       | `'mock'` | `'mock'`, `'subsonic'`, or `'youtube'`         |
 | `providerConfig` | `{}`     | provider-specific config (JS property)         |
 | `prescan`        | `true`   | background availability check after load       |
 | `skipDelayMs`    | `400`    | throttle between auto-skips                    |
@@ -94,6 +95,24 @@ so it's not Navidrome-specific. Supply one of:
 
 The server must allow the page's origin (CORS), or be reached via a same-origin
 proxy.
+
+## YouTube
+
+The `youtube` provider plays via the YouTube IFrame API and is the universal
+public-visitor fallback. If the component has a visible `.video` region, the
+player renders there (video); otherwise it plays through a hidden 1×1 iframe
+(audio-only).
+
+Resolution turns `"{artist} {title} audio"` into a videoId; configure one:
+
+- **searchEndpoint** — a backend you host: `GET {searchEndpoint}?q=<query>` →
+  `{ videoId }`. Keeps API keys server-side (safe for public bundles).
+- **apiKey** — the YouTube Data API directly. The key is visible to the client,
+  so **private/dev only**.
+
+The provider intentionally omits the availability prescan (a full-playlist
+prescan would burn YouTube Data API quota — ~100 units/search); resolution
+happens lazily on play.
 
 ## Development
 

@@ -110,6 +110,7 @@
           <select name="provider">
             <option value="mock">mock</option>
             <option value="subsonic">subsonic (Navidrome / any Subsonic)</option>
+            <option value="youtube">youtube</option>
           </select>
         </label>
         <fieldset>
@@ -119,6 +120,17 @@
           <label>Password <input name="password" type="password" autocomplete="off" /></label>
           <p class="or">— or —</p>
           <label>API key <input name="apiKey" autocomplete="off" /></label>
+        </fieldset>
+        <fieldset>
+          <legend>YouTube (for "youtube")</legend>
+          <label>
+            Search endpoint
+            <input name="searchEndpoint" placeholder="https://your-proxy/yt-search" />
+          </label>
+          <p class="or">
+            GET ?q=… → { videoId }. (Or reuse the API key field above for the
+            YouTube Data API — dev only.)
+          </p>
         </fieldset>
         <button type="submit">Connect</button>
         <button type="button" id="random">🎲 Play random from Navidrome</button>
@@ -138,7 +150,7 @@
       const KEY = 'byom-player-dev-config';
       const form = document.getElementById('cfg');
       const host = document.getElementById('host');
-      const AUTH_KEYS = ['baseUrl', 'username', 'password', 'apiKey'];
+      const AUTH_KEYS = ['baseUrl', 'username', 'password', 'apiKey', 'searchEndpoint'];
 
       const saved = JSON.parse(localStorage.getItem(KEY) || '{}');
       if (saved.provider === 'direct') saved.provider = 'subsonic'; // migrate old saved config

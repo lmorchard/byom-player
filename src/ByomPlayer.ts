@@ -70,6 +70,12 @@ export class ByomPlayer extends LitElement {
     const factory = this.providerFactory ?? createProvider;
     const config = this.debug ? { ...this.providerConfig, debug: true } : this.providerConfig;
     const prov = factory(this.provider, config);
+    if (prov.attach) {
+      // Ensure the .video region is rendered, then let the provider mount into it.
+      await this.updateComplete;
+      const host = this.renderRoot.querySelector('.video');
+      if (host) prov.attach(host as HTMLElement);
+    }
     await prov.initialize();
     this.controller = new PlaybackController(
       prov,
@@ -164,6 +170,7 @@ export class ByomPlayer extends LitElement {
     if (!pl) return html`<div class="loading">Loading…</div>`;
     const current = pl.tracks[this.currentIndex];
     return html`
+      <div class="video" part="video"></div>
       <header class="header">
         <h2 class="title">${pl.title}</h2>
         ${pl.creator ? html`<p class="creator">${pl.creator}</p>` : nothing}
@@ -259,6 +266,22 @@ export class ByomPlayer extends LitElement {
       font-variant-numeric: tabular-nums;
       font-size: 0.75rem;
       opacity: 0.7;
+    }
+    .video {
+      aspect-ratio: 16 / 9;
+      margin-bottom: 0.5rem;
+      background: #000;
+      border-radius: calc(var(--byom-border-radius) / 2);
+      overflow: hidden;
+    }
+    .video:empty {
+      display: none;
+    }
+    .video iframe {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
     }
     .controls button {
       cursor: pointer;
