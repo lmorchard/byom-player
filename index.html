@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>byom-player dev</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 2rem;
+        background: #111;
+        font-family: system-ui, sans-serif;
+      }
+      byom-player {
+        max-width: 32rem;
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <byom-player src="/sample.jspf.json" provider="mock"></byom-player>
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

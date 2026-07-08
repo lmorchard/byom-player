@@ -163,17 +163,22 @@ export class ByomPlayer extends LitElement {
 ```
 
 **Verification — automated:**
-- [ ] `npm test`: on connect with a stubbed `fetch`, renders playlist title and
+- [x] `npm test`: on connect with a stubbed `fetch`, renders playlist title and
       one `<li>` per track
-- [ ] `npm test`: clicking a track sets `currentIndex` and calls provider load/play
-- [ ] `npm test`: provider `ended` advances the active track; `.active` moves
-- [ ] `npm test`: provider `error` adds `.unavailable` and advances
-- [ ] `npm test`: track with `syncState.spotifyPresent===false` renders `.orphan`
-- [ ] `npm run build` succeeds; `npm run lint` passes
+- [x] `npm test`: clicking a track sets `currentIndex` and calls provider load/play
+- [x] `npm test`: provider `ended` advances the active track; `.active` moves
+- [x] `npm test`: provider `error` adds `.unavailable` and advances
+- [x] `npm test`: track with `syncState.spotifyPresent===false` renders `.orphan`
+- [x] `npm run build` succeeds; `npm run lint` passes
 
 **Verification — manual:**
-- [ ] `npm run dev`, open the demo page with `provider="mock"` and a sample JSPF —
-      tracks auto-advance, click-to-play works (visuals plain, that's expected)
+- [x] `npm run dev` + Playwright: real browser rendered the sample (6 tracks,
+      orphan at index 1), click-to-play started playback, mock auto-advanced
+      through to the last track and stopped without overrun (visuals plain, expected)
+
+_Adaptation: added an optional `providerFactory` property (host-supplied provider
+injection) — used as the test seam and a real extensibility hook. A dev
+`index.html` + `public/sample.jspf.json` were added for the dev server._
 
 ---
 
