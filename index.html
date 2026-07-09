@@ -87,29 +87,27 @@
       <form id="cfg">
         <label>
           Manifest URL
-          <input name="manifestUrl" value="/sample.jspf.json" />
+          <input name="manifestUrl" value="sample.jspf.json" />
         </label>
         <label>
           Preset
           <select name="preset">
             <option value="">— choose a playlist —</option>
-            <option value="/sample.jspf.json">Sample — Cry little sister (6)</option>
-            <option value="/playlists/20150907.jspf.json">
-              2015-09-07 — YouTube-enriched (30)
-            </option>
-            <option value="/playlists/2014-top-songs.jspf.json">
+            <option value="sample.jspf.json">Sample — Cry little sister (6)</option>
+            <option value="playlists/20150907.jspf.json">2015-09-07 — YouTube-enriched (30)</option>
+            <option value="playlists/2014-top-songs.jspf.json">
               2014 Top Songs — YouTube-enriched (100)
             </option>
-            <option value="/playlists/bleep-bloop-bop-synthpop.jspf.json">
+            <option value="playlists/bleep-bloop-bop-synthpop.jspf.json">
               Bleep Bloop Bop (Synthpop) (153)
             </option>
-            <option value="/playlists/industrial-accident-industrial-ebm.jspf.json">
+            <option value="playlists/industrial-accident-industrial-ebm.jspf.json">
               Industrial Accident (Industrial / EBM) (120)
             </option>
-            <option value="/playlists/sometimes-i-miss-city-club.jspf.json">
+            <option value="playlists/sometimes-i-miss-city-club.jspf.json">
               Sometimes, I miss City Club (96)
             </option>
-            <option value="/playlists/some-of-my-90s-dance-bullshit.jspf.json">
+            <option value="playlists/some-of-my-90s-dance-bullshit.jspf.json">
               Some of my 90s dance bullshit (164)
             </option>
           </select>
@@ -145,12 +143,18 @@
         </fieldset>
         <fieldset id="fs-spotify">
           <legend>Spotify</legend>
-          <label>Client ID <input name="spotifyClientId" autocomplete="off" /></label>
+          <label
+            >Client ID
+            <input
+              name="spotifyClientId"
+              autocomplete="off"
+              value="948c8b941fb1411cab54ea71beb0d7a4"
+          /></label>
           <label>
             Redirect URI
             <input
               name="spotifyRedirectUri"
-              placeholder="(defaults to this origin /callback.html)"
+              placeholder="(defaults to <this page>/callback.html)"
             />
           </label>
           <p class="or">
@@ -252,7 +256,9 @@
         if (cfg.provider === 'spotify') {
           return {
             clientId: cfg.spotifyClientId || '',
-            redirectUri: cfg.spotifyRedirectUri || `${location.origin}/callback.html`,
+            // Resolve against the page's base URL so it's correct under the
+            // GitHub Pages subpath (/byom-player/) as well as local dev.
+            redirectUri: cfg.spotifyRedirectUri || new URL('callback.html', document.baseURI).href,
           };
         }
         if (cfg.provider === 'plex') {
@@ -279,7 +285,7 @@
       function mount(cfg) {
         host.innerHTML = '';
         const el = document.createElement('byom-player');
-        el.src = cfg.manifestUrl || '/sample.jspf.json';
+        el.src = cfg.manifestUrl || 'sample.jspf.json';
         el.provider = cfg.provider || 'mock';
         el.providerConfig = buildProviderConfig(cfg);
         host.appendChild(el);
