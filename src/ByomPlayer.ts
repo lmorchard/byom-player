@@ -308,16 +308,26 @@ export class ByomPlayer extends LitElement {
       height: 100%;
       border: 0;
     }
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
     .controls button {
       cursor: pointer;
+      font-size: 1.4rem;
+      line-height: 1;
+    }
+    .controls .playpause {
+      font-size: 2rem;
     }
     .controls .shuffle {
       border: 1px solid var(--byom-accent);
       border-radius: 999px;
       background: transparent;
       color: var(--byom-text);
-      padding: 0.1rem 0.6rem;
-      font-size: 0.8rem;
+      padding: 0.3rem 0.9rem;
+      font-size: 1rem;
       opacity: 0.6;
     }
     .controls .shuffle.on {
