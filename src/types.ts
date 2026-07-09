@@ -14,6 +14,9 @@ export interface Track {
   durationMs?: number;
   spotifyUrl?: string;
   syncState?: SyncState;
+  // Provider ids resolved ahead of time (by byom-sync) and carried in the
+  // manifest extension, so the player can skip an on-demand lookup.
+  resolvedIds?: { youtube?: string };
 }
 
 export interface Playlist {
