@@ -166,12 +166,13 @@ describe('PlexProvider resolution', () => {
     expect(p.isResolutionCached({ title: 'u', artist: 'b' })).toBe(true); // known miss
     expect(p.isResolutionCached({ title: 'z', artist: 'z' })).toBe(false); // absent
 
-    // Unlinked (no token): nothing counts as cached, so the sweep won't skip cooldown.
+    // Unlinked (no token): checkAvailability short-circuits to 'unknown' without
+    // touching the server, so the sweep needn't throttle — always "cached".
     const unauthed = new PlexProvider({
       baseUrl: 'https://plex.example:32400',
       resolutionCache: cache,
     });
-    expect(unauthed.isResolutionCached({ title: 't', artist: 'a' })).toBe(false);
+    expect(unauthed.isResolutionCached({ title: 't', artist: 'a' })).toBe(true);
   });
 
   it('caches a resolved part key (scoped by baseUrl)', async () => {

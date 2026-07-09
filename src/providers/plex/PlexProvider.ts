@@ -136,6 +136,7 @@ export class PlexProvider implements AudioProvider {
       }
       this.applySession(result);
       this.renderUnlink();
+      this.resetCallback(); // re-scan availability against the new session
     } catch (err) {
       this.log('link failed', err);
       btn.disabled = false;
@@ -160,6 +161,7 @@ export class PlexProvider implements AudioProvider {
     try {
       this.applySession(await this.auth.selectServer(id));
       this.renderUnlink();
+      this.resetCallback(); // re-scan availability against the picked server
     } catch (err) {
       this.log('server select failed', err);
       this.callback('error');
@@ -260,10 +262,11 @@ export class PlexProvider implements AudioProvider {
     }
   }
 
-  // Lets the availability sweep skip its cooldown for tracks it can answer from
-  // cache without touching the server (a hit or a known miss both qualify).
+  // Lets the availability sweep skip its cooldown when a check won't hit the
+  // server: unlinked (checkAvailability short-circuits to 'unknown'), or a cached
+  // hit / known miss.
   isResolutionCached(track: Track): boolean {
-    if (!this.authed) return false;
+    if (!this.authed) return true;
     return this.cache?.get(this.scope, trackKey(track)) !== undefined;
   }
 
