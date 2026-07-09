@@ -419,6 +419,23 @@ describe('SubsonicProvider', () => {
     expect(cache.sets).toHaveLength(0);
   });
 
+  it('isResolutionCached reflects cache membership', () => {
+    const cache = new FakeCache();
+    cache.set('subsonic:https://nav.example', 'q:a|t', 'id');
+    const p = new SubsonicProvider({
+      baseUrl: 'https://nav.example',
+      apiKey: 'K',
+      resolutionCache: cache,
+    });
+    expect(p.isResolutionCached({ title: 't', artist: 'a' })).toBe(true);
+    expect(p.isResolutionCached({ title: 'x', artist: 'y' })).toBe(false);
+  });
+
+  it('isResolutionCached is false when caching is disabled', () => {
+    const p = new SubsonicProvider({ baseUrl: 'https://nav.example', apiKey: 'K', cache: false });
+    expect(p.isResolutionCached({ title: 't', artist: 'a' })).toBe(false);
+  });
+
   it('clearCache clears only this server scope', () => {
     const cache = new FakeCache();
     cache.set('subsonic:https://nav.example', 'q:a|t', 'id');

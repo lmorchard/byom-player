@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { sweepAvailability } from './availability';
 import type { AudioProvider, AvailabilityStatus } from './providers/types';
 import type { Track } from './types';
@@ -50,6 +50,24 @@ describe('sweepAvailability', () => {
     const results: [number, AvailabilityStatus][] = [];
     await sweepAvailability(p, tracks, (i, s) => results.push([i, s]), { delayMs: 0 });
     expect(results.every(([, s]) => s === 'unknown')).toBe(true);
+  });
+
+  it('skips the inter-check delay for already-cached tracks', async () => {
+    const timeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    const p = providerWith(async () => 'available');
+    p.isResolutionCached = () => true; // every track is a cache hit
+    await sweepAvailability(p, tracks, () => {}, { delayMs: 50 });
+    // no server cooldown scheduled, since no check touched the server
+    expect(timeoutSpy.mock.calls.filter((c) => c[1] === 50)).toHaveLength(0);
+    timeoutSpy.mockRestore();
+  });
+
+  it('still delays between uncached checks', async () => {
+    const timeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    const p = providerWith(async () => 'available'); // no isResolutionCached → all uncached
+    await sweepAvailability(p, tracks, () => {}, { delayMs: 40 });
+    expect(timeoutSpy.mock.calls.filter((c) => c[1] === 40)).toHaveLength(tracks.length - 1);
+    timeoutSpy.mockRestore();
   });
 
   it('stops promptly when aborted', async () => {

@@ -223,6 +223,12 @@ export class SubsonicProvider implements AudioProvider {
     this.cache?.clear(this.scope);
   }
 
+  // isResolutionCached reports whether resolve() would answer this track from
+  // cache (no search3). Lets the availability sweep skip its throttle on hits.
+  isResolutionCached(track: Track): boolean {
+    return !!this.cache?.get(this.scope, trackKey(track));
+  }
+
   // handleAudioError distinguishes a stale cached id (errors before it ever
   // plays) from a genuine/transient failure. For the former, evict the entry
   // and re-resolve live once; otherwise surface 'error' as usual.
