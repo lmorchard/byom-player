@@ -283,6 +283,25 @@ describe('PlexProvider auth integration', () => {
     await vi.waitFor(() => expect((p as unknown as { token: string }).token).toBe('AT'));
   });
 
+  it('fires onReset when the user unlinks', async () => {
+    const el = document.createElement('div');
+    let reset = 0;
+    const p = new PlexProvider({
+      auth: fakeAuth({
+        hasSession: () => true,
+        getSession: async () => ({ baseUrl: 'https://c.example:32400', token: 'CT' }),
+      }),
+    });
+    p.onReset(() => {
+      reset += 1;
+    });
+    p.attach(el);
+    await p.initialize();
+    (el.querySelector('.byom-plex-unlink') as HTMLButtonElement).click();
+    await vi.waitFor(() => expect(el.querySelector('.byom-plex-link')).not.toBeNull());
+    expect(reset).toBe(1);
+  });
+
   it('shows an Unlink button for a cached session; clicking it logs out and returns to Link', async () => {
     const el = document.createElement('div');
     let loggedIn = true;

@@ -57,6 +57,19 @@ export class ByomPlayer extends LitElement {
     this.controller = null;
   }
 
+  // Clear availability knowledge after a provider session reset: stop the sweep,
+  // un-mark the controller's skip-set, and drop the displayed marks.
+  private handleProviderReset(): void {
+    this.sweepAbort?.abort();
+    this.sweepAbort = null;
+    this.scanning = false;
+    for (const [i, status] of this.availability) {
+      if (status === 'unavailable') this.controller?.markUnavailable(i, false);
+    }
+    this.availability = new Map();
+    this.failed = new Set();
+  }
+
   private async loadAndInit(): Promise<void> {
     if (!this.src) return;
     this.sweepAbort?.abort();
@@ -88,6 +101,9 @@ export class ByomPlayer extends LitElement {
       () => this.syncFromController(),
       { skipDelayMs: this.skipDelayMs, debug: this.debug },
     );
+    // When a provider drops its session (e.g. Plex unlink), the cached
+    // availability marks no longer apply — clear them.
+    prov.onReset?.(() => this.handleProviderReset());
     if (this.prescan && prov.checkAvailability) {
       this.sweepAbort = new AbortController();
       this.scanning = true;

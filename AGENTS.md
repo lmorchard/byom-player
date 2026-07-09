@@ -44,9 +44,11 @@ Prettier check) · `npm run build` (`tsc --noEmit` + Vite lib build) ·
 
 - **`AudioProvider` interface** is the seam. Required: `initialize`, `load`,
   `play`, `pause`, `seek(ms)`, `onStateChange`, `dispose`. Optional: `onProgress`
-  (position/duration ms), `checkAvailability`, `attach(element)` (mount a visible
-  surface, e.g. YouTube video). Add a feature once here and every provider gets
-  it.
+  (position/duration ms), `checkAvailability`, `isResolutionCached` (let the
+  sweep skip its throttle when a check won't touch the source), `attach(element)`
+  (mount a visible surface, e.g. YouTube video), `onReset(cb)` (fire when the
+  session is dropped — e.g. Plex unlink — so the host clears stale availability
+  marks). Add a feature once here and every provider gets it.
 - **`ProviderState`** distinguishes `unavailable` (source answered, no match →
   skip freely) from `error` (transient → circuit breaker). The controller trips
   the breaker after N consecutive errors so a flaky server isn't hammered;

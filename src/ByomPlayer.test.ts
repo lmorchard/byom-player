@@ -150,6 +150,31 @@ describe('<byom-player>', () => {
     expect(lis(el)[0].classList.contains('unavailable')).toBe(false);
   });
 
+  it('clears availability marks when the provider fires onReset', async () => {
+    const provider = new ControllableProvider();
+    (provider as AudioProvider).checkAvailability = async (t) =>
+      t.title === 'B' ? 'unavailable' : 'available';
+    let fireReset = () => {};
+    (provider as AudioProvider).onReset = (cb) => {
+      fireReset = cb;
+    };
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = () => provider;
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(lis(el)[1].classList.contains('unavailable')).toBe(true);
+
+    fireReset(); // provider session reset (e.g. unlink)
+    await el.updateComplete;
+    expect(lis(el)[1].classList.contains('unavailable')).toBe(false);
+  });
+
   it('toggles shuffle via the control button', async () => {
     const { el } = await mount();
     const btn = el.shadowRoot!.querySelector('.shuffle') as HTMLButtonElement;

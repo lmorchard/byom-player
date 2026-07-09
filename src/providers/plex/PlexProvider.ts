@@ -39,6 +39,7 @@ export class PlexProvider implements AudioProvider {
   protected token = '';
   private readonly auth?: PlexAuthLike;
   private target: HTMLElement | null = null;
+  private resetCallback: () => void = () => {};
 
   // Stale-id recovery state (reset in load()).
   private currentTrack: Track | null = null;
@@ -87,6 +88,10 @@ export class PlexProvider implements AudioProvider {
 
   attach(element: HTMLElement): void {
     this.target = element;
+  }
+
+  onReset(cb: () => void): void {
+    this.resetCallback = cb;
   }
 
   async initialize(): Promise<void> {
@@ -178,6 +183,7 @@ export class PlexProvider implements AudioProvider {
     this.audio.pause();
     this.audio.removeAttribute('src');
     this.renderLink();
+    this.resetCallback(); // clear stale availability marks in the host
     this.callback('ready');
   }
 
