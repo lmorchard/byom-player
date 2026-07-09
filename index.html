@@ -149,6 +149,7 @@
         </fieldset>
         <button type="submit">Connect</button>
         <button type="button" id="random">🎲 Play random from Navidrome</button>
+        <button type="button" id="clear-cache">🗑️ Clear ID cache</button>
       </form>
       <p class="hint">
         Saved to this browser's localStorage only — never committed or sent anywhere but your
@@ -180,6 +181,7 @@
         document.getElementById('fs-youtube').hidden = provider !== 'youtube';
         document.getElementById('fs-spotify').hidden = provider !== 'spotify';
         document.getElementById('random').hidden = provider !== 'subsonic';
+        document.getElementById('clear-cache').hidden = provider !== 'subsonic';
       }
       form.elements['provider'].addEventListener('change', syncProviderUI);
       syncProviderUI();
@@ -225,6 +227,14 @@
         const cfg = Object.fromEntries(new FormData(form).entries());
         localStorage.setItem(KEY, JSON.stringify(cfg));
         mount(cfg);
+      });
+
+      // Clear the resolved-id cache (all servers). Root key mirrors
+      // ROOT_KEY in src/providers/resolutionCache.ts.
+      document.getElementById('clear-cache').addEventListener('click', () => {
+        localStorage.removeItem('byom-player:resolv:v1');
+        const status = document.getElementById('status');
+        status.textContent = 'Cleared resolved-id cache — next play will re-search.';
       });
 
       // Build Subsonic auth query params for the harness-only getRandomSongs call.
