@@ -1,6 +1,7 @@
 import type { Track } from '../types';
 import type { AudioProvider, AvailabilityStatus, ProviderState } from './types';
 import { md5 } from '../md5';
+import { trackKey, LocalStorageResolutionCache, type ResolutionCache } from './resolutionCache';
 
 // Configuration for a Subsonic / OpenSubsonic server (Navidrome, gonic, Airsonic,
 // LMS, …). Uses only core Subsonic endpoints, so it's not Navidrome-specific.
@@ -21,6 +22,8 @@ export interface SubsonicConfig {
   retryDelayMs?: number; // base backoff, multiplied by attempt number (default 400)
   debug?: boolean; // console.debug resolution outcomes
   scrobble?: boolean; // send Subsonic scrobble on play (now-playing + submission); default true
+  cache?: boolean; // cache resolved song ids in localStorage; default true
+  resolutionCache?: ResolutionCache; // injectable cache (tests / custom backend)
 }
 
 const API_VERSION = '1.16.1';
@@ -48,9 +51,24 @@ export class SubsonicProvider implements AudioProvider {
   private currentId: string | null = null;
   private nowPlayingSent = false;
   private submitted = false;
+  // Resolved-id cache, keyed per server. null when caching is disabled.
+  private readonly cache: ResolutionCache | null;
+  private readonly scope: string;
+  // Stale-id recovery state (reset in load()).
+  private currentTrack: Track | null = null;
+  private currentKey: string | null = null;
+  private currentIdFromCache = false;
+  private retriedStale = false;
+  private hasPlayed = false;
 
   constructor(config: Record<string, unknown>) {
     this.cfg = config as unknown as SubsonicConfig;
+
+    this.scope = 'subsonic:' + this.cfg.baseUrl.replace(/\/$/, '');
+    this.cache =
+      this.cfg.cache === false
+        ? null
+        : (this.cfg.resolutionCache ?? new LocalStorageResolutionCache());
 
     if (this.cfg.token && this.cfg.salt) {
       this.authToken = this.cfg.token;
@@ -65,6 +83,7 @@ export class SubsonicProvider implements AudioProvider {
     this.audio.addEventListener(
       'playing',
       () => {
+        this.hasPlayed = true;
         this.callback('playing');
         this.sendNowPlaying();
       },
@@ -72,7 +91,7 @@ export class SubsonicProvider implements AudioProvider {
     );
     this.audio.addEventListener('pause', () => this.callback('paused'), opts);
     this.audio.addEventListener('ended', () => this.callback('ended'), opts);
-    this.audio.addEventListener('error', () => this.callback('error'), opts);
+    this.audio.addEventListener('error', () => this.handleAudioError(), opts);
     this.audio.addEventListener('timeupdate', () => this.emitProgress(), opts);
     this.audio.addEventListener('durationchange', () => this.emitProgress(), opts);
   }
@@ -125,6 +144,11 @@ export class SubsonicProvider implements AudioProvider {
     this.currentId = null;
     this.nowPlayingSent = false;
     this.submitted = false;
+    this.currentTrack = track;
+    this.currentKey = trackKey(track);
+    this.retriedStale = false;
+    this.hasPlayed = false;
+    this.currentIdFromCache = !!this.cache?.get(this.scope, this.currentKey);
     let id: string | null;
     try {
       id = await this.resolve(track);
@@ -181,10 +205,80 @@ export class SubsonicProvider implements AudioProvider {
   // the server responds successfully but the track isn't in the collection.
   // Transient failures (network/5xx/subsonic-failed) are retried, then thrown.
   async resolve(track: Track): Promise<string | null> {
+    const key = trackKey(track);
+    const cached = this.cache?.get(this.scope, key);
+    if (cached) {
+      this.log('cache hit', track.artist, '-', track.title, '->', cached);
+      return cached;
+    }
+    if (cached === null) {
+      // A known miss still within its TTL — skip search3.
+      this.log('cache miss (known)', track.artist, '-', track.title);
+      return null;
+    }
     const query = `${track.artist} ${track.title}`.trim();
     const data = await this.fetchJson(this.url('search3.view', { query, songCount: '1' }));
-    const song = data?.['subsonic-response']?.searchResult3?.song?.[0];
-    return song?.id ?? null;
+    const id = data?.['subsonic-response']?.searchResult3?.song?.[0]?.id ?? null;
+    if (id) this.cache?.set(this.scope, key, id);
+    else this.cache?.setMiss(this.scope, key);
+    return id;
+  }
+
+  // clearCache drops this server's cached ids (e.g. after a library rescan).
+  clearCache(): void {
+    this.cache?.clear(this.scope);
+  }
+
+  // isResolutionCached reports whether resolve() would answer this track from
+  // cache (no search3). Lets the availability sweep skip its throttle on hits.
+  isResolutionCached(track: Track): boolean {
+    // A hit OR a known (unexpired) miss both answer without touching the server.
+    return this.cache?.get(this.scope, trackKey(track)) !== undefined;
+  }
+
+  // handleAudioError distinguishes a stale cached id (errors before it ever
+  // plays) from a genuine/transient failure. For the former, evict the entry
+  // and re-resolve live once; otherwise surface 'error' as usual.
+  private handleAudioError(): void {
+    if (
+      !this.hasPlayed &&
+      this.currentIdFromCache &&
+      !this.retriedStale &&
+      this.cache &&
+      this.currentTrack &&
+      this.currentKey
+    ) {
+      this.retriedStale = true;
+      this.cache.evict(this.scope, this.currentKey);
+      this.log(
+        'cached id failed; re-resolving',
+        this.currentTrack.artist,
+        '-',
+        this.currentTrack.title,
+      );
+      void this.reloadFresh(this.currentTrack);
+      return;
+    }
+    this.callback('error');
+  }
+
+  // reloadFresh re-resolves after evicting a stale id, then resumes playback.
+  private async reloadFresh(track: Track): Promise<void> {
+    this.currentIdFromCache = false;
+    let id: string | null;
+    try {
+      id = await this.resolve(track); // cache was evicted -> hits search3, re-caches
+    } catch {
+      this.callback('error');
+      return;
+    }
+    if (!id) {
+      this.callback('unavailable');
+      return;
+    }
+    this.currentId = id;
+    this.audio.src = this.streamUrl(id);
+    void this.play();
   }
 
   private log(...args: unknown[]): void {

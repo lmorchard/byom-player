@@ -19,10 +19,13 @@ export async function sweepAvailability(
 ): Promise<void> {
   const check = provider.checkAvailability?.bind(provider);
   if (!check) return;
+  const isCached = provider.isResolutionCached?.bind(provider);
 
   const delayMs = opts.delayMs ?? 300;
   for (let i = 0; i < tracks.length; i++) {
     if (opts.signal?.aborted) return;
+    // A cache hit resolves without touching the source, so it needs no cooldown.
+    const cached = isCached?.(tracks[i]) ?? false;
     let status: AvailabilityStatus;
     try {
       status = await check(tracks[i]);
@@ -32,7 +35,7 @@ export async function sweepAvailability(
     if (opts.signal?.aborted) return;
     onResult(i, status);
 
-    if (delayMs > 0 && i < tracks.length - 1) {
+    if (delayMs > 0 && !cached && i < tracks.length - 1) {
       await new Promise((r) => setTimeout(r, delayMs));
     }
   }
