@@ -149,11 +149,11 @@ export class SpotifyProvider implements AudioProvider {
     return parseSpotifyId(track.spotifyUrl) ? 'available' : 'unavailable';
   }
 
-  // Resolution is a network-less parse of the track's Spotify URL (exported from
-  // the playlist), so the availability sweep needn't throttle a track that has
-  // one — there's no server to be gentle with.
-  isResolutionCached(track: Track): boolean {
-    return parseSpotifyId(track.spotifyUrl) !== null;
+  // checkAvailability is a network-less parse of the track's Spotify URL in every
+  // case (URL → available, none → unavailable), so the sweep never needs to
+  // throttle — there's no server to be gentle with, whatever the answer.
+  isResolutionCached(): boolean {
+    return true;
   }
 
   dispose(): void {
