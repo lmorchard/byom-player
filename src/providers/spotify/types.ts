@@ -31,6 +31,7 @@ export interface AuthLike {
   hasToken(): boolean;
   getValidToken(): Promise<string | null>;
   login(): Promise<string>;
+  logout(): void;
 }
 
 export interface SpotifyConfig {
@@ -45,4 +46,10 @@ export interface SpotifyConfig {
   debug?: boolean;
 }
 
-export const DEFAULT_SCOPES = ['streaming', 'user-read-email', 'user-read-private'];
+export const DEFAULT_SCOPES = [
+  'streaming',
+  'user-read-email',
+  'user-read-private',
+  'user-read-playback-state',
+  'user-modify-playback-state', // required to control the SDK device via /me/player
+];

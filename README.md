@@ -141,8 +141,9 @@ player.provider = 'spotify';
 player.providerConfig = {
   clientId: 'your-spotify-app-client-id', // public; safe to ship
   redirectUri: 'https://yoursite.example/callback.html',
-  // optional:
-  // scopes: ['streaming', 'user-read-email', 'user-read-private'],
+  // optional (defaults shown):
+  // scopes: ['streaming', 'user-read-email', 'user-read-private',
+  //          'user-read-playback-state', 'user-modify-playback-state'],
   // deviceName: 'byom-player',
   // forceEmbed: true, // skip the SDK entirely (free-only sites)
 };

@@ -82,6 +82,15 @@ describe('AuthClient.getValidToken', () => {
     expect(auth.hasToken()).toBe(false);
   });
 
+  it('logout clears the stored token', () => {
+    const store = new TokenStore('CID', new FakeStorage());
+    store.save({ accessToken: 'AT', refreshToken: 'RT', expiresAt: 999_999 });
+    const auth = new AuthClient(CFG, { store });
+    expect(auth.hasToken()).toBe(true);
+    auth.logout();
+    expect(auth.hasToken()).toBe(false);
+  });
+
   it('returns the cached token when unexpired', async () => {
     const store = new TokenStore('CID', new FakeStorage());
     store.save({ accessToken: 'AT', refreshToken: 'RT', expiresAt: 120_000 }); // beyond the 60s skew

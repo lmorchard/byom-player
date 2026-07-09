@@ -120,6 +120,12 @@ export class AuthClient implements AuthLike {
     return this.store.load() !== null;
   }
 
+  // Clears the locally cached session. Spotify PKCE has no client-side token
+  // revocation, so this ends the local session; it doesn't revoke server-side.
+  logout(): void {
+    this.store.clear();
+  }
+
   async getValidToken(): Promise<string | null> {
     const t = this.store.load();
     if (!t) return null;

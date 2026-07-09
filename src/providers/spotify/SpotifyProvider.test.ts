@@ -58,6 +58,7 @@ const readyAuth: AuthLike = {
   hasToken: () => true,
   getValidToken: async () => 'TOKEN',
   login: async () => 'TOKEN',
+  logout: () => {},
 };
 
 function makeProvider(engines: Record<EngineKind, FakeEngine>, auth: AuthLike = readyAuth) {
@@ -194,6 +195,9 @@ describe('SpotifyProvider engine selection', () => {
         loggedIn = true;
         return 'TOKEN';
       },
+      logout: () => {
+        loggedIn = false;
+      },
     };
     const el = document.createElement('div');
     const p = new SpotifyProvider({
@@ -213,5 +217,38 @@ describe('SpotifyProvider engine selection', () => {
     await vi.waitFor(() => expect(engines.sdk.attached).toBe(el));
     await p.load({ title: 'T', artist: 'A', spotifyUrl: 'spotify:track:Z' });
     expect(engines.sdk.loaded).toBe('spotify:track:Z');
+  });
+
+  it('shows a Disconnect button once connected, and logs out + destroys on click', async () => {
+    const engines = { sdk: new FakeEngine('sdk'), embed: new FakeEngine('embed') };
+    let loggedIn = true;
+    const auth: AuthLike = {
+      hasToken: () => loggedIn,
+      getValidToken: async () => (loggedIn ? 'TOKEN' : null),
+      login: async () => {
+        loggedIn = true;
+        return 'TOKEN';
+      },
+      logout: () => {
+        loggedIn = false;
+      },
+    };
+    const el = document.createElement('div');
+    const p = new SpotifyProvider({
+      clientId: 'CID',
+      redirectUri: 'https://x.test/callback.html',
+      auth,
+      engineFactory: (kind: EngineKind) => engines[kind],
+    });
+    p.attach(el);
+    await p.initialize();
+
+    const disconnect = el.querySelector('.byom-spotify-disconnect');
+    expect(disconnect).not.toBeNull();
+
+    (disconnect as HTMLButtonElement).click();
+    await vi.waitFor(() => expect(loggedIn).toBe(false));
+    expect(engines.sdk.destroyed).toBe(true);
+    expect(el.querySelector('.byom-spotify-connect')).not.toBeNull(); // back to connect
   });
 });

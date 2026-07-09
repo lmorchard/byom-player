@@ -75,6 +75,29 @@ export class SpotifyProvider implements AudioProvider {
         return;
       }
     }
+    this.renderDisconnect();
+    this.stateCallback('ready');
+  }
+
+  private renderDisconnect(): void {
+    if (!this.target) return;
+    const btn = this.target.ownerDocument.createElement('button');
+    btn.textContent = 'Disconnect Spotify';
+    btn.className = 'byom-spotify-disconnect';
+    btn.addEventListener('click', () => {
+      void this.handleDisconnect();
+    });
+    // Sits above the embed iframe (if any); the SDK tier has an otherwise-empty
+    // surface.
+    this.target.prepend(btn);
+  }
+
+  private async handleDisconnect(): Promise<void> {
+    this.auth.logout();
+    this.stopTicker();
+    this.engine?.destroy();
+    this.engine = null;
+    this.renderConnect();
     this.stateCallback('ready');
   }
 
