@@ -1,6 +1,7 @@
 import type { Track } from '../../types';
 import type { AudioProvider, ProviderState, AvailabilityStatus } from '../types';
 import { AuthClient } from './auth';
+import { WebPlaybackEngine } from './WebPlaybackEngine';
 import {
   NotPremiumError,
   type SpotifyConfig,
@@ -142,8 +143,9 @@ export class SpotifyProvider implements AudioProvider {
   protected makeEngine(kind: EngineKind): SpotifyEngine {
     if (this.cfg.engineFactory)
       return this.cfg.engineFactory(kind, () => this.auth.getValidToken());
-    // Real engines are wired in Tasks 5-6; until then only injected engines run.
-    throw new Error(`SpotifyProvider: no engine factory for '${kind}'`);
+    const getToken = () => this.auth.getValidToken();
+    if (kind === 'sdk') return new WebPlaybackEngine(this.cfg, getToken);
+    throw new Error('EmbedEngine not yet implemented'); // replaced in Task 6
   }
 
   protected async useEngine(kind: EngineKind): Promise<void> {
