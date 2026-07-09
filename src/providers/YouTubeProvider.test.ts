@@ -172,9 +172,7 @@ describe('YouTubeProvider resolution', () => {
   });
 
   it('caches a live-resolved id (next resolve skips the search)', async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(okJson({ videoId: 'live1' }));
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(okJson({ videoId: 'live1' }));
     const cache = new FakeCache();
     const p = new YouTubeProvider({
       engine: new FakeEngine(),
@@ -213,6 +211,55 @@ describe('YouTubeProvider resolution', () => {
     await p.resolve({ title: 't', artist: 'a' });
     expect(cache.gets).toHaveLength(0);
     expect(cache.sets).toHaveLength(0);
+  });
+
+  it('checkAvailability: embedded/cache -> available; known-miss -> unavailable; unknown without search', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    const cache = new FakeCache();
+    cache.set('youtube', 'q:a|cached', 'vid');
+    cache.setMiss('youtube', 'q:a|miss');
+    const p = new YouTubeProvider({ engine: new FakeEngine(), resolutionCache: cache });
+
+    expect(
+      await p.checkAvailability({ title: 'emb', artist: 'a', resolvedIds: { youtube: 'e' } }),
+    ).toBe('available');
+    expect(await p.checkAvailability({ title: 'cached', artist: 'a' })).toBe('available');
+    expect(await p.checkAvailability({ title: 'miss', artist: 'a' })).toBe('unavailable');
+    expect(await p.checkAvailability({ title: 'unknown', artist: 'a' })).toBe('unknown'); // no key
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('checkAvailability searches when a key is set (available/unavailable/unknown)', async () => {
+    const cache = new FakeCache();
+    const p = new YouTubeProvider({
+      engine: new FakeEngine(),
+      apiKey: 'KEY',
+      resolutionCache: cache,
+    });
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okJson({ items: [{ id: { videoId: 'v' } }] }));
+    expect(await p.checkAvailability({ title: 'hit', artist: 'a' })).toBe('available');
+
+    vi.restoreAllMocks();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okJson({ items: [] }));
+    expect(await p.checkAvailability({ title: 'nomatch', artist: 'a' })).toBe('unavailable');
+
+    vi.restoreAllMocks();
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('down'));
+    expect(await p.checkAvailability({ title: 'flaky', artist: 'a' })).toBe('unknown');
+  });
+
+  it('isResolutionCached is true for embedded or cached, false otherwise', () => {
+    const cache = new FakeCache();
+    cache.set('youtube', 'q:a|cached', 'vid');
+    cache.setMiss('youtube', 'q:a|miss');
+    const p = new YouTubeProvider({ engine: new FakeEngine(), resolutionCache: cache });
+    expect(p.isResolutionCached({ title: 'emb', artist: 'a', resolvedIds: { youtube: 'e' } })).toBe(
+      true,
+    );
+    expect(p.isResolutionCached({ title: 'cached', artist: 'a' })).toBe(true);
+    expect(p.isResolutionCached({ title: 'miss', artist: 'a' })).toBe(true); // known miss counts
+    expect(p.isResolutionCached({ title: 'unknown', artist: 'a' })).toBe(false);
   });
 
   it('load emits unavailable on no match, error on transient failure', async () => {

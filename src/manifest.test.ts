@@ -73,10 +73,18 @@ describe('loadManifest', () => {
     const withResolved = {
       playlist: {
         track: [
-          { title: 'A', creator: 'B', extension: { [BYOM_EXT_NS]: [{ resolved: { youtube: 'vidX' } }] } },
+          {
+            title: 'A',
+            creator: 'B',
+            extension: { [BYOM_EXT_NS]: [{ resolved: { youtube: 'vidX' } }] },
+          },
           { title: 'C', creator: 'D' }, // no extension
           { title: 'E', creator: 'F', extension: { [BYOM_EXT_NS]: [{ resolved: 'nope' }] } }, // malformed
-          { title: 'G', creator: 'H', extension: { [BYOM_EXT_NS]: [{ resolved: { youtube: 123 } }] } }, // non-string
+          {
+            title: 'G',
+            creator: 'H',
+            extension: { [BYOM_EXT_NS]: [{ resolved: { youtube: 123 } }] },
+          }, // non-string
         ],
       },
     };

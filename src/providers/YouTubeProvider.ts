@@ -197,6 +197,35 @@ export class YouTubeProvider implements AudioProvider {
     return data?.videoId ?? data?.items?.[0]?.id?.videoId ?? null;
   }
 
+  // checkAvailability mirrors the resolution chain without playing: embedded/
+  // cached ids answer for free; a live search runs only if configured (and only
+  // then does it spend quota). Unknown (not error) when we can't tell.
+  async checkAvailability(track: Track): Promise<AvailabilityStatus> {
+    const cached = this.cachedId(track);
+    if (cached) return 'available';
+    if (cached === null) return 'unavailable';
+    if (!this.searchConfigured()) return 'unknown';
+    try {
+      const id = await this.liveSearch(track);
+      const key = trackKey(track);
+      if (id) {
+        this.cache?.set(YT_SCOPE, key, id);
+        return 'available';
+      }
+      this.cache?.setMiss(YT_SCOPE, key);
+      return 'unavailable';
+    } catch {
+      return 'unknown'; // transient — don't penalize the track
+    }
+  }
+
+  // isResolutionCached reports whether availability/resolution is answerable
+  // without touching the network (embedded id or any cache entry), so the
+  // background sweep can skip its throttle for it.
+  isResolutionCached(track: Track): boolean {
+    return this.cachedId(track) !== undefined;
+  }
+
   private async fetchJson(url: string): Promise<any> {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
