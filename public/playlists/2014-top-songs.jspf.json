@@ -1,0 +1,2109 @@
+{
+  "playlist": {
+    "title": "2014 Top Songs",
+    "creator": "Les Orchard",
+    "date": "2026-07-08T07:05:24Z",
+    "track": [
+      {
+        "title": "Black Out Days",
+        "creator": "Phantogram",
+        "album": "Voices",
+        "duration": 227,
+        "identifier": [
+          "urn:isrc:USUM71312035"
+        ],
+        "location": [
+          "https://open.spotify.com/track/2IWtloZYQDcP8Ashwx8QEF"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "a0ul-BghOAs"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Fall In Love",
+        "creator": "Phantogram",
+        "album": "Fall In Love",
+        "duration": 223,
+        "identifier": [
+          "urn:isrc:USUM71318566"
+        ],
+        "location": [
+          "https://open.spotify.com/track/73FCPll1CK0sklAt1VlmFc"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "RsQjC5zVnt8"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Don't Move",
+        "creator": "Phantogram",
+        "album": "Nightlife",
+        "duration": 258,
+        "identifier": [
+          "urn:isrc:USBS51131293"
+        ],
+        "location": [
+          "https://open.spotify.com/track/0UPsdEgJx6ypkfFUxD3ZHh"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "Ur17pfjIRVo"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "When I'm Small",
+        "creator": "Phantogram",
+        "album": "Eyelid Movies",
+        "duration": 249,
+        "identifier": [
+          "urn:isrc:USBS50931058"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3498wF96LsgVgMkGmJzJOC"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "28tZ-S1LFok"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Meow",
+        "creator": "Anamanaguchi",
+        "album": "Endless Fantasy",
+        "duration": 211,
+        "identifier": [
+          "urn:isrc:USA2B1301833"
+        ],
+        "location": [
+          "https://open.spotify.com/track/0Rx2P6lc1YIAvpalv5OL17"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "vc3JWo2iiGc"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Polish Girl",
+        "creator": "Neon Indian",
+        "album": "Era Extraña",
+        "duration": 264,
+        "identifier": [
+          "urn:isrc:USQE91100051"
+        ],
+        "location": [
+          "https://open.spotify.com/track/2JGSZk5y65ZF79mtDz0o9r"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "GuPGZZgNFsU"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Breathe In",
+        "creator": "Frou Frou",
+        "album": "Details",
+        "duration": 277,
+        "identifier": [
+          "urn:isrc:GBAAN0200017"
+        ],
+        "location": [
+          "https://open.spotify.com/track/03kZca43rgVgphYctcopJU"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "oet5L-gqctk"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "1979 - Remastered 2012",
+        "creator": "The Smashing Pumpkins",
+        "album": "Mellon Collie And The Infinite Sadness (Remastered)",
+        "duration": 266,
+        "identifier": [
+          "urn:isrc:USVI21200910"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3Y8Ff1nH44jFywAtpgmleZ"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "PufFJWCcc_w"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Nothing But Trouble",
+        "creator": "Phantogram",
+        "album": "Voices",
+        "duration": 245,
+        "identifier": [
+          "urn:isrc:USUM71318565"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3tgKPIjhpelqSeKbDzaG3c"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "98bi0dxJGGc"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "The Farthest Star",
+        "creator": "VNV Nation",
+        "album": "Judgement",
+        "duration": 293,
+        "identifier": [
+          "urn:isrc:US57M0749002"
+        ],
+        "location": [
+          "https://open.spotify.com/track/4VJD6Oqg7pp7H7AUkkp3oa"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "Wnqhs8fB3UU"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Come Undone",
+        "creator": "Duran Duran",
+        "album": "Duran Duran",
+        "duration": 257,
+        "identifier": [
+          "urn:isrc:GBAYE9300072"
+        ],
+        "location": [
+          "https://open.spotify.com/track/0yfNXxlyXdmP0ue1iJijx1"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "Epj84QVw2rc"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Gun",
+        "creator": "CHVRCHES",
+        "album": "The Bones Of What You Believe (Special Edition)",
+        "duration": 232,
+        "identifier": [
+          "urn:isrc:GBZN81300007"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3rvtRXFWpmXJofk5i7Y1Ft"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "ktoaj1IpTbw"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Celebrating Nothing",
+        "creator": "Phantogram",
+        "album": "Voices",
+        "duration": 226,
+        "identifier": [
+          "urn:isrc:USUM71312039"
+        ],
+        "location": [
+          "https://open.spotify.com/track/1LJSniVKf2cSGY3LT1oqyk"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "CWXsACeyvlg"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Dancing With Strangers",
+        "creator": "Information Society",
+        "album": "_hello world",
+        "duration": 274,
+        "identifier": [
+          "urn:isrc:USY251482304"
+        ],
+        "location": [
+          "https://open.spotify.com/track/2F1zLug3pZjde8kWW2U8R7"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "8SBw8SJ8VHc"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Night Sky",
+        "creator": "CHVRCHES",
+        "album": "The Bones Of What You Believe (Special Edition)",
+        "duration": 231,
+        "identifier": [
+          "urn:isrc:GBZN81300024"
+        ],
+        "location": [
+          "https://open.spotify.com/track/7uvYp5crr7lPh9T4zyMHfQ"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "UG8MWzpjyOs"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Kim \u0026 Jessie",
+        "creator": "M83",
+        "album": "Saturdays = Youth",
+        "duration": 323,
+        "identifier": [
+          "urn:isrc:GBSLQ0700002"
+        ],
+        "location": [
+          "https://open.spotify.com/track/5pCTXoSYslXKP2D21e3ZJK"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "n5cgzcjqOtE"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "EVERYTHING EXPLODES",
+        "creator": "Anamanaguchi",
+        "album": "Endless Fantasy",
+        "duration": 163,
+        "identifier": [
+          "urn:isrc:USA2B1301839"
+        ],
+        "location": [
+          "https://open.spotify.com/track/2caqs2TO8QVRlgwPVqZLAg"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "1tgggRauBXE"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Over (Iris Mix)",
+        "creator": "Informatik",
+        "album": "Re:Vision",
+        "duration": 377,
+        "identifier": [
+          "urn:isrc:US57M0531502"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3XwrspehQo7ZkigKTiDQ5u"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "iK2D_YUnlew"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Get Back",
+        "creator": "Information Society",
+        "album": "_hello world",
+        "duration": 247,
+        "identifier": [
+          "urn:isrc:USY251482303"
+        ],
+        "location": [
+          "https://open.spotify.com/track/6TN19QUhZpdzQe6zYyjrkn"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "SoY0dlEKogs"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Spaceship",
+        "creator": "Alice In Videoland",
+        "album": "A Million Thoughts and They're All About You",
+        "duration": 195,
+        "identifier": [
+          "urn:isrc:CAAD21011068"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3RrWyN2a2UNh2Wrfjli7OU"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "MFGwCy7ojY4"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Canal Paradise",
+        "creator": "Anamanaguchi",
+        "album": "Endless Fantasy",
+        "duration": 273,
+        "identifier": [
+          "urn:isrc:USA2B1301834"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3aIV6v1IjdWgXx3SlPoOsT"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "3ArzXH15jq0"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Here's Where The Story Ends",
+        "creator": "The Sundays",
+        "album": "Reading, Writing \u0026 Arithmetic",
+        "duration": 235,
+        "identifier": [
+          "urn:isrc:USGF19027702"
+        ],
+        "location": [
+          "https://open.spotify.com/track/4SPi5Pl7aAtauFsH9Lk5LB"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "FHsip5xOenQ"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Feel It All Around",
+        "creator": "Washed Out",
+        "album": "Life Of Leisure",
+        "duration": 192,
+        "identifier": [
+          "urn:isrc:USMEX0800099"
+        ],
+        "location": [
+          "https://open.spotify.com/track/0BJTbkmrB2Y4E9M8qVzbYZ"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "3Pt0V6K7WpM"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Under Your Spell",
+        "creator": "Desire",
+        "album": "Desire",
+        "duration": 296,
+        "identifier": [
+          "urn:isrc:USL840910008"
+        ],
+        "location": [
+          "https://open.spotify.com/track/38vNwoJygRx1u77aJOV8Zb"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "SoH0BWBmVZY"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Mouthful of Diamonds",
+        "creator": "Phantogram",
+        "album": "Eyelid Movies",
+        "duration": 253,
+        "identifier": [
+          "urn:isrc:USBS50931057"
+        ],
+        "location": [
+          "https://open.spotify.com/track/1DDEOszvliLLv80PQzGF69"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "ZvSgLHWR16o"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Nightdrive With You",
+        "creator": "Anoraak",
+        "album": "Nightdrive With You",
+        "duration": 328,
+        "identifier": [
+          "urn:isrc:FR6V80811826"
+        ],
+        "location": [
+          "https://open.spotify.com/track/2We1WL1oyXJtTmrAfjDe58"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "fJIhmFVDJyM"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Stockholm Syndrome",
+        "creator": "Muse",
+        "album": "Absolution",
+        "duration": 297,
+        "identifier": [
+          "urn:isrc:GBCVT0300080"
+        ],
+        "location": [
+          "https://open.spotify.com/track/5VVWgWH8HFLAtM8lbttvn9"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "gXN9acC9edU"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Lungs",
+        "creator": "CHVRCHES",
+        "album": "The Bones Of What You Believe (Special Edition)",
+        "duration": 181,
+        "identifier": [
+          "urn:isrc:GBZN81300026"
+        ],
+        "location": [
+          "https://open.spotify.com/track/7tptFBIZxSHgTv9n6mgKlY"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "ce6OEhlduvo"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Lies",
+        "creator": "CHVRCHES",
+        "album": "The Bones Of What You Believe (Special Edition)",
+        "duration": 220,
+        "identifier": [
+          "urn:isrc:GBZN81300022"
+        ],
+        "location": [
+          "https://open.spotify.com/track/2N127y5vyqdwEe6gDZSxs0"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "81RqEnvczV8"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Land Of The Blind",
+        "creator": "Information Society",
+        "album": "_hello world",
+        "duration": 229,
+        "identifier": [
+          "urn:isrc:USY251482300"
+        ],
+        "location": [
+          "https://open.spotify.com/track/6UzehGLQU6ztEGOK1VNRBq"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "hM6Q8XEE88w"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "We Sink",
+        "creator": "CHVRCHES",
+        "album": "The Bones Of What You Believe (Special Edition)",
+        "duration": 212,
+        "identifier": [
+          "urn:isrc:GBZN81300020"
+        ],
+        "location": [
+          "https://open.spotify.com/track/4t7EGF0kXG5KeFrQ7hxdc1"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "RurGIRLrI8k"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Army of Me",
+        "creator": "Björk",
+        "album": "Army of Me",
+        "duration": 237,
+        "identifier": [
+          "urn:isrc:GBBTF9500039"
+        ],
+        "location": [
+          "https://open.spotify.com/track/0pXQWCgKlh9ZiXcIE6wwC4"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "jPeheoBa2_Y"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "The Mother We Share",
+        "creator": "CHVRCHES",
+        "album": "The Bones Of What You Believe (Special Edition)",
+        "duration": 190,
+        "identifier": [
+          "urn:isrc:GBZN81300014"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3PvzvltQZLIKk9YgoMP3Yq"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "_mTRvJ9fugM"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Glass",
+        "creator": "Bat For Lashes",
+        "album": "Two Suns",
+        "duration": 272,
+        "identifier": [
+          "urn:isrc:GBBND0801830"
+        ],
+        "location": [
+          "https://open.spotify.com/track/620URofLWRdI6LJHKO13bH"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "f_I-tL80T8Q"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "From Above Comes Sleep",
+        "creator": "Evil's Toy",
+        "album": "Angels Only!",
+        "duration": 255,
+        "identifier": [
+          "urn:isrc:US57M0811706"
+        ],
+        "location": [
+          "https://open.spotify.com/track/682VGPHe5KyXl3K4HN4PhO"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "WFDEjRfnvr0"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "The Prize",
+        "creator": "Information Society",
+        "album": "_hello world",
+        "duration": 240,
+        "identifier": [
+          "urn:isrc:USY251482301"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3s4cVTxRgWU8z9o5iGAXKd"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "sBDlKtuUfzw"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Tether",
+        "creator": "CHVRCHES",
+        "album": "The Bones Of What You Believe (Special Edition)",
+        "duration": 286,
+        "identifier": [
+          "urn:isrc:GBZN81300021"
+        ],
+        "location": [
+          "https://open.spotify.com/track/2xYUn5R79VRPW12pZKuwYd"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "s8dfKUXmbrM"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "A Pain That I'm Used To",
+        "creator": "Depeche Mode, Steve Fitzmaurice",
+        "album": "Playing the Angel",
+        "duration": 251,
+        "identifier": [
+          "urn:isrc:GBAJH0501446"
+        ],
+        "location": [
+          "https://open.spotify.com/track/2pbZiAFyhKPmVyjIHipYLa"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "G2iGtRseS7E"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Under The Tide",
+        "creator": "CHVRCHES",
+        "album": "The Bones Of What You Believe (Special Edition)",
+        "duration": 271,
+        "identifier": [
+          "urn:isrc:GBZN81300023"
+        ],
+        "location": [
+          "https://open.spotify.com/track/6AZeGdRRGqzmoFZK0qscWr"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "TTOuVP0iYQs"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "By The Throat",
+        "creator": "CHVRCHES",
+        "album": "The Bones Of What You Believe (Special Edition)",
+        "duration": 249,
+        "identifier": [
+          "urn:isrc:GBZN81300027"
+        ],
+        "location": [
+          "https://open.spotify.com/track/0sXwModOsujAaxSP5pJ3cc"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "Ms_3zunI6hE"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Recover",
+        "creator": "CHVRCHES",
+        "album": "The Bones Of What You Believe (Special Edition)",
+        "duration": 224,
+        "identifier": [
+          "urn:isrc:GBZN81300029"
+        ],
+        "location": [
+          "https://open.spotify.com/track/4QQg6DXsx6G3lv3W4A15CZ"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "JyqemIbjcfg"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Beautiful World (Featuring Gerald V. Casale)",
+        "creator": "Information Society",
+        "album": "_hello world",
+        "duration": 209,
+        "identifier": [
+          "urn:isrc:USY251482306"
+        ],
+        "location": [
+          "https://open.spotify.com/track/7cgCabBiUlDrEArhFveb6l"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "j0_MFexQ-6A"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Where Were You",
+        "creator": "Information Society",
+        "album": "_hello world",
+        "duration": 231,
+        "identifier": [
+          "urn:isrc:USY251482302"
+        ],
+        "location": [
+          "https://open.spotify.com/track/28EnnFnZTFuWc37dO34zLY"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "m3-lZu04RGs"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Jonestown",
+        "creator": "Information Society",
+        "album": "_hello world",
+        "duration": 208,
+        "identifier": [
+          "urn:isrc:USY251482305"
+        ],
+        "location": [
+          "https://open.spotify.com/track/7vNz2PcJfKyeDMHR0Olbmh"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "TRVMvqg78W4"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Science/Visions",
+        "creator": "CHVRCHES",
+        "album": "The Bones Of What You Believe (Special Edition)",
+        "duration": 236,
+        "identifier": [
+          "urn:isrc:GBZN81300025"
+        ],
+        "location": [
+          "https://open.spotify.com/track/0WoohBjFAOoI4DH2HAJF4y"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "dsUMOuZyRaE"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Space Is the Place",
+        "creator": "Lazerhawk",
+        "album": "Visitors",
+        "duration": 347,
+        "identifier": [
+          "urn:isrc:USQY51243474"
+        ],
+        "location": [
+          "https://open.spotify.com/track/5saBOrn1G57QmrbJo3oaMP"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "zEflfQT9BKs"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Never Going Home",
+        "creator": "Phantogram",
+        "album": "Voices",
+        "duration": 274,
+        "identifier": [
+          "urn:isrc:USUM71312037"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3XWL3vnY0fIT5416rWBe7C"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "ZVb89UJ6Li4"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Interlude (STILL SPLODIN THO)",
+        "creator": "Anamanaguchi",
+        "album": "Endless Fantasy",
+        "duration": 66,
+        "identifier": [
+          "urn:isrc:USA2B1301840"
+        ],
+        "location": [
+          "https://open.spotify.com/track/22pSecTg5aLqZjIRoExTfO"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "vCyZ0H3v2BU"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Pastel Flags",
+        "creator": "Anamanaguchi",
+        "album": "Endless Fantasy",
+        "duration": 201,
+        "identifier": [
+          "urn:isrc:USA2B1301841"
+        ],
+        "location": [
+          "https://open.spotify.com/track/0xtqNYckH9GHUbEgqQCEDR"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "fxyBXiNRaWs"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Teenage color",
+        "creator": "College",
+        "album": "Teenage color Ep",
+        "duration": 194,
+        "identifier": [
+          "urn:isrc:FR6V80800787"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3hH0nFoo3ZcBzggdKXkgs0"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "KOf6HzYjLDQ"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Close to Me - 2006 Remaster",
+        "creator": "The Cure",
+        "album": "The Head on the Door",
+        "duration": 203,
+        "identifier": [
+          "urn:isrc:USEE10608884"
+        ],
+        "location": [
+          "https://open.spotify.com/track/7ABE6G4uQxbNtYgVrpBBPA"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "_-XtKwVLwoM"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Dead Stars (Album Version)",
+        "creator": "Covenant",
+        "album": "United States Of Mind",
+        "duration": 312,
+        "identifier": [
+          "urn:isrc:US57M0516108"
+        ],
+        "location": [
+          "https://open.spotify.com/track/2uXfGz59MrSx96qvHRveF0"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "E0dmGPdBGr0"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Evil",
+        "creator": "Interpol",
+        "album": "Antics",
+        "duration": 216,
+        "identifier": [
+          "urn:isrc:USMTD0461602"
+        ],
+        "location": [
+          "https://open.spotify.com/track/6B182GP3TvEfmgUoIMVUSJ"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "dkpgz3uQ58U"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Snow Angels",
+        "creator": "Anamanaguchi",
+        "album": "Endless Fantasy",
+        "duration": 278,
+        "identifier": [
+          "urn:isrc:USA2B1301835"
+        ],
+        "location": [
+          "https://open.spotify.com/track/08J88Yor2moFkXFaRp1e07"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "0AQlrzCcFgs"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "You Caught The Light",
+        "creator": "CHVRCHES",
+        "album": "The Bones Of What You Believe (Special Edition)",
+        "duration": 338,
+        "identifier": [
+          "urn:isrc:GBZN81300028"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3LwP2XFecUVTxpn9QcPPrI"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "ibsl-UxMLx4"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "This Wheel's On Fire",
+        "creator": "Siouxsie and the Banshees",
+        "album": "The Best Of...",
+        "duration": 343,
+        "identifier": [
+          "urn:isrc:GBAKW0201466"
+        ],
+        "location": [
+          "https://open.spotify.com/track/4SLdR6dg6EoxBCoLMcjPmm"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "fmMu0F6sQOo"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "I Can Change",
+        "creator": "LCD Soundsystem",
+        "album": "This Is Happening",
+        "duration": 352,
+        "identifier": [
+          "urn:isrc:US4GE1000023"
+        ],
+        "location": [
+          "https://open.spotify.com/track/2073QOEC8rBtSyTsRyaWiP"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "V7QaGc2fmmE"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Lightwave",
+        "creator": "VNV Nation",
+        "album": "Matter + Form",
+        "duration": 421,
+        "identifier": [
+          "urn:isrc:US57M0537010"
+        ],
+        "location": [
+          "https://open.spotify.com/track/491adv02k9bMExwCVxJt6d"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "yYRyDwKlZ3c"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Cherry Bomb",
+        "creator": "The Runaways",
+        "album": "The Runaways",
+        "duration": 139,
+        "identifier": [
+          "urn:isrc:USIR20200576"
+        ],
+        "location": [
+          "https://open.spotify.com/track/7cdnq45E9aP2XDStHg5vd7"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "_EBvXpjudf8"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Creatures Of Light And Darkness",
+        "creator": "Information Society",
+        "album": "_hello world",
+        "duration": 266,
+        "identifier": [
+          "urn:isrc:USY251482307"
+        ],
+        "location": [
+          "https://open.spotify.com/track/7drs4NTuEupYzKpcl9tJnn"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "Q2Nom-CEkeE"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Quick as Rainbows",
+        "creator": "Kitchens Of Distinction",
+        "album": "Capsule - the Best of Kod",
+        "duration": 229,
+        "identifier": [
+          "urn:isrc:GBBTF0300037"
+        ],
+        "location": [
+          "https://open.spotify.com/track/7qeM1ko8dpTutdgyq7MCHl"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "jhMeB8-IVno"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Daniel",
+        "creator": "Bat For Lashes",
+        "album": "Daniel",
+        "duration": 250,
+        "identifier": [
+          "urn:isrc:GBBND0801828"
+        ],
+        "location": [
+          "https://open.spotify.com/track/72Z3omkingFSu6Qvo7EkLh"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "9yEjT_pIkhU"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Crawlersout",
+        "creator": "Purity Ring",
+        "album": "Shrines",
+        "duration": 190,
+        "identifier": [
+          "urn:isrc:GBAFL1200170"
+        ],
+        "location": [
+          "https://open.spotify.com/track/1VS2WwN3H4SNWMIrAzYqUi"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "0xwuNRX5aoo"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Walking with a Ghost",
+        "creator": "Tegan and Sara",
+        "album": "So Jealous",
+        "duration": 150,
+        "identifier": [
+          "urn:isrc:USRE10701158"
+        ],
+        "location": [
+          "https://open.spotify.com/track/7ImkjvM1OKWhJ5HIPOHcHE"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "jtCGODjuRq0"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "You Very Rich Believer",
+        "creator": "Dimlite",
+        "album": "Grimm Reality",
+        "duration": 298,
+        "identifier": [
+          "urn:isrc:US2S71286001"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3nnj3fcrmoiMycdauwsSQY"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "fkoZIsoKqSY"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "God Is A Bullet - Remastered",
+        "creator": "Concrete Blonde",
+        "album": "The Essential Concrete Blonde",
+        "duration": 263,
+        "identifier": [
+          "urn:isrc:USIR20100015"
+        ],
+        "location": [
+          "https://open.spotify.com/track/4x3cyjZ2C1si7IgPNYIY3c"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "pI8TFb5Gqoo"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Space Wax America",
+        "creator": "Anamanaguchi",
+        "album": "Endless Fantasy",
+        "duration": 228,
+        "identifier": [
+          "urn:isrc:USA2B1301838"
+        ],
+        "location": [
+          "https://open.spotify.com/track/7FeGAUgHTYMyfZLDOiwTHc"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "lByhGkbRGGo"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "We Own The Sky",
+        "creator": "M83",
+        "album": "Saturdays = Youth",
+        "duration": 305,
+        "identifier": [
+          "urn:isrc:GBSLQ0700007"
+        ],
+        "location": [
+          "https://open.spotify.com/track/1I4EczxGBcPR3J3KeyqFJP"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "sWsUNbdc5IM"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "She Bangs the Drums - Remastered 2009",
+        "creator": "The Stone Roses",
+        "album": "The Stone Roses",
+        "duration": 232,
+        "identifier": [
+          "urn:isrc:GBAHJ0900002"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3clIHVzJ9J2rvvrFUKLICo"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "xJmOgx0ETBI"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "The Mother We Share",
+        "creator": "CHVRCHES",
+        "album": "The Bones Of What You Believe",
+        "duration": 191,
+        "identifier": [
+          "urn:isrc:GBZN81300014"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3KMImfwJj3KXa6M3QRYsqH"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "_mTRvJ9fugM"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Jewel",
+        "creator": "Cranes",
+        "album": "Forever (Expanded Edition)",
+        "duration": 185,
+        "identifier": [
+          "urn:isrc:GBARL9300285"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3Mp4lDIGyCBVWDSF6ALaEd"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "L8QE4k0T980"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Where the Kids Are",
+        "creator": "Blondfire",
+        "album": "Where the Kids Are - EP",
+        "duration": 202,
+        "identifier": [
+          "urn:isrc:USA2P1383912"
+        ],
+        "location": [
+          "https://open.spotify.com/track/5NJWgNDDEfiCGqgApLo8SS"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "xVKFmNMQVTg"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Wayfarer",
+        "creator": "Kavinsky",
+        "album": "1986 - EP",
+        "duration": 270,
+        "identifier": [
+          "urn:isrc:FRS710600069"
+        ],
+        "location": [
+          "https://open.spotify.com/track/5RxJENtSzEkPr6N6476Xtx"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "ArtophI2ORg"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "U n Me",
+        "creator": "Anamanaguchi",
+        "album": "Endless Fantasy",
+        "duration": 291,
+        "identifier": [
+          "urn:isrc:USA2B1301837"
+        ],
+        "location": [
+          "https://open.spotify.com/track/41PiUSnjUKoOGyECqFkeAQ"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "A_Pmg0Md47Q"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "In The Basement",
+        "creator": "Anamanaguchi",
+        "album": "Endless Fantasy",
+        "duration": 210,
+        "identifier": [
+          "urn:isrc:USA2B1301836"
+        ],
+        "location": [
+          "https://open.spotify.com/track/2tjsTHR7Det4ckieG47frW"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "LAbfbNz7I7E"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Stellar",
+        "creator": "Incubus",
+        "album": "Make Yourself",
+        "duration": 200,
+        "identifier": [
+          "urn:isrc:USSM19911005"
+        ],
+        "location": [
+          "https://open.spotify.com/track/6ISuXA3UCPMtsyEUGUTAyn"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "-nqRkAsZumc"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "The Magician",
+        "creator": "Mike Simonetti",
+        "album": "After Dark 2",
+        "duration": 240,
+        "identifier": [
+          "urn:isrc:QMMMF1300014"
+        ],
+        "location": [
+          "https://open.spotify.com/track/70Ydz33jJfe4EN0VUsJnUf"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "-EEgwBNH7uU"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Fools Gold - Remastered 2009",
+        "creator": "The Stone Roses",
+        "album": "The Stone Roses",
+        "duration": 594,
+        "identifier": [
+          "urn:isrc:GBAHJ0900020"
+        ],
+        "location": [
+          "https://open.spotify.com/track/2mv6GY70UsHiTCGQZ4JfgC"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "NSD11dnphg0"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Don't Save Us From The Flames",
+        "creator": "M83",
+        "album": "Before The Dawn Heals Us",
+        "duration": 256,
+        "identifier": [
+          "urn:isrc:FR86W0400202"
+        ],
+        "location": [
+          "https://open.spotify.com/track/1F1oSc7mdgcqZGO1zSWtWc"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "BpT0rrtwpLg"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Telegram Sam",
+        "creator": "Bauhaus",
+        "album": "Bauhaus - 1979-1983 Volume One",
+        "duration": 130,
+        "identifier": [
+          "urn:isrc:GBAFL9800123"
+        ],
+        "location": [
+          "https://open.spotify.com/track/6vUD4r17csixgwR84VhpCF"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "sCluiViSnNA"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Blues From a Gun",
+        "creator": "The Jesus and Mary Chain",
+        "album": "Automatic",
+        "duration": 284,
+        "identifier": [
+          "urn:isrc:GBAHT0200228"
+        ],
+        "location": [
+          "https://open.spotify.com/track/5nMso5FEWjwCy9dyrh5Nj3"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "TIOim3J-jpU"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Bizarre Love Triangle",
+        "creator": "New Order",
+        "album": "Brotherhood (Collector's Edition)",
+        "duration": 263,
+        "identifier": [
+          "urn:isrc:GBCRL0800398"
+        ],
+        "location": [
+          "https://open.spotify.com/track/6wVViUl2xSRoDK2T7dMZbR"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "tkOr12AQpnU"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Call the Ships to Port",
+        "creator": "Covenant",
+        "album": "Northern Light",
+        "duration": 296,
+        "identifier": [
+          "urn:isrc:US57M0526102"
+        ],
+        "location": [
+          "https://open.spotify.com/track/12cRi8UWQiziuzZz7ICJxI"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "7eDkFlVSwnk"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Everywhere",
+        "creator": "Cranes",
+        "album": "Forever (Expanded Edition)",
+        "duration": 222,
+        "identifier": [
+          "urn:isrc:GBARL9300282"
+        ],
+        "location": [
+          "https://open.spotify.com/track/6sqVAbU5ghe076ecYhImXG"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "AovFHWeVYzE"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Runaways",
+        "creator": "The Outrunners",
+        "album": "Valerie and Friends",
+        "duration": 296,
+        "identifier": [
+          "urn:isrc:FR6V80917874"
+        ],
+        "location": [
+          "https://open.spotify.com/track/22XvOGl7eqbcQowbDIzYRk"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "e3OediCUTnU"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Pearl - 12'' Version",
+        "creator": "Chapterhouse",
+        "album": "Best Of",
+        "duration": 315,
+        "identifier": [
+          "urn:isrc:GBARL0700007"
+        ],
+        "location": [
+          "https://open.spotify.com/track/19QGKOXTqmk1ezHQpiUIwA"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "Yn_HcXkP8iY"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Temple of Love - Extended Version 1983",
+        "creator": "Sisters of Mercy",
+        "album": "A Slight Case Of Overbombing",
+        "duration": 488,
+        "identifier": [
+          "urn:isrc:GBAHS0104669"
+        ],
+        "location": [
+          "https://open.spotify.com/track/0cddvowG9DCT9VeZxRlPJm"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "OYI5fT-_Biw"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Era Extraña",
+        "creator": "Neon Indian",
+        "album": "Era Extraña",
+        "duration": 177,
+        "identifier": [
+          "urn:isrc:USQE91100056"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3iNyJNTzOxgcTdhlsqcwM6"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "6YPlpMSKaHY"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Equus",
+        "creator": "Blonde Redhead",
+        "album": "Misery Is A Butterfly",
+        "duration": 232,
+        "identifier": [
+          "urn:isrc:GBAFL0300106"
+        ],
+        "location": [
+          "https://open.spotify.com/track/0Pm22ZnawzREOq4nsUWTU2"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "QZHzgtT4VZE"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Sometimes",
+        "creator": "Miami Horror",
+        "album": "Illumination",
+        "duration": 254,
+        "identifier": [
+          "urn:isrc:AUMH31000072"
+        ],
+        "location": [
+          "https://open.spotify.com/track/1KgA0ezbFwyPN0LX5qzHG5"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "Fn7FXGaHTNs"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Sidewalk Safari",
+        "creator": "Chairlift",
+        "album": "Something",
+        "duration": 229,
+        "identifier": [
+          "urn:isrc:USSM11104427"
+        ],
+        "location": [
+          "https://open.spotify.com/track/6nsZ23hRFXCVkk9NwuzAz0"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "6HgwFOg6r0U"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Above And Below",
+        "creator": "Information Society",
+        "album": "_hello world",
+        "duration": 233,
+        "identifier": [
+          "urn:isrc:USY251482308"
+        ],
+        "location": [
+          "https://open.spotify.com/track/4EZMLPrsal3RwVyaHqKald"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "WuCSix2f1p0"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Graveyard girl",
+        "creator": "M83",
+        "album": "Saturdays = Youth",
+        "duration": 294,
+        "identifier": [
+          "urn:isrc:GBSLQ0700004"
+        ],
+        "location": [
+          "https://open.spotify.com/track/0HVjCKQ186bu8Cj0LEn7lQ"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "gY8iy8S0S4w"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "(T-T)b",
+        "creator": "Anamanaguchi",
+        "album": "Endless Fantasy",
+        "duration": 215,
+        "identifier": [
+          "urn:isrc:USA2B1301843"
+        ],
+        "location": [
+          "https://open.spotify.com/track/0H6PcqeMvCYNoYs7Kplb0N"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "k8RLrr96DL8"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Dreamer",
+        "creator": "FM Attack",
+        "album": "Dreamatic",
+        "duration": 377,
+        "identifier": [
+          "urn:isrc:CA1HD0900028"
+        ],
+        "location": [
+          "https://open.spotify.com/track/4gTfQBnMbR4q6vzko4UOnp"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "GQ88xK3XmpQ"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Recover",
+        "creator": "CHVRCHES",
+        "album": "The Bones Of What You Believe",
+        "duration": 224,
+        "identifier": [
+          "urn:isrc:GBZN81300029"
+        ],
+        "location": [
+          "https://open.spotify.com/track/6lhhlLeHUGSfoz29LMtNyQ"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "SQc7b-nKsLo"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Assassin",
+        "creator": "Muse",
+        "album": "Black Holes and Revelations",
+        "duration": 211,
+        "identifier": [
+          "urn:isrc:GBAHT0500597"
+        ],
+        "location": [
+          "https://open.spotify.com/track/6JnFVmPyJvjnfBag0hhIFa"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "nNPSSs1xnpY"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Drive",
+        "creator": "Incubus",
+        "album": "Make Yourself",
+        "duration": 232,
+        "identifier": [
+          "urn:isrc:USSM19911007"
+        ],
+        "location": [
+          "https://open.spotify.com/track/7nnWIPM5hwE3DaUBkvOIpy"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "fgT9zGkiLig"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Deadbeat Summer",
+        "creator": "Neon Indian",
+        "album": "Mind Ctrl: Psychic Chasms Possessed",
+        "duration": 242,
+        "identifier": [
+          "urn:isrc:US4HB1000002"
+        ],
+        "location": [
+          "https://open.spotify.com/track/44MmHQtweCsGSwmb8xfBQC"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "qlJ27Dcv4fc"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Hallelujah",
+        "creator": "Jeff Buckley",
+        "album": "Grace (Legacy Edition)",
+        "duration": 413,
+        "identifier": [
+          "urn:isrc:USSM19400915"
+        ],
+        "location": [
+          "https://open.spotify.com/track/74X1epeRufHckhuX1KFD04"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "y8AWFf7EAc4"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
