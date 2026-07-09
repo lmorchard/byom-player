@@ -202,6 +202,9 @@ player.providerConfig = {};
   authorize, polls for the token, then discovers your server(s) — auto-selecting
   a single server (or one matching `serverName`) and otherwise showing a picker.
   Fully client-side; **no redirect page needed** (poll-based, unlike Spotify).
+  Once linked, an "Unlink Plex" button clears the stored session. The background
+  availability prescan is skipped until a session exists, so an unlinked player
+  never probes a server.
 
 **Notes:** direct-play only for now — a codec the browser can't decode won't play
 (transcode support is a follow-up). The browser talks to your server directly, so

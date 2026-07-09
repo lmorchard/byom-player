@@ -79,6 +79,12 @@ export class PlexProvider implements AudioProvider {
     return 'plex:' + this.base;
   }
 
+  // A usable session needs both a server and a token. Until then we must not
+  // probe the server (the background prescan would 401 on every track).
+  private get authed(): boolean {
+    return !!(this.base && this.token);
+  }
+
   attach(element: HTMLElement): void {
     this.target = element;
   }
@@ -91,6 +97,7 @@ export class PlexProvider implements AudioProvider {
     const existing = await this.auth?.getSession();
     if (existing) {
       this.applySession(existing);
+      this.renderUnlink();
       this.callback('ready');
       return;
     }
@@ -123,7 +130,7 @@ export class PlexProvider implements AudioProvider {
         return;
       }
       this.applySession(result);
-      this.target?.replaceChildren();
+      this.renderUnlink();
     } catch (err) {
       this.log('link failed', err);
       btn.disabled = false;
@@ -147,11 +154,31 @@ export class PlexProvider implements AudioProvider {
     if (!this.auth?.selectServer) return;
     try {
       this.applySession(await this.auth.selectServer(id));
-      this.target?.replaceChildren();
+      this.renderUnlink();
     } catch (err) {
       this.log('server select failed', err);
       this.callback('error');
     }
+  }
+
+  private renderUnlink(): void {
+    if (!this.target) return;
+    this.target.replaceChildren();
+    const btn = this.target.ownerDocument.createElement('button');
+    btn.className = 'byom-plex-unlink';
+    btn.textContent = 'Unlink Plex';
+    btn.addEventListener('click', () => void this.handleUnlink());
+    this.target.appendChild(btn);
+  }
+
+  private handleUnlink(): void {
+    this.auth?.logout();
+    this.base = '';
+    this.token = '';
+    this.audio.pause();
+    this.audio.removeAttribute('src');
+    this.renderLink();
+    this.callback('ready');
   }
 
   async load(track: Track): Promise<void> {
@@ -219,6 +246,7 @@ export class PlexProvider implements AudioProvider {
   }
 
   async checkAvailability(track: Track): Promise<AvailabilityStatus> {
+    if (!this.authed) return 'unknown'; // not linked yet — don't probe the server
     try {
       return (await this.resolve(track)) ? 'available' : 'unavailable';
     } catch {

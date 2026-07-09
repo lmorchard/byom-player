@@ -149,6 +149,14 @@ describe('PlexProvider resolution', () => {
     expect(await p.checkAvailability({ title: 'T', artist: 'A' })).toBe('unknown');
   });
 
+  it('checkAvailability returns unknown WITHOUT probing when there is no auth', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    // No token yet (PIN flow not linked): a base URL alone is not enough.
+    const p = new PlexProvider({ baseUrl: 'https://plex.example:32400', cache: false });
+    expect(await p.checkAvailability({ title: 'T', artist: 'A' })).toBe('unknown');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('caches a resolved part key (scoped by baseUrl)', async () => {
     const cache = new FakeCache();
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(searchResponse('/p/live'));
@@ -256,6 +264,29 @@ describe('PlexProvider auth integration', () => {
     expect(btn).not.toBeNull();
     btn.click();
     await vi.waitFor(() => expect((p as unknown as { token: string }).token).toBe('AT'));
+  });
+
+  it('shows an Unlink button for a cached session; clicking it logs out and returns to Link', async () => {
+    const el = document.createElement('div');
+    let loggedIn = true;
+    const p = new PlexProvider({
+      auth: fakeAuth({
+        hasSession: () => loggedIn,
+        getSession: async () =>
+          loggedIn ? { baseUrl: 'https://c.example:32400', token: 'CT' } : null,
+        logout: () => {
+          loggedIn = false;
+        },
+      }),
+    });
+    p.attach(el);
+    await p.initialize();
+    const unlink = el.querySelector('.byom-plex-unlink') as HTMLButtonElement;
+    expect(unlink).not.toBeNull();
+    unlink.click();
+    await vi.waitFor(() => expect(el.querySelector('.byom-plex-link')).not.toBeNull());
+    expect(loggedIn).toBe(false);
+    expect((p as unknown as { token: string }).token).toBe('');
   });
 
   it('shows a server picker when linking returns multiple servers', async () => {
