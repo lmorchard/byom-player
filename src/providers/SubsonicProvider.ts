@@ -211,10 +211,16 @@ export class SubsonicProvider implements AudioProvider {
       this.log('cache hit', track.artist, '-', track.title, '->', cached);
       return cached;
     }
+    if (cached === null) {
+      // A known miss still within its TTL — skip search3.
+      this.log('cache miss (known)', track.artist, '-', track.title);
+      return null;
+    }
     const query = `${track.artist} ${track.title}`.trim();
     const data = await this.fetchJson(this.url('search3.view', { query, songCount: '1' }));
     const id = data?.['subsonic-response']?.searchResult3?.song?.[0]?.id ?? null;
     if (id) this.cache?.set(this.scope, key, id);
+    else this.cache?.setMiss(this.scope, key);
     return id;
   }
 
@@ -226,7 +232,8 @@ export class SubsonicProvider implements AudioProvider {
   // isResolutionCached reports whether resolve() would answer this track from
   // cache (no search3). Lets the availability sweep skip its throttle on hits.
   isResolutionCached(track: Track): boolean {
-    return !!this.cache?.get(this.scope, trackKey(track));
+    // A hit OR a known (unexpired) miss both answer without touching the server.
+    return this.cache?.get(this.scope, trackKey(track)) !== undefined;
   }
 
   // handleAudioError distinguishes a stale cached id (errors before it ever

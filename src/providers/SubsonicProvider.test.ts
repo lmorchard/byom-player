@@ -4,21 +4,28 @@ import type { ProviderState } from './types';
 import type { ResolutionCache } from './resolutionCache';
 import { md5 } from '../md5';
 
-// In-memory ResolutionCache that records interactions for assertions.
+// In-memory ResolutionCache that records interactions for assertions. A value of
+// `null` is a known miss; absence is unknown. (No TTL — the real cache owns that.)
 class FakeCache implements ResolutionCache {
-  store = new Map<string, string>();
+  store = new Map<string, string | null>();
   gets: Array<[string, string]> = [];
   sets: Array<[string, string, string]> = [];
+  misses: Array<[string, string]> = [];
   private ck(scope: string, key: string) {
     return scope + '|' + key;
   }
-  get(scope: string, key: string) {
+  get(scope: string, key: string): string | null | undefined {
     this.gets.push([scope, key]);
-    return this.store.get(this.ck(scope, key));
+    const ck = this.ck(scope, key);
+    return this.store.has(ck) ? this.store.get(ck) : undefined;
   }
   set(scope: string, key: string, id: string) {
     this.sets.push([scope, key, id]);
     this.store.set(this.ck(scope, key), id);
+  }
+  setMiss(scope: string, key: string) {
+    this.misses.push([scope, key]);
+    this.store.set(this.ck(scope, key), null);
   }
   evict(scope: string, key: string) {
     this.store.delete(this.ck(scope, key));
@@ -417,6 +424,34 @@ describe('SubsonicProvider', () => {
     await p.resolve({ title: 'T', artist: 'A' });
     expect(cache.gets).toHaveLength(0);
     expect(cache.sets).toHaveLength(0);
+  });
+
+  it('caches a miss and skips search3 on the next resolve', async () => {
+    const cache = new FakeCache();
+    const fetchMock = mockSearch(null); // server has no match
+    const p = new SubsonicProvider({
+      baseUrl: 'https://nav.example',
+      apiKey: 'K',
+      resolutionCache: cache,
+    });
+    expect(await p.resolve({ title: 't', artist: 'a' })).toBeNull();
+    expect(cache.misses).toEqual([['subsonic:https://nav.example', 'q:a|t']]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // second resolve: known miss -> no search
+    expect(await p.resolve({ title: 't', artist: 'a' })).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('isResolutionCached is true for a known miss', () => {
+    const cache = new FakeCache();
+    cache.setMiss('subsonic:https://nav.example', 'q:a|t');
+    const p = new SubsonicProvider({
+      baseUrl: 'https://nav.example',
+      apiKey: 'K',
+      resolutionCache: cache,
+    });
+    expect(p.isResolutionCached({ title: 't', artist: 'a' })).toBe(true);
   });
 
   it('isResolutionCached reflects cache membership', () => {

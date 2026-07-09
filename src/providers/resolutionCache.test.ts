@@ -96,6 +96,54 @@ describe('LocalStorageResolutionCache', () => {
     expect(c.get('s', 'k')).toBe('id');
   });
 
+  it('setMiss returns null within the TTL', () => {
+    let t = 1000;
+    const c = new LocalStorageResolutionCache({
+      storage: fakeStorage(),
+      now: () => t,
+      missTtlMs: 3_600_000,
+    });
+    expect(c.get('s', 'k')).toBeUndefined();
+    c.setMiss('s', 'k');
+    expect(c.get('s', 'k')).toBeNull(); // known miss
+    t += 3_599_000; // just under the TTL
+    expect(c.get('s', 'k')).toBeNull();
+  });
+
+  it('forgets a miss once past the TTL (persisted eviction)', () => {
+    let t = 1000;
+    const storage = fakeStorage();
+    const c = new LocalStorageResolutionCache({ storage, now: () => t, missTtlMs: 3_600_000 });
+    c.setMiss('s', 'k');
+    t += 3_600_000; // at the TTL
+    expect(c.get('s', 'k')).toBeUndefined(); // expired
+    // eviction is written through: a fresh instance doesn't see it either
+    const fresh = new LocalStorageResolutionCache({ storage, now: () => t });
+    expect(fresh.get('s', 'k')).toBeUndefined();
+  });
+
+  it('persists misses across instances within the TTL', () => {
+    const t = 1000;
+    const storage = fakeStorage();
+    new LocalStorageResolutionCache({ storage, now: () => t }).setMiss('s', 'k');
+    const fresh = new LocalStorageResolutionCache({ storage, now: () => t });
+    expect(fresh.get('s', 'k')).toBeNull();
+  });
+
+  it('migrates legacy string entries to hits', () => {
+    const storage = fakeStorage();
+    // Write a real entry, then rewrite it in the pre-existing bare-string format
+    // (value was the id directly, before misses needed an object). Avoids
+    // hardcoding the internal composite-key separator.
+    new LocalStorageResolutionCache({ storage }).set('s', 'k', 'legacy-id');
+    const raw = JSON.parse(storage.getItem('byom-player:resolv:v1')!);
+    for (const key of Object.keys(raw)) raw[key] = raw[key].id; // { id } -> "id"
+    storage.setItem('byom-player:resolv:v1', JSON.stringify(raw));
+
+    const fresh = new LocalStorageResolutionCache({ storage });
+    expect(fresh.get('s', 'k')).toBe('legacy-id');
+  });
+
   it('evicts oldest entries (FIFO) at the cap', () => {
     const c = new LocalStorageResolutionCache({ storage: fakeStorage(), maxEntries: 2 });
     c.set('s', 'a', '1');

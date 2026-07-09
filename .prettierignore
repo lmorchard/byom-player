@@ -3,3 +3,6 @@ dist/
 tmp/
 docs/
 .claude/
+
+# byom-sync-generated JSPF fixtures — kept as-emitted, not style-checked
+public/playlists/
