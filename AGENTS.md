@@ -89,6 +89,19 @@ Prettier check) · `npm run build` (`tsc --noEmit` + Vite lib build) ·
   browser-only/manual like `YtIframeEngine`; unit tests drive a fake engine +
   fake auth. Needs a registered Spotify app + `public/callback.html` as a
   redirect URI.
+- **plex** (`src/providers/plex/`) — HTML5 `<audio>` like Subsonic (no engine
+  seam). Resolves via `/library/search` → the first track's direct-play `Part`
+  key (`firstTrackPartKey` tolerates both `SearchResult[].Metadata` and
+  `Metadata[]` shapes); streams `{base}{part.key}?X-Plex-Token=…`. Reuses
+  `resolutionCache` + the stale-part-key recovery pattern. Auth is **token-in**
+  (`baseUrl` + `token`) **or** a poll-based **PIN device-link** (`plex.tv/api/v2`
+  in `plex/auth.ts`): create pin → `app.plex.tv/auth` popup → poll → discover
+  servers (`/resources`) → auto-select single/`serverName` or a picker →
+  `pickConnection` probes `/identity` (prefers local, then `plex.direct`). No
+  `callback.html` (poll-based, unlike Spotify); session cached in `localStorage`.
+  `initialize`: token-in → ready; cached session → apply; else "Link Plex"
+  button. Direct-play only (transcode is a follow-up). Live server + plex.tv CORS
+  are verified manually.
 
 ## Gotchas
 
