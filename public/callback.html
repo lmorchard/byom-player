@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Spotify login</title>
+  </head>
+  <body>
+    <p>Completing Spotify login…</p>
+    <script>
+      // Static PKCE popup landing page. Sends the ?code= (or ?error=) back to
+      // the opener, which completes the token exchange, then closes.
+      if (window.opener) {
+        window.opener.postMessage(window.location.search, window.location.origin);
+        window.close();
+      } else {
+        document.body.textContent = 'Please return to the player tab.';
+      }
+    </script>
+  </body>
+</html>
