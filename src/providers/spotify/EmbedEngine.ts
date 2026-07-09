@@ -58,7 +58,6 @@ export class EmbedEngine implements SpotifyEngine {
     await new Promise<void>((resolve) => {
       api.createController(holder, { width: '100%', height: 152 }, (controller) => {
         this.controller = controller;
-        controller.addListener('ready', () => resolve());
         controller.addListener(
           'playback_update',
           (e: { data: { isPaused: boolean; position: number; duration: number } }) => {
@@ -71,6 +70,11 @@ export class EmbedEngine implements SpotifyEngine {
             }
           },
         );
+        // The createController callback is the readiness signal. A separate
+        // 'ready' event is NOT reliably emitted before the controller is usable
+        // (it can fire after the first loadUri, or not at all), so resolving on
+        // it would hang initialize(). Resolve here instead.
+        resolve();
       });
     });
   }
@@ -79,7 +83,8 @@ export class EmbedEngine implements SpotifyEngine {
     this.controller?.loadUri(uri);
   }
   play(): void {
-    this.controller?.resume();
+    // play() (not resume()) is the documented call to start a freshly loaded uri.
+    this.controller?.play();
   }
   pause(): void {
     this.controller?.pause();
