@@ -80,8 +80,11 @@ Prettier check) · `npm run build` (`tsc --noEmit` + Vite lib build) ·
   `checkAvailability` IS implemented (network-less). Provider-owned **PKCE**
   popup login (`pkce.ts`/`auth.ts`, fully static, no backend; token cached in
   `localStorage`). `initialize` picks the tier: `forceEmbed` → embed; token →
-  SDK, falling back to embed on `NotPremiumError`; no token → renders a "Connect
-  Spotify" button into the `attach` surface. Real SDK/embed engines are
+  SDK, falling back to embed on `NotPremiumError`; no token → mounts the embed
+  (plays for a viewer already signed into Spotify) **and** shows a "Connect
+  Spotify" button to upgrade to the SDK. Engine teardown + surface reset live in
+  `useEngine()` so embed↔sdk swaps on connect/disconnect are clean. A Disconnect
+  button clears the token + tears down the device. Real SDK/embed engines are
   browser-only/manual like `YtIframeEngine`; unit tests drive a fake engine +
   fake auth. Needs a registered Spotify app + `public/callback.html` as a
   redirect URI.

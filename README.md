@@ -134,7 +134,14 @@ it into the JSPF `location`), so there's no search step. It runs in two tiers:
 The provider owns a client-side **PKCE** login: it renders a "Connect Spotify"
 button, opens a popup to Spotify's authorize page, and exchanges the code for a
 token — no client secret, no backend. Non-Premium accounts fall back to the
-embed automatically.
+embed automatically, and a "Disconnect Spotify" button clears the session.
+
+Until you connect, the provider mounts the embed so playback still works for a
+listener already signed into Spotify in that browser (Premium → full tracks,
+free → 30s previews where available). Note: a fully signed-out visitor may get
+no playable source for some tracks — Spotify's embed increasingly requires a
+Spotify session — so treat "connect" (or an existing Spotify login) as the path
+to reliable playback.
 
 ```js
 player.provider = 'spotify';
