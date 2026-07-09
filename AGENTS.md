@@ -75,8 +75,9 @@ Prettier check) · `npm run build` (`tsc --noEmit` + Vite lib build) ·
   visible video below the tracklist.
 - **spotify** (`src/providers/spotify/`) — two tiers behind a `SpotifyEngine`
   seam (mirrors `YouTubeEngine`): `WebPlaybackEngine` (SDK, **Premium**, full
-  tracks, headless) and `EmbedEngine` (iframe, free = 30s previews, visible
-  chrome). Resolution is free — parses `track.spotifyUrl` (no search), so
+  tracks, headless) and `EmbedEngine` (iframe, 30s previews in practice — even
+  for signed-in Premium; full tracks come from the SDK tier; visible chrome).
+  Resolution is free — parses `track.spotifyUrl` (no search), so
   `checkAvailability` IS implemented (network-less). Provider-owned **PKCE**
   popup login (`pkce.ts`/`auth.ts`, fully static, no backend; token cached in
   `localStorage`). `initialize` picks the tier: `forceEmbed` → embed; token →

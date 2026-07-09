@@ -125,11 +125,12 @@ it into the JSPF `location`), so there's no search step. It runs in two tiers:
 - **Web Playback SDK (Premium)** — full-track, headless playback with real
   seek/position. Requires the listener to have **Spotify Premium** and to
   authenticate.
-- **Embed iframe (fallback)** — for non-Premium/unauthenticated listeners.
-  Free/logged-out listeners get **30-second previews**; a listener's own Premium
-  login yields full tracks. Spotify's embed renders its own visible player, so
-  the component's controls drive it and stay in sync, but the Spotify chrome
-  can't be hidden.
+- **Embed iframe (fallback)** — for listeners who haven't connected. In practice
+  the embed plays **30-second previews** (this holds even for signed-in Premium
+  listeners — full-track playback is what the SDK tier is for). A fully
+  signed-out visitor may get no playable source for some tracks. Spotify's embed
+  renders its own visible player, so the component's controls drive it and stay
+  in sync, but the Spotify chrome can't be hidden.
 
 The provider owns a client-side **PKCE** login: it renders a "Connect Spotify"
 button, opens a popup to Spotify's authorize page, and exchanges the code for a
@@ -137,11 +138,10 @@ token — no client secret, no backend. Non-Premium accounts fall back to the
 embed automatically, and a "Disconnect Spotify" button clears the session.
 
 Until you connect, the provider mounts the embed so playback still works for a
-listener already signed into Spotify in that browser (Premium → full tracks,
-free → 30s previews where available). Note: a fully signed-out visitor may get
-no playable source for some tracks — Spotify's embed increasingly requires a
-Spotify session — so treat "connect" (or an existing Spotify login) as the path
-to reliable playback.
+listener already signed into Spotify in that browser — as **30-second previews**
+(the embed is preview-only in practice, even for Premium). A fully signed-out
+visitor may get no playable source for some tracks. Connecting is the path to
+full-track playback (Premium, via the SDK).
 
 ```js
 player.provider = 'spotify';
