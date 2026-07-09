@@ -11,9 +11,9 @@ tmp/
 *.log
 .DS_Store
 
+# Playwright MCP artifacts (snapshots/screenshots from local driving)
+.playwright-mcp/
+
 # Editors
 .idea/
 .vscode/
-
-# Local test manifests (not committed)
-public/playlists/
