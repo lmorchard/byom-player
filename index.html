@@ -127,6 +127,10 @@
         <fieldset id="fs-subsonic">
           <legend>Subsonic / OpenSubsonic</legend>
           <label>Base URL <input name="baseUrl" placeholder="https://music.example.com" /></label>
+          <p class="hint">
+            http server? Set a *_PROXY_TARGET in .env.local and use its route here (e.g.
+            <code>/navidrome</code>) — the https harness can't fetch http directly.
+          </p>
           <label>Username <input name="username" autocomplete="off" /></label>
           <label>Password <input name="password" type="password" autocomplete="off" /></label>
           <p class="or">— or —</p>

@@ -7,6 +7,10 @@ dist/
 # Disposable prototype/scratch work
 tmp/
 
+# Local env (dev proxy targets, secrets) — see .env.example
+.env.local
+.env*.local
+
 # Logs / OS
 *.log
 .DS_Store
