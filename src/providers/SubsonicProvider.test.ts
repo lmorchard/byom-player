@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SubsonicProvider } from './SubsonicProvider';
 import type { ProviderState } from './types';
 import type { ResolutionCache } from './resolutionCache';
@@ -75,7 +75,34 @@ function scrobbleCalls(fetchMock: { mock: { calls: unknown[][] } }) {
     .filter((u) => u.pathname === '/rest/scrobble.view');
 }
 
-afterEach(() => vi.restoreAllMocks());
+// Providers created without an injected cache use the real localStorage-backed
+// ResolutionCache. Give the suite a real localStorage so that path is exercised
+// the same everywhere (CI's Node exposes one; happy-dom locally does not), and
+// reset it around every test so resolved ids never leak between cases.
+function installLocalStorage(): void {
+  if (typeof globalThis.localStorage !== 'undefined') return;
+  const m = new Map<string, string>();
+  (globalThis as { localStorage: Storage }).localStorage = {
+    get length() {
+      return m.size;
+    },
+    clear: () => m.clear(),
+    getItem: (k) => (m.has(k) ? m.get(k)! : null),
+    key: (i) => [...m.keys()][i] ?? null,
+    removeItem: (k) => void m.delete(k),
+    setItem: (k, v) => void m.set(k, String(v)),
+  } as Storage;
+}
+
+beforeEach(() => {
+  installLocalStorage();
+  globalThis.localStorage.clear();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  globalThis.localStorage?.clear();
+});
 
 describe('SubsonicProvider', () => {
   it('resolve builds a search3 URL from "{artist} {title}" and returns the top song id', async () => {
