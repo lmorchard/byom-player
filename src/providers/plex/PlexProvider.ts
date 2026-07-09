@@ -254,6 +254,13 @@ export class PlexProvider implements AudioProvider {
     }
   }
 
+  // Lets the availability sweep skip its cooldown for tracks it can answer from
+  // cache without touching the server (a hit or a known miss both qualify).
+  isResolutionCached(track: Track): boolean {
+    if (!this.authed) return false;
+    return this.cache?.get(this.scope, trackKey(track)) !== undefined;
+  }
+
   streamUrl(partKey: string): string {
     const url = new URL(this.base + partKey);
     url.searchParams.set('X-Plex-Token', this.token);

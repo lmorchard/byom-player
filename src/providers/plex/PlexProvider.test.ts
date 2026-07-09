@@ -157,6 +157,23 @@ describe('PlexProvider resolution', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('isResolutionCached reflects cache membership (hit or known miss), gated by auth', () => {
+    const cache = new FakeCache();
+    cache.set('plex:https://plex.example:32400', 'q:a|t', '/p/1');
+    cache.setMiss('plex:https://plex.example:32400', 'q:b|u');
+    const p = new PlexProvider({ ...CFG, resolutionCache: cache });
+    expect(p.isResolutionCached({ title: 't', artist: 'a' })).toBe(true); // hit
+    expect(p.isResolutionCached({ title: 'u', artist: 'b' })).toBe(true); // known miss
+    expect(p.isResolutionCached({ title: 'z', artist: 'z' })).toBe(false); // absent
+
+    // Unlinked (no token): nothing counts as cached, so the sweep won't skip cooldown.
+    const unauthed = new PlexProvider({
+      baseUrl: 'https://plex.example:32400',
+      resolutionCache: cache,
+    });
+    expect(unauthed.isResolutionCached({ title: 't', artist: 'a' })).toBe(false);
+  });
+
   it('caches a resolved part key (scoped by baseUrl)', async () => {
     const cache = new FakeCache();
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(searchResponse('/p/live'));
