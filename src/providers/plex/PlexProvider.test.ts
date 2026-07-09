@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PlexProvider, firstTrackPartKey } from './PlexProvider';
 import type { ProviderState } from '../types';
 import type { ResolutionCache } from '../resolutionCache';
+import type { PlexAuthLike, PlexSession } from './types';
 
 class FakeCache implements ResolutionCache {
   store = new Map<string, string | null>();
@@ -204,5 +205,77 @@ describe('PlexProvider playback', () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(cache.get('plex:https://plex.example:32400', 'q:a|t')).toBe('/p/fresh');
     expect(audio.src).toContain('/p/fresh');
+  });
+});
+
+function fakeAuth(over: Partial<PlexAuthLike> = {}): PlexAuthLike {
+  const session: PlexSession = { baseUrl: 'https://s.example:32400', token: 'AT' };
+  return {
+    hasSession: () => false,
+    getSession: async () => null,
+    link: async () => session,
+    logout: () => {},
+    pendingServers: () => [],
+    selectServer: async () => session,
+    ...over,
+  };
+}
+
+describe('PlexProvider auth integration', () => {
+  it('uses config token-in directly (no link button)', async () => {
+    const el = document.createElement('div');
+    const p = new PlexProvider(CFG);
+    p.attach(el);
+    await p.initialize();
+    expect(el.querySelector('.byom-plex-link')).toBeNull();
+  });
+
+  it('uses a cached session when present', async () => {
+    const el = document.createElement('div');
+    const p = new PlexProvider({
+      auth: fakeAuth({
+        hasSession: () => true,
+        getSession: async () => ({ baseUrl: 'https://c.example:32400', token: 'CT' }),
+      }),
+    });
+    p.attach(el);
+    await p.initialize();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(searchResponse('/p/1'));
+    await p.load({ title: 'T', artist: 'A' });
+    const audio = (p as unknown as { audio: HTMLAudioElement }).audio;
+    expect(audio.src).toContain('https://c.example:32400/p/1');
+    expect(audio.src).toContain('X-Plex-Token=CT');
+  });
+
+  it('renders a Link button with no session, then links + plays on click', async () => {
+    const el = document.createElement('div');
+    const p = new PlexProvider({ auth: fakeAuth() });
+    p.attach(el);
+    await p.initialize();
+    const btn = el.querySelector('.byom-plex-link') as HTMLButtonElement;
+    expect(btn).not.toBeNull();
+    btn.click();
+    await vi.waitFor(() => expect((p as unknown as { token: string }).token).toBe('AT'));
+  });
+
+  it('shows a server picker when linking returns multiple servers', async () => {
+    const el = document.createElement('div');
+    const p = new PlexProvider({
+      auth: fakeAuth({
+        link: async () => ({
+          servers: [
+            { id: 'a', name: 'A' },
+            { id: 'b', name: 'B' },
+          ],
+        }),
+        selectServer: async () => ({ baseUrl: 'https://picked:32400', token: 'PT' }),
+      }),
+    });
+    p.attach(el);
+    await p.initialize();
+    (el.querySelector('.byom-plex-link') as HTMLButtonElement).click();
+    await vi.waitFor(() => expect(el.querySelectorAll('.byom-plex-server').length).toBe(2));
+    (el.querySelectorAll('.byom-plex-server')[1] as HTMLButtonElement).click();
+    await vi.waitFor(() => expect((p as unknown as { token: string }).token).toBe('PT'));
   });
 });

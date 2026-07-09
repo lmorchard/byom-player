@@ -1,7 +1,8 @@
 import type { Track } from '../../types';
 import type { AudioProvider, AvailabilityStatus, ProviderState } from '../types';
 import { trackKey, LocalStorageResolutionCache, type ResolutionCache } from '../resolutionCache';
-import type { PlexConfig } from './types';
+import { PlexAuth } from './auth';
+import type { PlexAuthLike, PlexConfig, PlexSession } from './types';
 
 // Pull the first track's direct-play Part key out of a Plex search response.
 // Tolerates both /library/search (SearchResult[].Metadata) and older Metadata[].
@@ -33,9 +34,11 @@ export class PlexProvider implements AudioProvider {
   private callback: (s: ProviderState) => void = () => {};
   private progressCallback: (positionMs: number, durationMs: number) => void = () => {};
 
-  // Session (base + token). Set from config here; the PIN flow sets it in Task 4.
+  // Session (base + token): from config (token-in), a cached link, or the PIN flow.
   protected base = '';
   protected token = '';
+  private readonly auth?: PlexAuthLike;
+  private target: HTMLElement | null = null;
 
   // Stale-id recovery state (reset in load()).
   private currentTrack: Track | null = null;
@@ -52,6 +55,9 @@ export class PlexProvider implements AudioProvider {
       this.cfg.cache === false
         ? null
         : (this.cfg.resolutionCache ?? new LocalStorageResolutionCache());
+    // Token-in config needs no auth client; otherwise use the PIN/discovery client.
+    this.auth =
+      this.cfg.auth ?? (this.cfg.baseUrl && this.cfg.token ? undefined : new PlexAuth(this.cfg));
 
     const opts = { signal: this.listeners.signal };
     this.audio.addEventListener(
@@ -73,9 +79,79 @@ export class PlexProvider implements AudioProvider {
     return 'plex:' + this.base;
   }
 
+  attach(element: HTMLElement): void {
+    this.target = element;
+  }
+
   async initialize(): Promise<void> {
-    // Token-in path (Task 1). The PIN / cached-session paths are added in Task 4.
+    if (this.base && this.token) {
+      this.callback('ready'); // token-in config
+      return;
+    }
+    const existing = await this.auth?.getSession();
+    if (existing) {
+      this.applySession(existing);
+      this.callback('ready');
+      return;
+    }
+    this.renderLink();
     this.callback('ready');
+  }
+
+  private applySession(s: PlexSession): void {
+    this.base = s.baseUrl.replace(/\/$/, '');
+    this.token = s.token;
+  }
+
+  private renderLink(): void {
+    if (!this.target) return;
+    this.target.replaceChildren();
+    const btn = this.target.ownerDocument.createElement('button');
+    btn.className = 'byom-plex-link';
+    btn.textContent = 'Link Plex';
+    btn.addEventListener('click', () => void this.handleLink(btn));
+    this.target.appendChild(btn);
+  }
+
+  private async handleLink(btn: HTMLButtonElement): Promise<void> {
+    if (!this.auth) return;
+    btn.disabled = true;
+    try {
+      const result = await this.auth.link();
+      if ('servers' in result) {
+        this.renderPicker(result.servers);
+        return;
+      }
+      this.applySession(result);
+      this.target?.replaceChildren();
+    } catch (err) {
+      this.log('link failed', err);
+      btn.disabled = false;
+      this.callback('error');
+    }
+  }
+
+  private renderPicker(servers: { id: string; name: string }[]): void {
+    if (!this.target) return;
+    this.target.replaceChildren();
+    for (const s of servers) {
+      const b = this.target.ownerDocument.createElement('button');
+      b.className = 'byom-plex-server';
+      b.textContent = s.name;
+      b.addEventListener('click', () => void this.handlePick(s.id));
+      this.target.appendChild(b);
+    }
+  }
+
+  private async handlePick(id: string): Promise<void> {
+    if (!this.auth?.selectServer) return;
+    try {
+      this.applySession(await this.auth.selectServer(id));
+      this.target?.replaceChildren();
+    } catch (err) {
+      this.log('server select failed', err);
+      this.callback('error');
+    }
   }
 
   async load(track: Track): Promise<void> {
