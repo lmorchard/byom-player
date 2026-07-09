@@ -115,6 +115,15 @@ describe('SpotifyProvider resolution', () => {
     ).toBe('available');
     expect(await p.checkAvailability({ title: 'T', artist: 'A' })).toBe('unavailable');
   });
+
+  it('isResolutionCached is true when a Spotify URL is present (prescan skips its throttle)', () => {
+    const engines = { sdk: new FakeEngine('sdk'), embed: new FakeEngine('embed') };
+    const p = makeProvider(engines);
+    expect(p.isResolutionCached({ title: 'T', artist: 'A', spotifyUrl: 'spotify:track:X' })).toBe(
+      true,
+    );
+    expect(p.isResolutionCached({ title: 'T', artist: 'A' })).toBe(false); // no URL to resolve from
+  });
 });
 
 describe('SpotifyProvider playback plumbing', () => {
