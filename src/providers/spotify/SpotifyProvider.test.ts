@@ -209,11 +209,13 @@ describe('SpotifyProvider engine selection', () => {
     p.attach(el);
     await p.initialize();
 
-    const btn = el.querySelector('button');
+    // Disconnected mounts the embed for playback AND shows a Connect button.
+    expect(engines.embed.attached).toBe(el);
+    const btn = el.querySelector('.byom-spotify-connect');
     expect(btn).not.toBeNull();
-    expect(engines.sdk.loaded).toBeNull(); // not connected yet
+    expect(engines.sdk.loaded).toBeNull(); // SDK not connected yet
 
-    btn!.click();
+    (btn as HTMLButtonElement).click();
     await vi.waitFor(() => expect(engines.sdk.attached).toBe(el));
     await p.load({ title: 'T', artist: 'A', spotifyUrl: 'spotify:track:Z' });
     expect(engines.sdk.loaded).toBe('spotify:track:Z');
@@ -247,8 +249,9 @@ describe('SpotifyProvider engine selection', () => {
     expect(disconnect).not.toBeNull();
 
     (disconnect as HTMLButtonElement).click();
-    await vi.waitFor(() => expect(loggedIn).toBe(false));
+    // Disconnect logs out, tears down the SDK, and returns to the embed + Connect state.
+    await vi.waitFor(() => expect(el.querySelector('.byom-spotify-connect')).not.toBeNull());
+    expect(loggedIn).toBe(false);
     expect(engines.sdk.destroyed).toBe(true);
-    expect(el.querySelector('.byom-spotify-connect')).not.toBeNull(); // back to connect
   });
 });

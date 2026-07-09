@@ -45,8 +45,9 @@ export class SpotifyProvider implements AudioProvider {
     this.target = element;
   }
 
-  // Pick a playback tier: embed when forced, otherwise the SDK when a token is
-  // available (falling back to embed for non-Premium), or a connect button.
+  // Pick a playback tier: embed when forced; otherwise the SDK when a token is
+  // available (falling back to embed for non-Premium), or the embed + a Connect
+  // button when disconnected.
   async initialize(): Promise<void> {
     if (this.cfg.forceEmbed) {
       await this.useEngine('embed');
@@ -54,14 +55,21 @@ export class SpotifyProvider implements AudioProvider {
       return;
     }
     const token = await this.auth.getValidToken();
-    if (!token) {
-      this.renderConnect();
-      this.stateCallback('ready');
-      return;
-    }
-    await this.connectWithFallback();
+    if (token) await this.connectWithFallback();
+    else await this.enterDisconnected();
   }
 
+  // Disconnected: play through the embed (works for a viewer already signed into
+  // Spotify — full tracks if Premium, 30s previews if free) and offer a Connect
+  // button to upgrade to headless SDK playback.
+  private async enterDisconnected(): Promise<void> {
+    await this.useEngine('embed');
+    this.renderControl('connect');
+    this.stateCallback('ready');
+  }
+
+  // With a token in hand, try the SDK, falling back to the embed for non-Premium
+  // accounts. Offers a Disconnect button.
   private async connectWithFallback(): Promise<void> {
     try {
       await this.useEngine('sdk');
@@ -75,55 +83,40 @@ export class SpotifyProvider implements AudioProvider {
         return;
       }
     }
-    this.renderDisconnect();
+    this.renderControl('disconnect');
     this.stateCallback('ready');
   }
 
-  private renderDisconnect(): void {
+  private renderControl(kind: 'connect' | 'disconnect'): void {
     if (!this.target) return;
     const btn = this.target.ownerDocument.createElement('button');
-    btn.textContent = 'Disconnect Spotify';
-    btn.className = 'byom-spotify-disconnect';
+    btn.className = kind === 'connect' ? 'byom-spotify-connect' : 'byom-spotify-disconnect';
+    btn.textContent = kind === 'connect' ? 'Connect Spotify' : 'Disconnect Spotify';
     btn.addEventListener('click', () => {
-      void this.handleDisconnect();
+      if (kind === 'connect') void this.handleConnectClick(btn);
+      else void this.handleDisconnect();
     });
-    // Sits above the embed iframe (if any); the SDK tier has an otherwise-empty
-    // surface.
+    // Sits above the embed iframe (when present); the SDK tier's surface is
+    // otherwise empty.
     this.target.prepend(btn);
-  }
-
-  private async handleDisconnect(): Promise<void> {
-    this.auth.logout();
-    this.stopTicker();
-    this.engine?.destroy();
-    this.engine = null;
-    this.renderConnect();
-    this.stateCallback('ready');
-  }
-
-  private renderConnect(): void {
-    if (!this.target) return;
-    this.target.replaceChildren();
-    const btn = this.target.ownerDocument.createElement('button');
-    btn.textContent = 'Connect Spotify';
-    btn.className = 'byom-spotify-connect';
-    btn.addEventListener('click', () => {
-      void this.handleConnectClick(btn);
-    });
-    this.target.appendChild(btn);
   }
 
   private async handleConnectClick(btn: HTMLButtonElement): Promise<void> {
     btn.disabled = true;
     try {
       await this.auth.login();
-      this.target?.replaceChildren(); // clear the button before mounting an engine
+      // useEngine() clears the disconnected embed + Connect button before mounting.
       await this.connectWithFallback();
     } catch (err) {
       this.log('login failed', err);
       btn.disabled = false;
       this.stateCallback('error');
     }
+  }
+
+  private async handleDisconnect(): Promise<void> {
+    this.auth.logout();
+    await this.enterDisconnected();
   }
 
   async load(track: Track): Promise<void> {
@@ -173,6 +166,13 @@ export class SpotifyProvider implements AudioProvider {
   }
 
   protected async useEngine(kind: EngineKind): Promise<void> {
+    // Tear down any current engine and its DOM so engines (and their control
+    // buttons) can be swapped cleanly on connect/disconnect.
+    this.stopTicker();
+    this.engine?.destroy();
+    this.engine = null;
+    if (this.target) this.target.replaceChildren();
+
     const engine = this.makeEngine(kind);
     engine.onState((s) => this.handleState(s));
     if (this.target) engine.attach(this.target);
