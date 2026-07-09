@@ -45,6 +45,8 @@ export interface YouTubeEngine {
   currentTimeMs(): number;
   durationMs(): number;
   onState(callback: (ytState: number) => void): void;
+  // Register a callback for the IFrame player's onError event (numeric code).
+  onError(callback: (code: number) => void): void;
   destroy(): void;
 }
 
@@ -55,6 +57,34 @@ const YT_PAUSED = 2;
 const YT_CUED = 5;
 const YT_UNSTARTED = -1;
 const PROGRESS_TICK_MS = 250;
+
+// YouTube IFrame onError codes.
+//   2   – invalid videoId parameter
+//   5   – HTML5 player error (transient/playback)
+//   100 – video not found (removed or private)
+//   101 – owner disallows embedded playback
+//   150 – same as 101 (obfuscated variant)
+const YT_ERR_INVALID_ID = 2;
+const YT_ERR_NOT_FOUND = 100;
+const YT_ERR_EMBED_DENIED = 101;
+const YT_ERR_EMBED_DENIED_ALT = 150;
+
+// Map a YouTube onError code to a ProviderState. Permanent conditions for this
+// id (embed denied, removed, invalid) map to 'unavailable' so the controller
+// skips freely without tripping its circuit breaker; anything else (e.g. the
+// HTML5 player error) maps to 'error' — a transient failure that shouldn't be
+// treated as a permanent miss.
+export function mapYtError(code: number): ProviderState {
+  switch (code) {
+    case YT_ERR_INVALID_ID:
+    case YT_ERR_NOT_FOUND:
+    case YT_ERR_EMBED_DENIED:
+    case YT_ERR_EMBED_DENIED_ALT:
+      return 'unavailable';
+    default:
+      return 'error';
+  }
+}
 
 // Map a YouTube player-state code to a ProviderState, or null to emit nothing
 // (e.g. buffering).
@@ -93,6 +123,7 @@ export class YouTubeProvider implements AudioProvider {
     this.cfg = config as unknown as YouTubeConfig;
     this.engine = this.cfg.engine ?? new YtIframeEngine();
     this.engine.onState((yt) => this.handleYtState(yt));
+    this.engine.onError((code) => this.handleYtError(code));
     this.cache =
       this.cfg.cache === false
         ? null
@@ -239,6 +270,16 @@ export class YouTubeProvider implements AudioProvider {
     else this.stopTicker();
   }
 
+  // Playback failed. Stop progress ticks and emit the mapped state so the
+  // controller can advance (unavailable → clean skip) or account for a
+  // transient error (error → circuit breaker).
+  private handleYtError(code: number): void {
+    const state = mapYtError(code);
+    this.log('player error', code, '->', state);
+    this.stopTicker();
+    this.stateCallback(state);
+  }
+
   private startTicker(): void {
     this.stopTicker();
     this.progressCallback(this.engine.currentTimeMs(), this.engine.durationMs());
@@ -287,6 +328,7 @@ class YtIframeEngine implements YouTubeEngine {
   private hiddenContainer: HTMLDivElement | null = null;
   private target: HTMLElement | null = null;
   private stateCallback: (ytState: number) => void = () => {};
+  private errorCallback: (code: number) => void = () => {};
 
   attach(element: HTMLElement): void {
     this.target = element;
@@ -317,6 +359,7 @@ class YtIframeEngine implements YouTubeEngine {
         events: {
           onReady: () => resolve(),
           onStateChange: (e: { data: number }) => this.stateCallback(e.data),
+          onError: (e: { data: number }) => this.errorCallback(e.data),
         },
       });
     });
@@ -345,6 +388,9 @@ class YtIframeEngine implements YouTubeEngine {
   }
   onState(callback: (ytState: number) => void): void {
     this.stateCallback = callback;
+  }
+  onError(callback: (code: number) => void): void {
+    this.errorCallback = callback;
   }
   destroy(): void {
     this.player?.destroy?.();
