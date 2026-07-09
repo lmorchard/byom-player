@@ -4,6 +4,7 @@ import { SubsonicProvider } from './SubsonicProvider';
 import { YouTubeProvider } from './YouTubeProvider';
 import { SpotifyProvider } from './spotify/SpotifyProvider';
 import { PlexProvider } from './plex/PlexProvider';
+import { JellyfinProvider } from './JellyfinProvider';
 
 // createProvider maps a provider name (+ config) to an AudioProvider instance.
 // Unknown names are an error.
@@ -20,6 +21,8 @@ export function createProvider(name: string, config: Record<string, unknown>): A
       return new SpotifyProvider(config);
     case 'plex':
       return new PlexProvider(config);
+    case 'jellyfin':
+      return new JellyfinProvider(config);
     default:
       throw new Error(`Unknown audio provider: ${name}`);
   }

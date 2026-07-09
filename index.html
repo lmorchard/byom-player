@@ -122,6 +122,7 @@
             <option value="youtube">youtube</option>
             <option value="spotify">spotify</option>
             <option value="plex">plex</option>
+            <option value="jellyfin">jellyfin</option>
           </select>
         </label>
         <fieldset id="fs-subsonic">
@@ -147,7 +148,10 @@
           <label>Client ID <input name="spotifyClientId" autocomplete="off" /></label>
           <label>
             Redirect URI
-            <input name="spotifyRedirectUri" placeholder="(defaults to this origin /callback.html)" />
+            <input
+              name="spotifyRedirectUri"
+              placeholder="(defaults to this origin /callback.html)"
+            />
           </label>
           <p class="or">
             Register a Spotify app, add the Redirect URI to it, then click "Connect Spotify" in the
@@ -156,11 +160,30 @@
         </fieldset>
         <fieldset id="fs-plex">
           <legend>Plex</legend>
-          <label>Base URL <input name="plexBaseUrl" placeholder="https://<id>.plex.direct:32400" /></label>
+          <label
+            >Base URL <input name="plexBaseUrl" placeholder="https://<id>.plex.direct:32400"
+          /></label>
           <label>X-Plex-Token <input name="plexToken" autocomplete="off" /></label>
           <p class="or">
             Leave both blank to use the in-player "Link Plex" button (sign in at plex.tv). Direct
             play only; the server must allow this origin (CORS).
+          </p>
+        </fieldset>
+        <fieldset id="fs-jellyfin">
+          <legend>Jellyfin</legend>
+          <label
+            >Base URL <input name="jfBaseUrl" placeholder="https://jellyfin.example.com"
+          /></label>
+          <label>Username <input name="jfUsername" autocomplete="off" /></label>
+          <label>Password <input name="jfPassword" type="password" autocomplete="off" /></label>
+          <p class="or">— or paste a token —</p>
+          <label>API token <input name="jfToken" autocomplete="off" /></label>
+          <label
+            >User ID <input name="jfUserId" autocomplete="off" placeholder="(token mode)"
+          /></label>
+          <p class="or">
+            Must be reachable over HTTPS and allow this origin (CORS), since the harness runs on
+            https://localhost.
           </p>
         </fieldset>
         <button type="submit">Connect</button>
@@ -197,6 +220,7 @@
         document.getElementById('fs-youtube').hidden = provider !== 'youtube';
         document.getElementById('fs-spotify').hidden = provider !== 'spotify';
         document.getElementById('fs-plex').hidden = provider !== 'plex';
+        document.getElementById('fs-jellyfin').hidden = provider !== 'jellyfin';
         document.getElementById('random').hidden = provider !== 'subsonic';
         document.getElementById('clear-cache').hidden = provider !== 'subsonic';
       }
@@ -231,6 +255,18 @@
           const c = {};
           if (cfg.plexBaseUrl) c.baseUrl = cfg.plexBaseUrl;
           if (cfg.plexToken) c.token = cfg.plexToken;
+          return c;
+        }
+        if (cfg.provider === 'jellyfin') {
+          const c = {};
+          for (const [src, dst] of [
+            ['jfBaseUrl', 'baseUrl'],
+            ['jfUsername', 'username'],
+            ['jfPassword', 'password'],
+            ['jfToken', 'token'],
+            ['jfUserId', 'userId'],
+          ])
+            if (cfg[src]) c[dst] = cfg[src];
           return c;
         }
         return {};
