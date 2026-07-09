@@ -1,4 +1,4 @@
-import { LitElement, html, css, nothing } from 'lit';
+import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { Playlist } from './types';
 import type { AudioProvider, AvailabilityStatus, ProviderState } from './providers/types';
@@ -116,6 +116,26 @@ export class ByomPlayer extends LitElement {
     this.durationMs = this.controller.durationMs;
     // Don't yank the thumb out from under an active drag.
     if (!this.seeking) this.positionMs = this.controller.positionMs;
+  }
+
+  updated(changed: PropertyValues): void {
+    // Keep the playing track centered in the (scrollable) tracklist as playback
+    // moves through the queue.
+    if (changed.has('currentIndex')) this.centerActiveTrack();
+  }
+
+  // Scroll the tracklist so the active row sits as close to the vertical center
+  // as its scroll range allows. Only the list scrolls — never the host page.
+  private centerActiveTrack(): void {
+    const list = this.renderRoot.querySelector<HTMLElement>('.tracklist');
+    const active = list?.querySelector<HTMLElement>('li.active');
+    if (!list || !active) return;
+    const listRect = list.getBoundingClientRect();
+    const activeRect = active.getBoundingClientRect();
+    const delta = activeRect.top - listRect.top - (list.clientHeight - active.clientHeight) / 2;
+    // Optional-chained: environments without layout (e.g. happy-dom in tests)
+    // don't implement scrollBy.
+    list.scrollBy?.({ top: delta, behavior: 'smooth' });
   }
 
   private selectTrack(index: number): void {
