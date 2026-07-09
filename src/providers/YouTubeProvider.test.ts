@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { YouTubeProvider, mapYtState, type YouTubeEngine } from './YouTubeProvider';
+import { YouTubeProvider, mapYtState, mapYtError, type YouTubeEngine } from './YouTubeProvider';
 import type { ProviderState } from './types';
 import type { ResolutionCache } from './resolutionCache';
 
@@ -61,6 +61,7 @@ class FakeEngine implements YouTubeEngine {
   posMs = 0;
   durMs = 0;
   private stateCb: (n: number) => void = () => {};
+  private errorCb: (code: number) => void = () => {};
 
   async ready(): Promise<void> {}
   attach(el: HTMLElement): void {
@@ -87,11 +88,17 @@ class FakeEngine implements YouTubeEngine {
   onState(cb: (n: number) => void): void {
     this.stateCb = cb;
   }
+  onError(cb: (code: number) => void): void {
+    this.errorCb = cb;
+  }
   destroy(): void {
     this.destroyed = true;
   }
   emit(n: number): void {
     this.stateCb(n);
+  }
+  emitError(code: number): void {
+    this.errorCb(code);
   }
 }
 
@@ -116,6 +123,20 @@ describe('mapYtState', () => {
     expect(mapYtState(5)).toBe('ready');
     expect(mapYtState(-1)).toBe('ready');
     expect(mapYtState(3)).toBeNull(); // buffering → emit nothing
+  });
+});
+
+describe('mapYtError', () => {
+  it('maps embed-denied / not-found / invalid-id to unavailable (clean skip)', () => {
+    expect(mapYtError(101)).toBe('unavailable'); // embedding disabled by owner
+    expect(mapYtError(150)).toBe('unavailable'); // embedding disabled by owner
+    expect(mapYtError(100)).toBe('unavailable'); // video removed / private
+    expect(mapYtError(2)).toBe('unavailable'); // invalid video id
+  });
+
+  it('maps other errors (e.g. HTML5 player) to a transient error', () => {
+    expect(mapYtError(5)).toBe('error'); // HTML5 player error
+    expect(mapYtError(999)).toBe('error'); // unknown → transient, don't penalize permanently
   });
 });
 
@@ -278,6 +299,34 @@ describe('YouTubeProvider resolution', () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('down'));
     await p.load({ title: 'X', artist: 'Y' });
     expect(states.at(-1)).toBe('error');
+  });
+
+  it('maps an engine error (embed denied) to unavailable so the queue advances', () => {
+    const engine = new FakeEngine();
+    const states: ProviderState[] = [];
+    const p = new YouTubeProvider({ engine });
+    p.onStateChange((s) => states.push(s));
+
+    engine.emitError(101); // owner disabled embedding
+    expect(states.at(-1)).toBe('unavailable');
+  });
+
+  it('stops the progress ticker on an engine error', () => {
+    vi.useFakeTimers();
+    try {
+      const engine = new FakeEngine();
+      const progress: [number, number][] = [];
+      const p = new YouTubeProvider({ engine });
+      p.onProgress((pos, dur) => progress.push([pos, dur]));
+
+      engine.emit(1); // PLAYING → ticker starts
+      engine.emitError(5); // playback failure kills the ticker
+      const before = progress.length;
+      vi.advanceTimersByTime(1000);
+      expect(progress.length).toBe(before); // no further ticks
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
