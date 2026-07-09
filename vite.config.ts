@@ -1,11 +1,18 @@
 import { defineConfig } from 'vitest/config';
 import { resolve } from 'node:path';
+import basicSsl from '@vitejs/plugin-basic-ssl';
 
 export default defineConfig({
-  // Bind the dev server to the IPv4 loopback: Spotify's dashboard only accepts
-  // `127.0.0.1` (not `localhost`) as a loopback redirect URI, so the harness's
-  // PKCE login only works when the page is served from 127.0.0.1.
-  server: { host: '127.0.0.1' },
+  // Serve the dev harness over HTTPS on `localhost` (dev-only; production embeds
+  // on real HTTPS domains where none of this applies). This is what YouTube
+  // needs: its embedded player wants an https origin and allows
+  // `https://localhost`, but blocks http:// and the IP-literal `https://127.0.0.1`.
+  // NOTE: Spotify's loopback redirect-URI rules are finicky (it wants 127.0.0.1
+  // for http, and rejects `https://localhost` at auth with "redirect_uri:
+  // Insecure" despite the dashboard accepting it) — testing Spotify PKCE on this
+  // harness is an unresolved, separate issue.
+  plugins: [basicSsl()],
+  server: { host: 'localhost' },
   build: {
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
