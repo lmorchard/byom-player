@@ -41,6 +41,7 @@ export class ByomPlayer extends LitElement {
   @state() private hasVideo = false;
 
   private controller: PlaybackController | null = null;
+  private activeProvider: AudioProvider | null = null;
   private sweepAbort: AbortController | null = null;
   private seeking = false; // user is dragging the progress bar
 
@@ -55,6 +56,18 @@ export class ByomPlayer extends LitElement {
     this.sweepAbort = null;
     this.controller?.dispose();
     this.controller = null;
+  }
+
+  // On a provider session change (link/unlink), drop stale availability: un-mark
+  // the controller's skip-set, clear the displayed marks, then re-scan against
+  // the new session (unlinked → quick 'unknown's; relinked → fresh results).
+  private handleProviderReset(): void {
+    for (const [i, status] of this.availability) {
+      if (status === 'unavailable') this.controller?.markUnavailable(i, false);
+    }
+    this.availability = new Map();
+    this.failed = new Set();
+    this.startSweep(); // aborts any in-flight sweep, then re-scans
   }
 
   private async loadAndInit(): Promise<void> {
@@ -82,28 +95,39 @@ export class ByomPlayer extends LitElement {
       }
     }
     await prov.initialize();
+    this.activeProvider = prov;
     this.controller = new PlaybackController(
       prov,
       this.playlist.tracks,
       () => this.syncFromController(),
       { skipDelayMs: this.skipDelayMs, debug: this.debug },
     );
-    if (this.prescan && prov.checkAvailability) {
-      this.sweepAbort = new AbortController();
-      this.scanning = true;
-      void sweepAvailability(
-        prov,
-        this.playlist.tracks,
-        (i, status) => {
-          this.availability = new Map(this.availability).set(i, status);
-          // Let the queue skip known-missing tracks (shuffle + advance).
-          if (status === 'unavailable') this.controller?.markUnavailable(i, true);
-        },
-        { signal: this.sweepAbort.signal, delayMs: this.prescanDelayMs },
-      ).finally(() => {
-        this.scanning = false;
-      });
-    }
+    // When a provider's session changes (e.g. Plex link/unlink), its cached
+    // availability knowledge is stale — clear the marks and re-scan.
+    prov.onReset?.(() => this.handleProviderReset());
+    this.startSweep();
+  }
+
+  // Run the background availability prescan against the active provider. Aborts
+  // any sweep already in flight first, so it's safe to call on a session change.
+  private startSweep(): void {
+    const prov = this.activeProvider;
+    if (!prov?.checkAvailability || !this.prescan || !this.playlist) return;
+    this.sweepAbort?.abort();
+    this.sweepAbort = new AbortController();
+    this.scanning = true;
+    void sweepAvailability(
+      prov,
+      this.playlist.tracks,
+      (i, status) => {
+        this.availability = new Map(this.availability).set(i, status);
+        // Let the queue skip known-missing tracks (shuffle + advance).
+        if (status === 'unavailable') this.controller?.markUnavailable(i, true);
+      },
+      { signal: this.sweepAbort.signal, delayMs: this.prescanDelayMs },
+    ).finally(() => {
+      this.scanning = false;
+    });
   }
 
   private syncFromController(): void {

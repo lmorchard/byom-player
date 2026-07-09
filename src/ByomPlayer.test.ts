@@ -150,6 +150,36 @@ describe('<byom-player>', () => {
     expect(lis(el)[0].classList.contains('unavailable')).toBe(false);
   });
 
+  it('re-scans availability when the provider fires onReset (session change)', async () => {
+    const provider = new ControllableProvider();
+    let sessionChanged = false;
+    // Before the reset, B is unavailable; after (e.g. relink/unlink) it re-resolves.
+    (provider as AudioProvider).checkAvailability = async (t) =>
+      sessionChanged ? 'available' : t.title === 'B' ? 'unavailable' : 'available';
+    let fireReset = () => {};
+    (provider as AudioProvider).onReset = (cb) => {
+      fireReset = cb;
+    };
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = () => provider;
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(lis(el)[1].classList.contains('unavailable')).toBe(true);
+
+    sessionChanged = true; // session changed under us
+    fireReset();
+    await new Promise((r) => setTimeout(r, 0)); // let the re-scan run
+    await el.updateComplete;
+    // B was re-evaluated against the new session — no longer unavailable.
+    expect(lis(el)[1].classList.contains('unavailable')).toBe(false);
+  });
+
   it('toggles shuffle via the control button', async () => {
     const { el } = await mount();
     const btn = el.shadowRoot!.querySelector('.shuffle') as HTMLButtonElement;

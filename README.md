@@ -15,8 +15,9 @@ delegated to pluggable **Audio Provider** adapters.
 - Swappable providers: `mock` (no infra, for demos/dev), `subsonic` (any
   Subsonic / OpenSubsonic server — Navidrome, gonic, Airsonic, LMS, …),
   `youtube` (hidden or **visible** iframe; the universal public-visitor
-  fallback), and `spotify` (full-track playback for Premium listeners via the
-  Web Playback SDK, with a 30-second-preview embed fallback)
+  fallback), `spotify` (full-track playback for Premium listeners via the
+  Web Playback SDK, with a 30-second-preview embed fallback), and `plex`
+  (direct-play from a Plex Media Server; token or PIN "Link Plex" auth)
 - Auto-advance, prev/next, click-to-play, and **shuffle**
 - Resilience for real-world libraries: retry with backoff, a circuit breaker for
   flaky/rate-limiting servers, and lazy-skip past tracks you don't have
@@ -58,14 +59,14 @@ player.providerConfig = {
 
 ### Properties
 
-| Property         | Default  | Notes                                            |
-| ---------------- | -------- | ------------------------------------------------ |
-| `src`            | `''`     | URL to the JSPF manifest                         |
-| `provider`       | `'mock'` | `'mock'`, `'subsonic'`, `'youtube'`, `'spotify'` |
-| `providerConfig` | `{}`     | provider-specific config (JS property)           |
-| `prescan`        | `true`   | background availability check after load         |
-| `skipDelayMs`    | `400`    | throttle between auto-skips                      |
-| `debug`          | `false`  | console diagnostics from provider + controller   |
+| Property         | Default  | Notes                                                      |
+| ---------------- | -------- | ---------------------------------------------------------- |
+| `src`            | `''`     | URL to the JSPF manifest                                   |
+| `provider`       | `'mock'` | `'mock'`, `'subsonic'`, `'youtube'`, `'spotify'`, `'plex'` |
+| `providerConfig` | `{}`     | provider-specific config (JS property)                     |
+| `prescan`        | `true`   | background availability check after load                   |
+| `skipDelayMs`    | `400`    | throttle between auto-skips                                |
+| `debug`          | `false`  | console diagnostics from provider + controller             |
 
 ### Theming
 
@@ -174,6 +175,42 @@ Notes: full-track SDK playback still requires Premium regardless of hosting; the
 refresh token is kept in `localStorage` (fine for personal use, a mild exposure
 on shared machines); and each deploying origin's `callback.html` must be
 registered as a Redirect URI.
+
+## Plex
+
+The `plex` provider plays music from a Plex Media Server. Like Subsonic, it
+resolves a track by `artist + title` search and plays the result **direct-play**
+through an HTML5 `<audio>` element (no engine seam). Two auth paths:
+
+```js
+player.provider = 'plex';
+// Token-in (homelab / power users): supply the server + an X-Plex-Token.
+player.providerConfig = {
+  baseUrl: 'https://<id>.plex.direct:32400', // or http://<lan-ip>:32400
+  token: 'your-X-Plex-Token',
+  // optional: serverName, product
+};
+// — or — leave baseUrl/token unset to use the in-player "Link Plex" button.
+player.providerConfig = {};
+```
+
+- **Token-in** — provide `baseUrl` + `token`. Get an `X-Plex-Token` from any
+  authenticated Plex web request (browser dev tools → a request's
+  `X-Plex-Token`), or your account's authorized-devices page.
+- **PIN "Link Plex"** — with no `baseUrl`/`token`, the provider renders a "Link
+  Plex" button. It creates a plex.tv PIN, opens `app.plex.tv` for you to
+  authorize, polls for the token, then discovers your server(s) — auto-selecting
+  a single server (or one matching `serverName`) and otherwise showing a picker.
+  Fully client-side; **no redirect page needed** (poll-based, unlike Spotify).
+  Once linked, an "Unlink Plex" button clears the stored session. The background
+  availability prescan is skipped until a session exists, so an unlinked player
+  never probes a server.
+
+**Notes:** direct-play only for now — a codec the browser can't decode won't play
+(transcode support is a follow-up). The browser talks to your server directly, so
+it must allow the page's origin (CORS); `*.plex.direct` HTTPS certs avoid
+mixed-content from an HTTPS page, while a local `http://` server from an HTTPS
+page is the usual friction (same as Subsonic).
 
 ## Development
 
