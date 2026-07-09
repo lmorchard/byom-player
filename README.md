@@ -180,7 +180,9 @@ npm run build   # single ES module -> dist/byom-player.js
 
 The dev harness (`index.html`) has a preset playlist dropdown, provider/auth
 config (saved to localStorage only), and a "play random from Navidrome"
-diagnostic.
+diagnostic. The dev server binds to `http://127.0.0.1:5173` (not `localhost`)
+because Spotify's dashboard only accepts `127.0.0.1` as a loopback redirect URI,
+so the Spotify PKCE login works out of the box.
 
 ## License
 
