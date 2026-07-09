@@ -1,7 +1,32 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { SubsonicProvider } from './SubsonicProvider';
 import type { ProviderState } from './types';
+import type { ResolutionCache } from './resolutionCache';
 import { md5 } from '../md5';
+
+// In-memory ResolutionCache that records interactions for assertions.
+class FakeCache implements ResolutionCache {
+  store = new Map<string, string>();
+  gets: Array<[string, string]> = [];
+  sets: Array<[string, string, string]> = [];
+  private ck(scope: string, key: string) {
+    return scope + '|' + key;
+  }
+  get(scope: string, key: string) {
+    this.gets.push([scope, key]);
+    return this.store.get(this.ck(scope, key));
+  }
+  set(scope: string, key: string, id: string) {
+    this.sets.push([scope, key, id]);
+    this.store.set(this.ck(scope, key), id);
+  }
+  evict(scope: string, key: string) {
+    this.store.delete(this.ck(scope, key));
+  }
+  clear(scope: string) {
+    for (const k of [...this.store.keys()]) if (k.startsWith(scope + '|')) this.store.delete(k);
+  }
+}
 
 function mockSearch(song: unknown) {
   return vi.spyOn(globalThis, 'fetch').mockResolvedValue({
@@ -158,10 +183,13 @@ describe('SubsonicProvider', () => {
   });
 
   it('checkAvailability: available / unavailable / unknown', async () => {
+    // cache: false — this test re-resolves the same track across changing
+    // server states to check the status mapping; caching is orthogonal here.
     const p = new SubsonicProvider({
       baseUrl: 'https://nav.example',
       apiKey: 'K',
       retryDelayMs: 0,
+      cache: false,
     });
 
     mockSearch({ id: 's1' });
@@ -336,5 +364,171 @@ describe('SubsonicProvider', () => {
     audio.currentTime = 150;
     audio.dispatchEvent(new Event('timeupdate'));
     expect(scrobbleCalls(fetchMock)).toHaveLength(0);
+  });
+
+  it('resolve returns a cached id without calling search3', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    const cache = new FakeCache();
+    cache.set('subsonic:https://nav.example', 'q:a|t', 'cached-id');
+    const p = new SubsonicProvider({
+      baseUrl: 'https://nav.example',
+      apiKey: 'K',
+      resolutionCache: cache,
+    });
+    const id = await p.resolve({ title: 't', artist: 'a' });
+    expect(id).toBe('cached-id');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('resolve writes a live-resolved id to the cache (scoped by baseUrl)', async () => {
+    mockSearch({ id: 'live-7' });
+    const cache = new FakeCache();
+    const p = new SubsonicProvider({
+      baseUrl: 'https://nav.example/',
+      apiKey: 'K',
+      resolutionCache: cache,
+    });
+    const id = await p.resolve({ title: 'T', artist: 'A' });
+    expect(id).toBe('live-7');
+    expect(cache.sets).toEqual([['subsonic:https://nav.example', 'q:a|t', 'live-7']]);
+  });
+
+  it('checkAvailability warms the cache', async () => {
+    mockSearch({ id: 'warm-1' });
+    const cache = new FakeCache();
+    const p = new SubsonicProvider({
+      baseUrl: 'https://nav.example',
+      apiKey: 'K',
+      resolutionCache: cache,
+    });
+    await p.checkAvailability({ title: 'T', artist: 'A' });
+    expect(cache.get('subsonic:https://nav.example', 'q:a|t')).toBe('warm-1');
+  });
+
+  it('does not touch the cache when cache: false', async () => {
+    mockSearch({ id: 'x' });
+    const cache = new FakeCache();
+    const p = new SubsonicProvider({
+      baseUrl: 'https://nav.example',
+      apiKey: 'K',
+      cache: false,
+      resolutionCache: cache,
+    });
+    await p.resolve({ title: 'T', artist: 'A' });
+    expect(cache.gets).toHaveLength(0);
+    expect(cache.sets).toHaveLength(0);
+  });
+
+  it('clearCache clears only this server scope', () => {
+    const cache = new FakeCache();
+    cache.set('subsonic:https://nav.example', 'q:a|t', 'id');
+    cache.set('subsonic:https://other.example', 'q:a|t', 'id2');
+    const p = new SubsonicProvider({
+      baseUrl: 'https://nav.example',
+      apiKey: 'K',
+      resolutionCache: cache,
+    });
+    p.clearCache();
+    expect(cache.get('subsonic:https://nav.example', 'q:a|t')).toBeUndefined();
+    expect(cache.get('subsonic:https://other.example', 'q:a|t')).toBe('id2');
+  });
+
+  it('evicts and re-resolves a stale cached id when it errors before playing', async () => {
+    const cache = new FakeCache();
+    cache.set('subsonic:https://nav.example', 'q:a|t', 'stale-id');
+    // search3 answers the live re-resolve with a fresh id.
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        'subsonic-response': { status: 'ok', searchResult3: { song: [{ id: 'fresh-id' }] } },
+      }),
+    } as Response);
+
+    const p = new SubsonicProvider({
+      baseUrl: 'https://nav.example',
+      apiKey: 'K',
+      resolutionCache: cache,
+    });
+    await p.load({ title: 't', artist: 'a' });
+    const audio = (p as any).audio as HTMLAudioElement;
+    expect(audio.src).toContain('id=stale-id'); // loaded from cache
+
+    audio.dispatchEvent(new Event('error')); // fails before ever playing
+    await new Promise((r) => setTimeout(r, 0)); // let reloadFresh resolve
+
+    expect(cache.get('subsonic:https://nav.example', 'q:a|t')).toBe('fresh-id'); // evicted + re-cached
+    expect(fetchMock).toHaveBeenCalled(); // live re-resolve happened
+    expect(audio.src).toContain('id=fresh-id');
+  });
+
+  it('retries a stale id only once, then emits error', async () => {
+    const cache = new FakeCache();
+    cache.set('subsonic:https://nav.example', 'q:a|t', 'stale-id');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        'subsonic-response': { status: 'ok', searchResult3: { song: [{ id: 'fresh-id' }] } },
+      }),
+    } as Response);
+    const states: ProviderState[] = [];
+    const p = new SubsonicProvider({
+      baseUrl: 'https://nav.example',
+      apiKey: 'K',
+      resolutionCache: cache,
+    });
+    p.onStateChange((s) => states.push(s));
+    await p.load({ title: 't', artist: 'a' });
+    const audio = (p as any).audio as HTMLAudioElement;
+
+    audio.dispatchEvent(new Event('error')); // 1st: evict + re-resolve
+    await new Promise((r) => setTimeout(r, 0));
+    audio.dispatchEvent(new Event('error')); // 2nd: give up
+    expect(states).toContain('error');
+  });
+
+  it('does not evict when a non-cached (live) id errors', async () => {
+    mockSearch({ id: 'live-id' });
+    const cache = new FakeCache();
+    const states: ProviderState[] = [];
+    const p = new SubsonicProvider({
+      baseUrl: 'https://nav.example',
+      apiKey: 'K',
+      resolutionCache: cache,
+    });
+    p.onStateChange((s) => states.push(s));
+    await p.load({ title: 't', artist: 'a' });
+    expect(cache.get('subsonic:https://nav.example', 'q:a|t')).toBe('live-id'); // warmed by load
+    const audio = (p as any).audio as HTMLAudioElement;
+
+    audio.dispatchEvent(new Event('error'));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(states).toContain('error');
+    expect(cache.get('subsonic:https://nav.example', 'q:a|t')).toBe('live-id'); // NOT evicted
+  });
+
+  it('does not treat a mid-stream error (after playing) as a stale id', async () => {
+    const cache = new FakeCache();
+    cache.set('subsonic:https://nav.example', 'q:a|t', 'stale-id');
+    // scrobble: false so the `playing` event doesn't fire an unrelated scrobble
+    // fetch — then any fetch would mean an errant re-resolve.
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    const states: ProviderState[] = [];
+    const p = new SubsonicProvider({
+      baseUrl: 'https://nav.example',
+      apiKey: 'K',
+      scrobble: false,
+      resolutionCache: cache,
+    });
+    p.onStateChange((s) => states.push(s));
+    await p.load({ title: 't', artist: 'a' }); // resolves from cache, no fetch
+    const audio = (p as any).audio as HTMLAudioElement;
+
+    audio.dispatchEvent(new Event('playing')); // started playing
+    audio.dispatchEvent(new Event('error')); // mid-stream drop
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(states).toContain('error');
+    expect(cache.get('subsonic:https://nav.example', 'q:a|t')).toBe('stale-id'); // NOT evicted
+    expect(fetchMock).not.toHaveBeenCalled(); // no re-resolve search
   });
 });
