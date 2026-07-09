@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { PlexAuth, clientIdentifier } from './auth';
+import { PlexAuth, clientIdentifier, discoverSession, pickConnection } from './auth';
 import type { PlexSession } from './types';
 
 function fakeStorage(): Storage {
@@ -107,5 +107,79 @@ describe('PlexAuth PIN flow', () => {
       },
     );
     await expect(auth.link()).rejects.toThrow(/closed|timed out/i);
+  });
+});
+
+describe('pickConnection', () => {
+  it('prefers a reachable local connection, falls back to plex.direct', async () => {
+    const conns = [
+      { local: false, uri: 'https://remote.plex.direct:32400' },
+      { local: true, uri: 'https://192.168.1.9:32400' },
+    ];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('https://192.168.1.9')) throw new Error('unreachable'); // local fails
+      return { ok: true } as Response;
+    });
+    const uri = await pickConnection(fetchMock as unknown as typeof fetch, {}, conns, 'ACCESS');
+    expect(uri).toBe('https://remote.plex.direct:32400');
+  });
+});
+
+describe('discoverSession', () => {
+  const base = {
+    name: 'Home',
+    provides: 'server',
+    clientIdentifier: 'srv-1',
+    accessToken: 'ACCESS1',
+    connections: [{ local: true, uri: 'https://192.168.1.9:32400' }],
+  };
+  function fetchWith(resourcesJson: unknown) {
+    return vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/resources'))
+        return { ok: true, json: async () => resourcesJson } as Response;
+      if (url.includes('/identity')) return { ok: true } as Response;
+      throw new Error('unexpected ' + url);
+    });
+  }
+
+  it('auto-selects the only server and resolves a session', async () => {
+    const out = await discoverSession(
+      { fetch: fetchWith([base]) as unknown as typeof fetch, headers: {} },
+      'ACCOUNT',
+      {},
+    );
+    expect(out.session).toEqual({ baseUrl: 'https://192.168.1.9:32400', token: 'ACCESS1' });
+  });
+
+  it('returns the server list when there are multiple and no serverName', async () => {
+    const two = [
+      { ...base, clientIdentifier: 'a', name: 'A' },
+      { ...base, clientIdentifier: 'b', name: 'B' },
+    ];
+    const out = await discoverSession(
+      { fetch: fetchWith(two) as unknown as typeof fetch, headers: {} },
+      'ACCOUNT',
+      {},
+    );
+    expect(out.session).toBeUndefined();
+    expect(out.servers).toEqual([
+      { id: 'a', name: 'A' },
+      { id: 'b', name: 'B' },
+    ]);
+  });
+
+  it('auto-selects by serverName when multiple', async () => {
+    const two = [
+      { ...base, clientIdentifier: 'a', name: 'A' },
+      { ...base, clientIdentifier: 'b', name: 'B' },
+    ];
+    const out = await discoverSession(
+      { fetch: fetchWith(two) as unknown as typeof fetch, headers: {} },
+      'ACCOUNT',
+      { serverName: 'B' },
+    );
+    expect(out.session?.token).toBe('ACCESS1');
   });
 });
