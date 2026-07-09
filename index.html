@@ -188,7 +188,7 @@
         </fieldset>
         <button type="submit">Connect</button>
         <button type="button" id="random">🎲 Play random from Navidrome</button>
-        <button type="button" id="clear-cache">🗑️ Clear ID cache</button>
+        <button type="button" id="clear-cache">🔄 Clear cache &amp; rescan</button>
       </form>
       <p class="hint">
         Saved to this browser's localStorage only — never committed or sent anywhere but your
@@ -222,7 +222,11 @@
         document.getElementById('fs-plex').hidden = provider !== 'plex';
         document.getElementById('fs-jellyfin').hidden = provider !== 'jellyfin';
         document.getElementById('random').hidden = provider !== 'subsonic';
-        document.getElementById('clear-cache').hidden = provider !== 'subsonic';
+        // Resolution-caching library providers can re-scan; others have no
+        // per-track id cache worth clearing.
+        document.getElementById('clear-cache').hidden = !['subsonic', 'plex', 'jellyfin'].includes(
+          provider,
+        );
       }
       form.elements['provider'].addEventListener('change', syncProviderUI);
       syncProviderUI();
@@ -288,12 +292,17 @@
         mount(cfg);
       });
 
-      // Clear the resolved-id cache (all servers). Root key mirrors
-      // ROOT_KEY in src/providers/resolutionCache.ts.
+      // Clear the resolved-id cache (all servers; root key mirrors ROOT_KEY in
+      // src/providers/resolutionCache.ts) and re-mount the player so its
+      // availability sweep re-resolves every track from scratch. Clearing alone
+      // wouldn't help: negative-cached misses linger (1h TTL) and the existing
+      // sweep's marks persist until a fresh mount.
       document.getElementById('clear-cache').addEventListener('click', () => {
         localStorage.removeItem('byom-player:resolv:v1');
-        const status = document.getElementById('status');
-        status.textContent = 'Cleared resolved-id cache — next play will re-search.';
+        const cfg = Object.fromEntries(new FormData(form).entries());
+        mount(cfg);
+        document.getElementById('status').textContent =
+          'Cleared id cache — re-scanning all tracks…';
       });
 
       // Build Subsonic auth query params for the harness-only getRandomSongs call.
