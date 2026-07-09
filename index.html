@@ -114,6 +114,7 @@
             <option value="mock">mock</option>
             <option value="subsonic">subsonic (Navidrome / any Subsonic)</option>
             <option value="youtube">youtube</option>
+            <option value="spotify">spotify</option>
           </select>
         </label>
         <fieldset id="fs-subsonic">
@@ -133,6 +134,18 @@
           <p class="or">GET ?q=… → { videoId } — keeps the key server-side. Or:</p>
           <label>YouTube Data API key <input name="ytApiKey" autocomplete="off" /></label>
           <p class="or">(client-visible — dev/personal use only)</p>
+        </fieldset>
+        <fieldset id="fs-spotify">
+          <legend>Spotify</legend>
+          <label>Client ID <input name="spotifyClientId" autocomplete="off" /></label>
+          <label>
+            Redirect URI
+            <input name="spotifyRedirectUri" placeholder="(defaults to this origin /callback.html)" />
+          </label>
+          <p class="or">
+            Register a Spotify app, add the Redirect URI to it, then click "Connect Spotify" in the
+            player. Premium → full tracks; free → 30s previews.
+          </p>
         </fieldset>
         <button type="submit">Connect</button>
         <button type="button" id="random">🎲 Play random from Navidrome</button>
@@ -165,6 +178,7 @@
         const provider = form.elements['provider'].value;
         document.getElementById('fs-subsonic').hidden = provider !== 'subsonic';
         document.getElementById('fs-youtube').hidden = provider !== 'youtube';
+        document.getElementById('fs-spotify').hidden = provider !== 'spotify';
         document.getElementById('random').hidden = provider !== 'subsonic';
       }
       form.elements['provider'].addEventListener('change', syncProviderUI);
@@ -187,6 +201,12 @@
           if (cfg.searchEndpoint) c.searchEndpoint = cfg.searchEndpoint;
           if (cfg.ytApiKey) c.apiKey = cfg.ytApiKey; // YouTube's own key field
           return c;
+        }
+        if (cfg.provider === 'spotify') {
+          return {
+            clientId: cfg.spotifyClientId || '',
+            redirectUri: cfg.spotifyRedirectUri || `${location.origin}/callback.html`,
+          };
         }
         return {};
       }
