@@ -13,8 +13,10 @@ delegated to pluggable **Audio Provider** adapters.
 - Loads a standard JSPF manifest and renders header, now-playing, controls, and a
   clickable tracklist
 - Swappable providers: `mock` (no infra, for demos/dev), `subsonic` (any
-  Subsonic / OpenSubsonic server — Navidrome, gonic, Airsonic, LMS, …), and
-  `youtube` (hidden or **visible** iframe; the universal public-visitor fallback)
+  Subsonic / OpenSubsonic server — Navidrome, gonic, Airsonic, LMS, …),
+  `youtube` (hidden or **visible** iframe; the universal public-visitor
+  fallback), and `spotify` (full-track playback for Premium listeners via the
+  Web Playback SDK, with a 30-second-preview embed fallback)
 - Auto-advance, prev/next, click-to-play, and **shuffle**
 - Resilience for real-world libraries: retry with backoff, a circuit breaker for
   flaky/rate-limiting servers, and lazy-skip past tracks you don't have
@@ -56,14 +58,14 @@ player.providerConfig = {
 
 ### Properties
 
-| Property         | Default  | Notes                                          |
-| ---------------- | -------- | ---------------------------------------------- |
-| `src`            | `''`     | URL to the JSPF manifest                       |
-| `provider`       | `'mock'` | `'mock'`, `'subsonic'`, or `'youtube'`         |
-| `providerConfig` | `{}`     | provider-specific config (JS property)         |
-| `prescan`        | `true`   | background availability check after load       |
-| `skipDelayMs`    | `400`    | throttle between auto-skips                    |
-| `debug`          | `false`  | console diagnostics from provider + controller |
+| Property         | Default  | Notes                                            |
+| ---------------- | -------- | ------------------------------------------------ |
+| `src`            | `''`     | URL to the JSPF manifest                         |
+| `provider`       | `'mock'` | `'mock'`, `'subsonic'`, `'youtube'`, `'spotify'` |
+| `providerConfig` | `{}`     | provider-specific config (JS property)           |
+| `prescan`        | `true`   | background availability check after load         |
+| `skipDelayMs`    | `400`    | throttle between auto-skips                      |
+| `debug`          | `false`  | console diagnostics from provider + controller   |
 
 ### Theming
 
@@ -113,6 +115,57 @@ Resolution turns `"{artist} {title} audio"` into a videoId; configure one:
 The provider intentionally omits the availability prescan (a full-playlist
 prescan would burn YouTube Data API quota — ~100 units/search); resolution
 happens lazily on play.
+
+## Spotify
+
+The `spotify` provider plays JSPF tracks through Spotify. Resolution is free —
+it reads each track's Spotify URL straight from the manifest (byom-sync writes
+it into the JSPF `location`), so there's no search step. It runs in two tiers:
+
+- **Web Playback SDK (Premium)** — full-track, headless playback with real
+  seek/position. Requires the listener to have **Spotify Premium** and to
+  authenticate.
+- **Embed iframe (fallback)** — for non-Premium/unauthenticated listeners.
+  Free/logged-out listeners get **30-second previews**; a listener's own Premium
+  login yields full tracks. Spotify's embed renders its own visible player, so
+  the component's controls drive it and stay in sync, but the Spotify chrome
+  can't be hidden.
+
+The provider owns a client-side **PKCE** login: it renders a "Connect Spotify"
+button, opens a popup to Spotify's authorize page, and exchanges the code for a
+token — no client secret, no backend. Non-Premium accounts fall back to the
+embed automatically.
+
+```js
+player.provider = 'spotify';
+player.providerConfig = {
+  clientId: 'your-spotify-app-client-id', // public; safe to ship
+  redirectUri: 'https://yoursite.example/callback.html',
+  // optional:
+  // scopes: ['streaming', 'user-read-email', 'user-read-private'],
+  // deviceName: 'byom-player',
+  // forceEmbed: true, // skip the SDK entirely (free-only sites)
+};
+```
+
+### Fully static hosting (no backend)
+
+This works on a static host — GitHub Pages, S3, Netlify — with **no server-side
+endpoints**, because PKCE has no client secret to protect:
+
+1. Create a Spotify app in the [developer dashboard](https://developer.spotify.com/dashboard)
+   and copy its **Client ID** (public).
+2. Register your site's callback page (e.g.
+   `https://yoursite.example/callback.html`) as a **Redirect URI** on the app.
+3. Ship `callback.html` (a copy lives in this repo's `public/callback.html`) — a
+   static page that posts the auth code back to the opener and closes. The token
+   exchange and refresh are direct CORS fetches from the browser to
+   `accounts.spotify.com`.
+
+Notes: full-track SDK playback still requires Premium regardless of hosting; the
+refresh token is kept in `localStorage` (fine for personal use, a mild exposure
+on shared machines); and each deploying origin's `callback.html` must be
+registered as a Redirect URI.
 
 ## Development
 

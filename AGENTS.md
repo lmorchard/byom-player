@@ -73,6 +73,18 @@ Prettier check) · `npm run build` (`tsc --noEmit` + Vite lib build) ·
   ~100 units/search quota). Uses `loadVideoById` (autoplay). No
   `checkAvailability` on purpose (prescan would burn quota). `attach` renders a
   visible video below the tracklist.
+- **spotify** (`src/providers/spotify/`) — two tiers behind a `SpotifyEngine`
+  seam (mirrors `YouTubeEngine`): `WebPlaybackEngine` (SDK, **Premium**, full
+  tracks, headless) and `EmbedEngine` (iframe, free = 30s previews, visible
+  chrome). Resolution is free — parses `track.spotifyUrl` (no search), so
+  `checkAvailability` IS implemented (network-less). Provider-owned **PKCE**
+  popup login (`pkce.ts`/`auth.ts`, fully static, no backend; token cached in
+  `localStorage`). `initialize` picks the tier: `forceEmbed` → embed; token →
+  SDK, falling back to embed on `NotPremiumError`; no token → renders a "Connect
+  Spotify" button into the `attach` surface. Real SDK/embed engines are
+  browser-only/manual like `YtIframeEngine`; unit tests drive a fake engine +
+  fake auth. Needs a registered Spotify app + `public/callback.html` as a
+  redirect URI.
 
 ## Gotchas
 
