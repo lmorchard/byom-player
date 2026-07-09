@@ -21,6 +21,28 @@ function okResponse(song: unknown) {
   } as Response;
 }
 
+// fetch mock that answers search3 with one song and everything else (scrobble) with ok
+function mockServer(songId = 'song-1') {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('search3.view')) {
+      return {
+        ok: true,
+        json: async () => ({
+          'subsonic-response': { status: 'ok', searchResult3: { song: [{ id: songId }] } },
+        }),
+      } as Response;
+    }
+    return { ok: true, json: async () => ({ 'subsonic-response': { status: 'ok' } }) } as Response;
+  });
+}
+
+function scrobbleCalls(fetchMock: { mock: { calls: unknown[][] } }) {
+  return fetchMock.mock.calls
+    .map((c) => new URL(c[0] as string))
+    .filter((u) => u.pathname === '/rest/scrobble.view');
+}
+
 afterEach(() => vi.restoreAllMocks());
 
 describe('SubsonicProvider', () => {
@@ -179,5 +201,140 @@ describe('SubsonicProvider', () => {
     const audio = (p as any).audio as HTMLAudioElement;
     expect(audio.src).toContain('/rest/stream.view');
     expect(audio.src).toContain('id=song-99');
+  });
+
+  it('sends now-playing (submission=false) once when playback starts', async () => {
+    const fetchMock = mockServer();
+    const p = new SubsonicProvider({ baseUrl: 'https://nav.example', apiKey: 'K' });
+    await p.load({ title: 'T', artist: 'A' });
+    const audio = (p as any).audio as HTMLAudioElement;
+    audio.dispatchEvent(new Event('playing'));
+    audio.dispatchEvent(new Event('playing')); // must not re-send
+
+    const nowPlaying = scrobbleCalls(fetchMock).filter(
+      (u) => u.searchParams.get('submission') === 'false',
+    );
+    expect(nowPlaying.length).toBe(1);
+    expect(nowPlaying[0].searchParams.get('id')).toBe('song-1');
+    expect(nowPlaying[0].searchParams.get('time')).toBeTruthy();
+    expect(nowPlaying[0].searchParams.get('c')).toBe('byom-player');
+  });
+
+  it('does not scrobble when scrobble: false', async () => {
+    const fetchMock = mockServer();
+    const p = new SubsonicProvider({
+      baseUrl: 'https://nav.example',
+      apiKey: 'K',
+      scrobble: false,
+    });
+    await p.load({ title: 'T', artist: 'A' });
+    const audio = (p as any).audio as HTMLAudioElement;
+    audio.dispatchEvent(new Event('playing'));
+    expect(scrobbleCalls(fetchMock).length).toBe(0);
+  });
+
+  it('does not scrobble on playing when no track is loaded', () => {
+    const fetchMock = mockServer();
+    const p = new SubsonicProvider({ baseUrl: 'https://nav.example', apiKey: 'K' });
+    const audio = (p as any).audio as HTMLAudioElement;
+    audio.dispatchEvent(new Event('playing'));
+    expect(scrobbleCalls(fetchMock).length).toBe(0);
+  });
+
+  it('a failed scrobble does not emit error or throw', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('search3.view')) {
+        return {
+          ok: true,
+          json: async () => ({
+            'subsonic-response': { status: 'ok', searchResult3: { song: [{ id: 's1' }] } },
+          }),
+        } as Response;
+      }
+      throw new Error('scrobble network fail');
+    });
+    const states: ProviderState[] = [];
+    const p = new SubsonicProvider({ baseUrl: 'https://nav.example', apiKey: 'K' });
+    p.onStateChange((s) => states.push(s));
+    await p.load({ title: 'T', artist: 'A' });
+    const audio = (p as any).audio as HTMLAudioElement;
+    audio.dispatchEvent(new Event('playing'));
+    await new Promise((r) => setTimeout(r, 0)); // let the rejected promise settle
+    expect(states).not.toContain('error');
+  });
+
+  it('submits (submission=true) once when position crosses half the duration', async () => {
+    const fetchMock = mockServer();
+    const p = new SubsonicProvider({ baseUrl: 'https://nav.example', apiKey: 'K' });
+    await p.load({ title: 'T', artist: 'A' });
+    const audio = (p as any).audio as HTMLAudioElement;
+    Object.defineProperty(audio, 'duration', { value: 200, configurable: true }); // half = 100s
+
+    audio.currentTime = 99;
+    audio.dispatchEvent(new Event('timeupdate')); // below threshold
+    expect(
+      scrobbleCalls(fetchMock).filter((u) => u.searchParams.get('submission') === 'true'),
+    ).toHaveLength(0);
+
+    audio.currentTime = 100;
+    audio.dispatchEvent(new Event('timeupdate')); // at threshold
+    audio.currentTime = 180;
+    audio.dispatchEvent(new Event('timeupdate')); // past threshold — must not re-send
+
+    const subs = scrobbleCalls(fetchMock).filter(
+      (u) => u.searchParams.get('submission') === 'true',
+    );
+    expect(subs).toHaveLength(1);
+    expect(subs[0].searchParams.get('id')).toBe('song-1');
+  });
+
+  it('caps the submission threshold at 4 minutes for long tracks', async () => {
+    const fetchMock = mockServer();
+    const p = new SubsonicProvider({ baseUrl: 'https://nav.example', apiKey: 'K' });
+    await p.load({ title: 'T', artist: 'A' });
+    const audio = (p as any).audio as HTMLAudioElement;
+    Object.defineProperty(audio, 'duration', { value: 3600, configurable: true }); // half = 1800s, cap = 240s
+
+    audio.currentTime = 239;
+    audio.dispatchEvent(new Event('timeupdate'));
+    expect(
+      scrobbleCalls(fetchMock).filter((u) => u.searchParams.get('submission') === 'true'),
+    ).toHaveLength(0);
+
+    audio.currentTime = 240;
+    audio.dispatchEvent(new Event('timeupdate'));
+    expect(
+      scrobbleCalls(fetchMock).filter((u) => u.searchParams.get('submission') === 'true'),
+    ).toHaveLength(1);
+  });
+
+  it('never submits tracks shorter than 30 seconds', async () => {
+    const fetchMock = mockServer();
+    const p = new SubsonicProvider({ baseUrl: 'https://nav.example', apiKey: 'K' });
+    await p.load({ title: 'T', artist: 'A' });
+    const audio = (p as any).audio as HTMLAudioElement;
+    Object.defineProperty(audio, 'duration', { value: 20, configurable: true });
+
+    audio.currentTime = 20; // played to the end
+    audio.dispatchEvent(new Event('timeupdate'));
+    expect(
+      scrobbleCalls(fetchMock).filter((u) => u.searchParams.get('submission') === 'true'),
+    ).toHaveLength(0);
+  });
+
+  it('does not submit when scrobble: false', async () => {
+    const fetchMock = mockServer();
+    const p = new SubsonicProvider({
+      baseUrl: 'https://nav.example',
+      apiKey: 'K',
+      scrobble: false,
+    });
+    await p.load({ title: 'T', artist: 'A' });
+    const audio = (p as any).audio as HTMLAudioElement;
+    Object.defineProperty(audio, 'duration', { value: 200, configurable: true });
+    audio.currentTime = 150;
+    audio.dispatchEvent(new Event('timeupdate'));
+    expect(scrobbleCalls(fetchMock)).toHaveLength(0);
   });
 });

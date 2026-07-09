@@ -20,10 +20,16 @@ export interface SubsonicConfig {
   retries?: number; // extra attempts after the first (default 2)
   retryDelayMs?: number; // base backoff, multiplied by attempt number (default 400)
   debug?: boolean; // console.debug resolution outcomes
+  scrobble?: boolean; // send Subsonic scrobble on play (now-playing + submission); default true
 }
 
 const API_VERSION = '1.16.1';
 const CLIENT_NAME = 'byom-player';
+
+// Last.fm-style scrobble rule: submit once playback passes half the track or
+// 4 minutes, whichever comes first; never submit tracks under 30 seconds.
+const SCROBBLE_MIN_DURATION_S = 30;
+const SCROBBLE_MAX_DELAY_S = 240;
 
 // SubsonicProvider resolves a Track against a Subsonic/OpenSubsonic server and
 // plays the resulting stream via an HTML5 Audio element.
@@ -38,6 +44,10 @@ export class SubsonicProvider implements AudioProvider {
   // Resolved token auth: provided directly, or derived from a password + salt.
   private readonly authToken?: string;
   private readonly authSalt?: string;
+  // Per-track scrobble state (reset in load()).
+  private currentId: string | null = null;
+  private nowPlayingSent = false;
+  private submitted = false;
 
   constructor(config: Record<string, unknown>) {
     this.cfg = config as unknown as SubsonicConfig;
@@ -52,7 +62,14 @@ export class SubsonicProvider implements AudioProvider {
     }
 
     const opts = { signal: this.listeners.signal };
-    this.audio.addEventListener('playing', () => this.callback('playing'), opts);
+    this.audio.addEventListener(
+      'playing',
+      () => {
+        this.callback('playing');
+        this.sendNowPlaying();
+      },
+      opts,
+    );
     this.audio.addEventListener('pause', () => this.callback('paused'), opts);
     this.audio.addEventListener('ended', () => this.callback('ended'), opts);
     this.audio.addEventListener('error', () => this.callback('error'), opts);
@@ -61,8 +78,43 @@ export class SubsonicProvider implements AudioProvider {
   }
 
   private emitProgress(): void {
-    const duration = Number.isFinite(this.audio.duration) ? this.audio.duration * 1000 : 0;
-    this.progressCallback(this.audio.currentTime * 1000, duration);
+    const durationS = Number.isFinite(this.audio.duration) ? this.audio.duration : 0;
+    this.progressCallback(this.audio.currentTime * 1000, durationS * 1000);
+    this.maybeSubmit(this.audio.currentTime, durationS);
+  }
+
+  private scrobbleEnabled(): boolean {
+    return this.cfg.scrobble !== false; // default on
+  }
+
+  private sendNowPlaying(): void {
+    if (!this.currentId || this.nowPlayingSent || !this.scrobbleEnabled()) return;
+    this.nowPlayingSent = true;
+    this.scrobble(this.currentId, false);
+  }
+
+  private maybeSubmit(positionS: number, durationS: number): void {
+    if (!this.currentId || this.submitted || !this.scrobbleEnabled()) return;
+    if (durationS < SCROBBLE_MIN_DURATION_S) return; // too short to count / unknown duration
+    const threshold = Math.min(durationS / 2, SCROBBLE_MAX_DELAY_S);
+    if (positionS >= threshold) {
+      this.submitted = true;
+      this.scrobble(this.currentId, true);
+    }
+  }
+
+  // scrobble notifies the server of a play. Fire-and-forget: it never awaits,
+  // never routes through the retrying fetchJson, and never affects provider
+  // state — a flaky scrobble must not disrupt playback or trip the breaker.
+  // submission=false is a "now playing" ping; submission=true is a play count.
+  // Navidrome also accepts the bare /rest/scrobble alias.
+  private scrobble(id: string, submission: boolean): void {
+    const url = this.url('scrobble.view', {
+      id,
+      submission: String(submission),
+      time: String(Date.now()),
+    });
+    fetch(url).catch((err) => this.log('scrobble failed', err));
   }
 
   async initialize(): Promise<void> {
@@ -70,6 +122,9 @@ export class SubsonicProvider implements AudioProvider {
   }
 
   async load(track: Track): Promise<void> {
+    this.currentId = null;
+    this.nowPlayingSent = false;
+    this.submitted = false;
     let id: string | null;
     try {
       id = await this.resolve(track);
@@ -86,6 +141,7 @@ export class SubsonicProvider implements AudioProvider {
       return;
     }
     this.log('resolved', track.artist, '-', track.title, '->', id);
+    this.currentId = id;
     this.audio.src = this.streamUrl(id);
     this.callback('ready');
   }
