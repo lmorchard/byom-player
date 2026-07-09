@@ -19,8 +19,7 @@ skip `search3`, plus self-healing when a cached ID goes stale.
 
 ## Status
 
-- 96 tests (18 new: 9 cache-unit, 5 provider cache-wiring, 4 evict-on-error).
-  Lint + build clean.
+- 130 tests, lint + build clean (grew as features were added below).
 - Dev-harness clear button verified live via Playwright (seed cache → click →
   key removed + status shown).
 - **Live Navidrome verification still pending** (needs Les's creds in-browser).
@@ -30,7 +29,7 @@ skip `search3`, plus self-healing when a cached ID goes stale.
 - **localStorage, not IndexedDB.** ~100 bytes/entry; an 8000-track library is
   ~0.8 MB, far under the ~5 MB budget. Sync API = simpler. Behind an interface
   so IndexedDB is a drop-in later.
-- Positive caching only (no negative/miss caching).
+- Cache hits and misses; misses carry a 1h TTL (see "Negative caching" below).
 - Cache scoped `subsonic:<baseUrl>` — server-specific IDs never shared.
 
 ## Gotchas hit
@@ -65,6 +64,25 @@ skip `search3`, plus self-healing when a cached ID goes stale.
   auto-merged (Spotify fieldset + clear-cache button). `vite.config.ts` now binds
   `127.0.0.1` (Spotify PKCE) — dev server runs there.
 
+## Negative caching (Les, after PR opened)
+
+Reversed the initial "positive-only" call. Degenerate case: a playlist of mostly
+*missing* tracks re-ran `search3` for every miss on each play/prescan. Now misses
+are cached too, with a **1-hour TTL** — the playlist loads fast, and tracks Les
+acquires later are re-checked within the hour (the "Clear ID cache" button forces
+it immediately). Hits still don't expire (evict-on-error covers their staleness).
+
+- `ResolutionCache.get` → `id | null (known miss) | undefined`; added `setMiss`.
+  Entries are `{id}` or `{m: timestamp}`; injectable clock for deterministic tests.
+- Legacy bare-string entries migrate to hits on load (Les's warmed cache survives).
+- `isResolutionCached` counts known misses, so the prescan skips their throttle too.
+- Gotcha: the composite-key separator `SEP` is a NUL byte (`U+0000`), not a
+  space — a migration test that hardcoded a space in the composite key failed;
+  rewrote it to derive the stored format from a real entry. (NUL genuinely can't
+  appear in a scope/key, so it's a fine separator — just invisible in editors,
+  and it turns a text file "binary" for grep if it ever leaks into content.)
+- Generated JSPF fixtures added to `.prettierignore` (byom-sync re-emits them unformatted).
+
 ## Known limitation (verify live)
 
 Re-resolve-and-resume runs in an async continuation of the media `error` event,
@@ -77,7 +95,7 @@ against live Navidrome.
 - Worktree: `.claude/worktrees/subsonic-id-cache`, branch
   `worktree-subsonic-id-cache` (fresh from `origin/main`, which has the merged
   scrobble work).
-- Dev server: `localhost:5185`.
+- Dev server: `127.0.0.1:5173` (post-rebase vite.config binds IPv4 for Spotify PKCE).
 
 ## Live verification checklist (pending)
 
