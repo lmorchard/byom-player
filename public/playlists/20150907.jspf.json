@@ -1,0 +1,639 @@
+{
+  "playlist": {
+    "title": "20150907",
+    "creator": "Les Orchard",
+    "date": "2026-07-08T07:05:24Z",
+    "track": [
+      {
+        "title": "Playgirl",
+        "creator": "Ladytron",
+        "album": "Best of 00-10 [Deluxe Edition]",
+        "duration": 229,
+        "identifier": [
+          "urn:isrc:CAN111000313"
+        ],
+        "location": [
+          "https://open.spotify.com/track/69tXx8HWa8h2MnTq9HZ0ZN"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "qMH6wljk4Xw"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Never Let Me Down Again - 2006 Remaster",
+        "creator": "Depeche Mode",
+        "album": "Music for the Masses (2006 Remaster)",
+        "duration": 290,
+        "identifier": [
+          "urn:isrc:GBAJH0600228"
+        ],
+        "location": [
+          "https://open.spotify.com/track/2H1BmB1b6Px9KJXIUpD03u"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "snILjFUkk_A"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "One Armed Scissor",
+        "creator": "At the Drive-In",
+        "album": "Relationship Of Command",
+        "duration": 260,
+        "identifier": [
+          "urn:isrc:USGRR0000003"
+        ],
+        "location": [
+          "https://open.spotify.com/track/6OZoT8AhDTz57JY2UU5J7n"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "1ge6ttcFrvA"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "From Your Mouth",
+        "creator": "God Lives Underwater",
+        "album": "Life In The So-Called Space Age",
+        "duration": 283,
+        "identifier": [
+          "urn:isrc:USAM19874946"
+        ],
+        "location": [
+          "https://open.spotify.com/track/2KQUC6YOIRxnztiCqdQDH8"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "8yrlw8FuJko"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "I'm Afraid of Americans (Nine Inch Nails V1 MIx)",
+        "creator": "David Bowie",
+        "album": "Earthling",
+        "duration": 300,
+        "identifier": [
+          "urn:isrc:USRF30000053"
+        ],
+        "location": [
+          "https://open.spotify.com/track/2DT9Yuaf4Qs6ogfVWulue1"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "LT3cERVRoQo"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Not If You Were The Last Junkie On Earth",
+        "creator": "The Dandy Warhols",
+        "album": "...The Dandy Warhols Come Down",
+        "duration": 191,
+        "identifier": [
+          "urn:isrc:USCA29600198"
+        ],
+        "location": [
+          "https://open.spotify.com/track/6knnw2F8PneXpkMcMmGY8e"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "APrpB-i4d_E"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Devils Haircut",
+        "creator": "Beck",
+        "album": "Odelay",
+        "duration": 193,
+        "identifier": [
+          "urn:isrc:USGF19682301"
+        ],
+        "location": [
+          "https://open.spotify.com/track/1AQg7H4Ohu6s3qzq4m1KrN"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "aa3rBVb3v4g"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "This Heart's On Fire",
+        "creator": "Wolf Parade",
+        "album": "Apologies To The Queen Mary",
+        "duration": 240,
+        "identifier": [
+          "urn:isrc:USSUB0565512"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3qtdTUICDnG3xC3Sk2P7Z1"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "b52L8an9Ddg"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Windowlicker - EP Version",
+        "creator": "Aphex Twin",
+        "album": "Windowlicker",
+        "duration": 365,
+        "identifier": [
+          "urn:isrc:USSI10000245"
+        ],
+        "location": [
+          "https://open.spotify.com/track/1E38xwNBProWZkF26Pqtfm"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "EjejOvjH6Gc"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Common People - Full Length Version",
+        "creator": "Pulp",
+        "album": "Different Class",
+        "duration": 352,
+        "identifier": [
+          "urn:isrc:GBAAN9500078"
+        ],
+        "location": [
+          "https://open.spotify.com/track/2fXKyAyPrEa24c6PJyqznF"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "TZOdKdxP8Wk"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Tear You Apart",
+        "creator": "She Wants Revenge",
+        "album": "She Wants Revenge",
+        "duration": 285,
+        "identifier": [
+          "urn:isrc:USUM70503877"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3urJUvRhgMrwydaTQFVEg9"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "ixw_bLVUL34"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Greens and Blues",
+        "creator": "Pixies",
+        "album": "Indie Cindy",
+        "duration": 227,
+        "identifier": [
+          "urn:isrc:UK3SA1300013"
+        ],
+        "location": [
+          "https://open.spotify.com/track/6DKuepo9Spio7VmAiw0tZx"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "w1vdYTzPtKQ"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Incinerate",
+        "creator": "Sonic Youth",
+        "album": "Rather Ripped",
+        "duration": 296,
+        "identifier": [
+          "urn:isrc:USUM70602004"
+        ],
+        "location": [
+          "https://open.spotify.com/track/0lDoG5fQ9cmpvpenwR7Jln"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "rP3ovD8ZSS4"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Cheap Talk",
+        "creator": "Death From Above 1979",
+        "album": "The Physical World",
+        "duration": 195,
+        "identifier": [
+          "urn:isrc:CAL451355501"
+        ],
+        "location": [
+          "https://open.spotify.com/track/5X9D4hPl4K6FeZrw9Ws6ee"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "h-DPYG215Uw"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Circuit Breaker",
+        "creator": "Röyksopp",
+        "album": "The Understanding",
+        "duration": 325,
+        "identifier": [
+          "urn:isrc:FRS940500068"
+        ],
+        "location": [
+          "https://open.spotify.com/track/6Fy3rZR0bgplEm9fWzOKo0"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "2rrr_FRN6-I"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Panic Switch",
+        "creator": "Silversun Pickups",
+        "album": "Swoon",
+        "duration": 342,
+        "identifier": [
+          "urn:isrc:US3R20900106"
+        ],
+        "location": [
+          "https://open.spotify.com/track/55RgkQsaSkcScDaBm5m7D2"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "AG8fugqFn9Q"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Fashion Zombies!",
+        "creator": "The Aquabats!",
+        "album": "Charge!!",
+        "duration": 196,
+        "identifier": [
+          "urn:isrc:USNRR0500559"
+        ],
+        "location": [
+          "https://open.spotify.com/track/6T2QCAFNrCOuLOJmF8H1dU"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "9tU_uEZ2KrY"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Loaded",
+        "creator": "Primal Scream",
+        "album": "Screamadelica",
+        "duration": 422,
+        "identifier": [
+          "urn:isrc:GBARL1001516"
+        ],
+        "location": [
+          "https://open.spotify.com/track/0CBxYZz0mxzViWUvoMnRGi"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "MFrqeUekg3M"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Turnstile Blues",
+        "creator": "Autolux",
+        "album": "Future Perfect",
+        "duration": 340,
+        "identifier": [
+          "urn:isrc:USTC40805026"
+        ],
+        "location": [
+          "https://open.spotify.com/track/1AhPF3fqcJklUGSjYNTQ9H"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "UoC-tSER6I0"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Lost in Space",
+        "creator": "Aimee Mann",
+        "album": "Lost in Space",
+        "duration": 208,
+        "identifier": [
+          "urn:isrc:USSE50200005"
+        ],
+        "location": [
+          "https://open.spotify.com/track/02F2BFfLP7V0CNDDo1dk7N"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "PESO23QmUS8"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Fresh Blood",
+        "creator": "Eels",
+        "album": "Hombre Lobo",
+        "duration": 265,
+        "identifier": [
+          "urn:isrc:USZXT0907782"
+        ],
+        "location": [
+          "https://open.spotify.com/track/4oDMbPIU0kSsZCoKwm2fPT"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "dOapjBTqLLs"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "The Business of Emotion (feat. White Sea)",
+        "creator": "Big Data, White Sea",
+        "album": "2.0",
+        "duration": 247,
+        "identifier": [
+          "urn:isrc:USWB11403099"
+        ],
+        "location": [
+          "https://open.spotify.com/track/2TKso10B9HcIWy7HR1oP2g"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "ckGpFjV5yXA"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Y Control",
+        "creator": "Yeah Yeah Yeahs",
+        "album": "Fever To Tell (EX)/Show Your Bones",
+        "duration": 241,
+        "identifier": [
+          "urn:isrc:USIR10300265"
+        ],
+        "location": [
+          "https://open.spotify.com/track/2a3bppD0deLMyQLxphTfBk"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "IcjPFAV1foU"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Atomic - Remastered 2001",
+        "creator": "Blondie",
+        "album": "Eat To The Beat",
+        "duration": 280,
+        "identifier": [
+          "urn:isrc:USCH30100032"
+        ],
+        "location": [
+          "https://open.spotify.com/track/6eOHOpNXzYUx79NDB4dMRd"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "2pF0H8-ktoA"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Agenda Suicide",
+        "creator": "The Faint",
+        "album": "Danse MacAbre",
+        "duration": 239,
+        "identifier": [
+          "urn:isrc:DEC611000899"
+        ],
+        "location": [
+          "https://open.spotify.com/track/7yxDEow9fVZf0BFBQk6G9e"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "xv8mJfDPxuA"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Tiberius",
+        "creator": "The Smashing Pumpkins",
+        "album": "Monuments to an Elegy",
+        "duration": 183,
+        "identifier": [
+          "urn:isrc:QMRSZ1401516"
+        ],
+        "location": [
+          "https://open.spotify.com/track/2Mi1PHwDwVv5PSivK9qF0D"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "UHMSDYtxsu4"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Supervixen",
+        "creator": "Garbage",
+        "album": "Garbage",
+        "duration": 236,
+        "identifier": [
+          "urn:isrc:USGF19500401"
+        ],
+        "location": [
+          "https://open.spotify.com/track/6ArZsLg9Hb4cYhOCaVMg3i"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "nMqslcTBRf8"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Ana Ng",
+        "creator": "They Might Be Giants",
+        "album": "Lincoln",
+        "duration": 203,
+        "identifier": [
+          "urn:isrc:USRS72600001"
+        ],
+        "location": [
+          "https://open.spotify.com/track/6GYg28cTC0zmDZjvluNyWt"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "gTa0nv-127E"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Jumpers",
+        "creator": "Sleater-Kinney",
+        "album": "The Woods",
+        "duration": 265,
+        "identifier": [
+          "urn:isrc:USSUB0567004"
+        ],
+        "location": [
+          "https://open.spotify.com/track/089EHpvcaDJeRxMkCol2oB"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "vZA_7FtttRY"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Capsize",
+        "creator": "Big Black Delta",
+        "album": "Big Black Delta",
+        "duration": 293,
+        "identifier": [
+          "urn:isrc:GBBN41300005"
+        ],
+        "location": [
+          "https://open.spotify.com/track/3Pu0o8RY0cBfbk7M8YDN7h"
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "kkgGabrxIf0"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

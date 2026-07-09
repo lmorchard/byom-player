@@ -69,6 +69,32 @@ describe('loadManifest', () => {
     expect(t.syncState).toEqual({ spotifyPresent: false, dateOrphaned: '2026-06-01T00:00:00Z' });
   });
 
+  it('reads resolved.youtube from the extension into resolvedIds', () => {
+    const withResolved = {
+      playlist: {
+        track: [
+          {
+            title: 'A',
+            creator: 'B',
+            extension: { [BYOM_EXT_NS]: [{ resolved: { youtube: 'vidX' } }] },
+          },
+          { title: 'C', creator: 'D' }, // no extension
+          { title: 'E', creator: 'F', extension: { [BYOM_EXT_NS]: [{ resolved: 'nope' }] } }, // malformed
+          {
+            title: 'G',
+            creator: 'H',
+            extension: { [BYOM_EXT_NS]: [{ resolved: { youtube: 123 } }] },
+          }, // non-string
+        ],
+      },
+    };
+    const tracks = loadManifest(withResolved).tracks;
+    expect(tracks[0].resolvedIds).toEqual({ youtube: 'vidX' });
+    expect(tracks[1].resolvedIds).toBeUndefined();
+    expect(tracks[2].resolvedIds).toBeUndefined();
+    expect(tracks[3].resolvedIds).toBeUndefined();
+  });
+
   it('unwraps an already-unwrapped playlist object', () => {
     const pl = loadManifest({ title: 'Flat', track: [] });
     expect(pl.title).toBe('Flat');
