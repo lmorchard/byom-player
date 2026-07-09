@@ -50,6 +50,21 @@ skip `search3`, plus self-healing when a cached ID goes stale.
   running the worktree server on a dedicated port (`--port 5185 --strictPort`).
   Left the other agent's stray server alone.
 
+## Post-plan refinements (Les, mid-session)
+
+- **Prescan throttle skip.** `sweepAvailability`'s inter-check delay exists to be
+  gentle on the *source*; a cache hit never touches it, so the delay was pure
+  waste. Added optional `AudioProvider.isResolutionCached?(track)`, consulted
+  before each check — cache hits skip the cooldown, so a fully-cached playlist
+  prescans near-instantly. Backward-compatible.
+- **Playlists un-ignored.** `public/playlists/` is no longer gitignored — the four
+  JSPF files are committed as test fixtures (the harness presets reference them
+  by name; Les intends to publish them as public mixtapes). Updated `.gitignore`
+  and AGENTS.md.
+- **Rebased onto origin/main** (Spotify #7 + tracklist #9). `index.html`
+  auto-merged (Spotify fieldset + clear-cache button). `vite.config.ts` now binds
+  `127.0.0.1` (Spotify PKCE) — dev server runs there.
+
 ## Known limitation (verify live)
 
 Re-resolve-and-resume runs in an async continuation of the media `error` event,
