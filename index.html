@@ -115,6 +115,7 @@
             <option value="subsonic">subsonic (Navidrome / any Subsonic)</option>
             <option value="youtube">youtube</option>
             <option value="spotify">spotify</option>
+            <option value="plex">plex</option>
           </select>
         </label>
         <fieldset id="fs-subsonic">
@@ -145,6 +146,15 @@
           <p class="or">
             Register a Spotify app, add the Redirect URI to it, then click "Connect Spotify" in the
             player. Premium → full tracks; free → 30s previews.
+          </p>
+        </fieldset>
+        <fieldset id="fs-plex">
+          <legend>Plex</legend>
+          <label>Base URL <input name="plexBaseUrl" placeholder="https://<id>.plex.direct:32400" /></label>
+          <label>X-Plex-Token <input name="plexToken" autocomplete="off" /></label>
+          <p class="or">
+            Leave both blank to use the in-player "Link Plex" button (sign in at plex.tv). Direct
+            play only; the server must allow this origin (CORS).
           </p>
         </fieldset>
         <button type="submit">Connect</button>
@@ -180,6 +190,7 @@
         document.getElementById('fs-subsonic').hidden = provider !== 'subsonic';
         document.getElementById('fs-youtube').hidden = provider !== 'youtube';
         document.getElementById('fs-spotify').hidden = provider !== 'spotify';
+        document.getElementById('fs-plex').hidden = provider !== 'plex';
         document.getElementById('random').hidden = provider !== 'subsonic';
         document.getElementById('clear-cache').hidden = provider !== 'subsonic';
       }
@@ -209,6 +220,12 @@
             clientId: cfg.spotifyClientId || '',
             redirectUri: cfg.spotifyRedirectUri || `${location.origin}/callback.html`,
           };
+        }
+        if (cfg.provider === 'plex') {
+          const c = {};
+          if (cfg.plexBaseUrl) c.baseUrl = cfg.plexBaseUrl;
+          if (cfg.plexToken) c.token = cfg.plexToken;
+          return c;
         }
         return {};
       }
