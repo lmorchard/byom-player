@@ -1,5 +1,6 @@
 import type { Track } from '../types';
-import type { AudioProvider, ProviderState } from './types';
+import type { AudioProvider, AvailabilityStatus, ProviderState } from './types';
+import { trackKey, LocalStorageResolutionCache, type ResolutionCache } from './resolutionCache';
 
 declare global {
   interface Window {
@@ -22,7 +23,13 @@ export interface YouTubeConfig {
   // Injectable player engine (tests supply a fake; production uses the iframe).
   engine?: YouTubeEngine;
   debug?: boolean;
+  cache?: boolean; // cache resolved video ids in localStorage; default true
+  resolutionCache?: ResolutionCache; // injectable cache (tests / custom backend)
 }
+
+// Cache scope for YouTube: video ids are universal (not per-server), so a single
+// global scope is correct.
+const YT_SCOPE = 'youtube';
 
 // YouTubeEngine abstracts the iframe player so the provider is unit-testable.
 // All time values are milliseconds.
@@ -77,6 +84,7 @@ export class YouTubeProvider implements AudioProvider {
 
   private readonly cfg: YouTubeConfig;
   private readonly engine: YouTubeEngine;
+  private readonly cache: ResolutionCache | null;
   private stateCallback: (state: ProviderState) => void = () => {};
   private progressCallback: (positionMs: number, durationMs: number) => void = () => {};
   private ticker: ReturnType<typeof setInterval> | null = null;
@@ -85,6 +93,10 @@ export class YouTubeProvider implements AudioProvider {
     this.cfg = config as unknown as YouTubeConfig;
     this.engine = this.cfg.engine ?? new YtIframeEngine();
     this.engine.onState((yt) => this.handleYtState(yt));
+    this.cache =
+      this.cfg.cache === false
+        ? null
+        : (this.cfg.resolutionCache ?? new LocalStorageResolutionCache());
   }
 
   // Mount the visible player into a host element (called before initialize()).
@@ -140,9 +152,36 @@ export class YouTubeProvider implements AudioProvider {
     this.engine.destroy();
   }
 
-  // resolve turns "{artist} {title} audio" into a videoId, or null when the
-  // server responds but has no match. Transient failures throw.
+  // resolve turns a track into a videoId via the chain: embedded id (from the
+  // manifest) -> cache -> live search (if configured) -> give up (null). Positive
+  // live results are cached; misses are negative-cached (TTL). Transient search
+  // failures throw (controller circuit breaker).
   async resolve(track: Track): Promise<string | null> {
+    const cached = this.cachedId(track);
+    if (cached) return cached; // embedded or cache hit — no network
+    if (cached === null) return null; // known miss within TTL
+    if (!this.searchConfigured()) return null; // nothing to resolve with; don't cache
+    const id = await this.liveSearch(track);
+    const key = trackKey(track);
+    if (id) this.cache?.set(YT_SCOPE, key, id);
+    else this.cache?.setMiss(YT_SCOPE, key);
+    return id;
+  }
+
+  private searchConfigured(): boolean {
+    return !!(this.cfg.apiKey || this.cfg.searchEndpoint);
+  }
+
+  // cachedId returns the embedded videoId (from the manifest), else the cache's
+  // answer: a hit (string), a known miss (null), or unknown (undefined).
+  private cachedId(track: Track): string | null | undefined {
+    return track.resolvedIds?.youtube ?? this.cache?.get(YT_SCOPE, trackKey(track));
+  }
+
+  // liveSearch performs the actual "{artist} {title} audio" lookup. Only called
+  // when a searchEndpoint or apiKey is configured. Returns null on a clean miss;
+  // throws on transient HTTP failure.
+  private async liveSearch(track: Track): Promise<string | null> {
     const query = `${track.artist} ${track.title} audio`.trim();
     if (this.cfg.apiKey) {
       const url =
@@ -151,14 +190,11 @@ export class YouTubeProvider implements AudioProvider {
       const data = await this.fetchJson(url);
       return data?.items?.[0]?.id?.videoId ?? null;
     }
-    if (this.cfg.searchEndpoint) {
-      const sep = this.cfg.searchEndpoint.includes('?') ? '&' : '?';
-      const url = `${this.cfg.searchEndpoint}${sep}q=${encodeURIComponent(query)}`;
-      const data = await this.fetchJson(url);
-      // Tolerate a simple { videoId } contract or a Data-API-shaped response.
-      return data?.videoId ?? data?.items?.[0]?.id?.videoId ?? null;
-    }
-    throw new Error('YouTubeProvider: configure a searchEndpoint or apiKey');
+    const sep = this.cfg.searchEndpoint!.includes('?') ? '&' : '?';
+    const url = `${this.cfg.searchEndpoint}${sep}q=${encodeURIComponent(query)}`;
+    const data = await this.fetchJson(url);
+    // Tolerate a simple { videoId } contract or a Data-API-shaped response.
+    return data?.videoId ?? data?.items?.[0]?.id?.videoId ?? null;
   }
 
   private async fetchJson(url: string): Promise<any> {
