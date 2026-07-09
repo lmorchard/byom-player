@@ -21,8 +21,9 @@ SDK tier to the embed tier automatically when the account isn't Premium.
 
 `byom-sync` extracts playlists *from* Spotify; letting `byom-player` play them
 back *through* Spotify closes the loop. Because the byom-sync JSPF export already
-writes the Spotify URL into each track's `location`, resolution is trivial — no
-search/quota step (unlike the YouTube provider).
+writes the Spotify URL into each track's `location` (surfaced on byom-player's
+internal `Track` as `spotifyUrl`), resolution is trivial — no search/quota step
+(unlike the YouTube provider).
 
 ## Goals
 
@@ -171,14 +172,14 @@ interface SpotifyConfig {
 - `attach(element)`: remember the surface; render connect button / status / embed
   iframe there. Auth stays entirely inside the provider (no core interface
   change).
-- `load(track)`: parse the Spotify track id from `track.location` (accept both
+- `load(track)`: parse the Spotify track id from `track.spotifyUrl` (accept both
   `https://open.spotify.com/track/<id>` and `spotify:track:<id>`), build the
   `spotify:track:<id>` uri, and pass it to `engine.load(uri)`. No / non-Spotify
-  location → `unavailable` (controller skips cleanly).
+  URL → `unavailable` (controller skips cleanly).
 - `play` / `pause` / `seek`: delegate to the active engine.
 - `onStateChange` / `onProgress`: wired from the active engine (+ SDK ticker).
 - `checkAvailability(track)`: implemented — a free, network-less URL parse
-  returning `available` when the location yields a Spotify id, else
+  returning `available` when `track.spotifyUrl` yields a Spotify id, else
   `unavailable`. Feeds the background prescan at zero quota cost (unlike YouTube,
   which omits it).
 - `dispose()`: destroy engine, stop ticker, close popup if open, remove
