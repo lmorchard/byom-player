@@ -4,6 +4,14 @@ on:
   push:
     branches: [main]
 
+# Serialize rolling-release runs. Two pushes to main close together (e.g. merging
+# two PRs) otherwise start overlapping runs that race to force-push the `dist`
+# branch, and one is rejected ("cannot lock ref 'refs/heads/dist'"). Cancelling
+# the in-progress run means the newest commit wins and only one push happens.
+concurrency:
+  group: rolling-release
+  cancel-in-progress: true
+
 jobs:
   ci:
     uses: ./.github/workflows/ci.yml
