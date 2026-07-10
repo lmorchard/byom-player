@@ -40,6 +40,7 @@ export class PlexProvider implements AudioProvider {
   private readonly auth?: PlexAuthLike;
   private target: HTMLElement | null = null;
   private authTarget: HTMLElement | null = null;
+  private disposed = false;
   private resetCallback: () => void = () => {};
 
   // Stale-id recovery state (reset in load()).
@@ -100,7 +101,10 @@ export class PlexProvider implements AudioProvider {
   }
 
   // Auth controls render into the panel's slot when given, else the attach target.
+  // Returns null once disposed so a late async initialize()/link() callback can't
+  // clobber the next provider's controls in the now-shared auth slot.
   private get authHost(): HTMLElement | null {
+    if (this.disposed) return null;
     return this.authTarget ?? this.target;
   }
 
@@ -245,6 +249,7 @@ export class PlexProvider implements AudioProvider {
     this.progressCallback = cb;
   }
   dispose(): void {
+    this.disposed = true;
     this.listeners.abort();
     this.audio.pause();
     this.audio.removeAttribute('src');

@@ -284,6 +284,21 @@ describe('PlexProvider auth integration', () => {
     await vi.waitFor(() => expect((p as unknown as { token: string }).token).toBe('AT'));
   });
 
+  it('does not render Link after dispose (late initialize resolving into a disposed provider)', async () => {
+    const slot = document.createElement('div');
+    let resolveSession: (v: null) => void = () => {};
+    const p = new PlexProvider({
+      auth: fakeAuth({ getSession: () => new Promise((r) => (resolveSession = r)) }),
+    });
+    p.attach(document.createElement('div'));
+    p.attachAuth!(slot);
+    const initPromise = p.initialize(); // pending on getSession
+    p.dispose(); // provider replaced before the session resolves
+    resolveSession(null); // late resolution would otherwise renderLink()
+    await initPromise;
+    expect(slot.querySelector('.byom-plex-link')).toBeNull();
+  });
+
   it('renders the Link button into the attachAuth slot when provided', async () => {
     const video = document.createElement('div');
     const authSlot = document.createElement('div');
