@@ -11,6 +11,10 @@ export interface Track {
   artist: string;
   album?: string;
   isrc?: string;
+  // Stable byom-sync content id (from a JSPF `urn:byom:<hash>` identifier),
+  // present on tracks without an ISRC. Used as the resolution-cache key so
+  // off-Spotify tracks get a stable, album-aware identity.
+  byomId?: string;
   durationMs?: number;
   spotifyUrl?: string;
   syncState?: SyncState;

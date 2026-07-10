@@ -47,9 +47,35 @@ describe('loadManifest', () => {
   it('leaves optional fields undefined when absent', () => {
     const t = loadManifest(jspf).tracks[1];
     expect(t.isrc).toBeUndefined();
+    expect(t.byomId).toBeUndefined();
     expect(t.durationMs).toBeUndefined();
     expect(t.spotifyUrl).toBeUndefined();
     expect(t.syncState).toBeUndefined();
+  });
+
+  it('parses a urn:byom identifier into byomId', () => {
+    const doc = {
+      playlist: {
+        title: 'X',
+        track: [{ title: 'Off-Spotify', creator: 'Band', identifier: ['urn:byom:abc123def'] }],
+      },
+    };
+    const t = loadManifest(doc).tracks[0];
+    expect(t.byomId).toBe('abc123def');
+    expect(t.isrc).toBeUndefined();
+  });
+
+  it('exposes both when a track carries urn:isrc and urn:byom', () => {
+    const doc = {
+      playlist: {
+        track: [
+          { title: 'T', creator: 'C', identifier: ['urn:isrc:US1230000001', 'urn:byom:hash'] },
+        ],
+      },
+    };
+    const t = loadManifest(doc).tracks[0];
+    expect(t.isrc).toBe('US1230000001');
+    expect(t.byomId).toBe('hash');
   });
 
   it('reads sync_state from the byom-sync JSPF extension', () => {
