@@ -336,6 +336,19 @@ describe('YouTubeProvider lifecycle', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
+  it('does not play the empty player when a track resolved to unavailable', async () => {
+    const engine = new FakeEngine();
+    // No search configured → the track can't resolve → load() emits unavailable
+    // and cues nothing. The controller still calls play(); it must no-op so the
+    // empty YouTube player never shows its "An error occurred" overlay.
+    const p = new YouTubeProvider({ engine });
+    await p.initialize();
+    await p.load({ title: 'T', artist: 'A' }); // no id, no search → unavailable
+    expect(engine.cued).toBeNull();
+    await p.play();
+    expect(engine.played).toBe(0);
+  });
+
   it('drives cue/play/seek/progress/state through the engine', async () => {
     const engine = new FakeEngine();
     const states: ProviderState[] = [];

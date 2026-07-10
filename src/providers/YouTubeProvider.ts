@@ -118,6 +118,7 @@ export class YouTubeProvider implements AudioProvider {
   private stateCallback: (state: ProviderState) => void = () => {};
   private progressCallback: (positionMs: number, durationMs: number) => void = () => {};
   private ticker: ReturnType<typeof setInterval> | null = null;
+  private cued = false; // a real video is loaded (guards play() on the empty player)
 
   constructor(config: Record<string, unknown>) {
     this.cfg = config as unknown as YouTubeConfig;
@@ -146,19 +147,27 @@ export class YouTubeProvider implements AudioProvider {
       videoId = await this.resolve(track);
     } catch (err) {
       this.log('resolve error', track.artist, '-', track.title, err);
+      this.cued = false;
       this.stateCallback('error');
       return;
     }
     if (!videoId) {
       this.log('no match', track.artist, '-', track.title);
+      this.cued = false;
       this.stateCallback('unavailable');
       return;
     }
     this.log('resolved', track.artist, '-', track.title, '->', videoId);
+    this.cued = true;
     this.engine.cue(videoId); // engine emits CUED -> 'ready'
   }
 
   async play(): Promise<void> {
+    // The controller always calls play() after load(), even when load() resolved
+    // to 'unavailable' and cued nothing. Calling playVideo() on the empty YouTube
+    // player renders its "An error occurred" overlay — so no-op until a real
+    // video is cued.
+    if (!this.cued) return;
     this.engine.play();
   }
 
