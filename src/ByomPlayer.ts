@@ -821,6 +821,19 @@ export class ByomPlayer extends LitElement {
       padding: 0.25rem 0.4rem;
       font: inherit;
     }
+    .now-playing {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      min-height: 1.4rem;
+    }
+    .now-playing .np-title {
+      font-weight: 600;
+    }
+    .now-playing .np-artist {
+      color: var(--byom-text-muted);
+      font-size: 0.9rem;
+    }
     .progress-row {
       display: flex;
       align-items: center;
@@ -865,24 +878,43 @@ export class ByomPlayer extends LitElement {
     .controls {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.35rem;
+      margin: 0.25rem 0;
     }
     .controls button {
       cursor: pointer;
-      font-size: 1.4rem;
+      font-size: 1.3rem;
       line-height: 1;
+      color: var(--byom-text);
+      background: transparent;
+      border: none;
+      border-radius: 999px;
+      min-width: 2.4rem;
+      min-height: 2.4rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .controls button:hover {
+      background: color-mix(in srgb, var(--byom-text) 10%, transparent);
     }
     .controls .playpause {
-      font-size: 2rem;
+      font-size: 1.7rem;
+      color: var(--byom-on-accent);
+      background: var(--byom-accent);
+    }
+    .controls .playpause:hover {
+      background: var(--byom-accent);
+      filter: brightness(1.08);
     }
     .controls .shuffle {
-      border: 1px solid var(--byom-accent);
+      border: 1px solid var(--byom-border);
       border-radius: 999px;
       background: transparent;
       color: var(--byom-text);
       padding: 0.3rem 0.9rem;
       font-size: 1rem;
-      opacity: 0.6;
+      opacity: 0.8;
     }
     .controls .shuffle.on {
       background: var(--byom-accent);
