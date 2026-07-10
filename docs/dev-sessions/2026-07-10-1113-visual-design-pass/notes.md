@@ -137,3 +137,25 @@ Cover art is a **parallel effort's** lane. This pass renders the art slot with t
 🎵 fallback and exposes `part="art"` but does NOT parse/add an `image` field — see
 [[cover-art-parallel-effort]] and the spec addendum. Their data should light up
 the slot with a ~one-line render change.
+
+### Polish nits (post-redesign)
+
+Quick feedback pass after the redesign landed:
+
+- Settings gear ~55% larger (1.4rem → 2.2rem).
+- Shuffle button: was a boxy colored 🔀 emoji in a bordered pill that clashed with
+  the round transport buttons. Now a round icon button (same shape as prev/play/
+  next) with a monochrome inline-SVG shuffle icon (currentColor, themes cleanly);
+  accent fill = on.
+- Title caret: the native `<select>` sized to the *widest* option, so the gradient
+  caret floated far right, detached from the title (read as "missing"). Replaced
+  with a visible title + adjacent ▾ over a transparent overlay `<select>` — the
+  caret stays glued to the title, and it's still a real keyboard-accessible
+  dropdown.
+
+### Decision: cover-art tweaks → follow-up PR
+
+Further header tuning (art sizing/placement, and whatever the 🎵 fallback should
+give way to) waits until the parallel cover-art effort lands its data. The slot +
+`part="art"` seam is in place, so it should be a small follow-up PR. See
+[[cover-art-parallel-effort]]. This PR (#33) is considered complete for review.
