@@ -54,7 +54,7 @@ const jspf = {
         creator: 'bb',
         extension: { [BYOM_EXT_NS]: [{ spotify_present: false }] },
       },
-      { title: 'C', creator: 'cc' },
+      { title: 'C', creator: 'cc', album: 'Greatest Hits' },
     ],
   },
 };
@@ -77,6 +77,14 @@ const lis = (el: ByomPlayer) => Array.from(el.shadowRoot!.querySelectorAll('.tra
 // Flush pending microtasks/macrotasks (async provider load→play chain), then the render.
 async function settle(el: ByomPlayer): Promise<void> {
   await new Promise((r) => setTimeout(r, 0));
+  await el.updateComplete;
+}
+
+// Type a value into the tracklist filter field and let the render settle.
+async function setFilter(el: ByomPlayer, value: string): Promise<void> {
+  const input = el.shadowRoot!.querySelector<HTMLInputElement>('.filter-input')!;
+  input.value = value;
+  input.dispatchEvent(new Event('input'));
   await el.updateComplete;
 }
 
@@ -111,6 +119,126 @@ describe('<byom-player>', () => {
     expect(lis(el)[2].classList.contains('active')).toBe(true);
     expect(lis(el)[0].classList.contains('active')).toBe(false);
     expect(provider.loadedIndex).toContain('C');
+  });
+
+  it('filters the tracklist by title/artist (case-insensitive)', async () => {
+    const { el } = await mount();
+    await setFilter(el, 'bb');
+    expect(lis(el)).toHaveLength(1);
+    expect(lis(el)[0].querySelector('.t-title')!.textContent).toBe('B');
+    await setFilter(el, 'BB');
+    expect(lis(el)).toHaveLength(1);
+    expect(lis(el)[0].querySelector('.t-title')!.textContent).toBe('B');
+  });
+
+  it('filters the tracklist by album (even though album is not shown)', async () => {
+    const { el } = await mount();
+    await setFilter(el, 'greatest');
+    expect(lis(el)).toHaveLength(1);
+    expect(lis(el)[0].querySelector('.t-title')!.textContent).toBe('C');
+  });
+
+  it('shows all tracks when the query is cleared', async () => {
+    const { el } = await mount();
+    await setFilter(el, 'zzz');
+    expect(lis(el)).toHaveLength(0);
+    await setFilter(el, '');
+    expect(lis(el)).toHaveLength(3);
+  });
+
+  it('clicking a filtered row plays the correct real track', async () => {
+    const { el, provider } = await mount();
+    await setFilter(el, 'cc');
+    expect(lis(el)).toHaveLength(1);
+    (lis(el)[0] as HTMLElement).click();
+    await settle(el);
+    expect(provider.loadedIndex).toContain('C');
+    expect(lis(el)[0].classList.contains('active')).toBe(true);
+  });
+
+  it('shows a no-matches message when nothing matches', async () => {
+    const { el } = await mount();
+    await setFilter(el, 'zzz');
+    expect(lis(el)).toHaveLength(0);
+    const msg = el.shadowRoot!.querySelector('.no-matches');
+    expect(msg).not.toBeNull();
+    expect(msg!.textContent).toContain('zzz');
+  });
+
+  it('clear button empties the query and restores all rows', async () => {
+    const { el } = await mount();
+    await setFilter(el, 'cc');
+    expect(lis(el)).toHaveLength(1);
+    const clearBtn = el.shadowRoot!.querySelector<HTMLElement>('.filter-clear');
+    expect(clearBtn).not.toBeNull();
+    clearBtn!.click();
+    await el.updateComplete;
+    expect(lis(el)).toHaveLength(3);
+    const input = el.shadowRoot!.querySelector<HTMLInputElement>('.filter-input')!;
+    expect(input.value).toBe('');
+  });
+
+  it('hides the clear button when the query is empty', async () => {
+    const { el } = await mount();
+    expect(el.shadowRoot!.querySelector('.filter-clear')).toBeNull();
+  });
+
+  it('pressing / focuses the filter input', async () => {
+    const { el } = await mount();
+    const input = el.shadowRoot!.querySelector<HTMLInputElement>('.filter-input')!;
+    const focusSpy = vi.spyOn(input, 'focus');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: '/', bubbles: true }));
+    expect(focusSpy).toHaveBeenCalled();
+  });
+
+  it('ignores / while the settings panel is open', async () => {
+    const { el } = await mount();
+    (el.shadowRoot!.querySelector('.gear') as HTMLElement).click();
+    await el.updateComplete;
+    const input = el.shadowRoot!.querySelector<HTMLInputElement>('.filter-input')!;
+    const focusSpy = vi.spyOn(input, 'focus');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: '/', bubbles: true }));
+    expect(focusSpy).not.toHaveBeenCalled();
+  });
+
+  it('ignores / when pressed as a modifier combo', async () => {
+    const { el } = await mount();
+    const input = el.shadowRoot!.querySelector<HTMLInputElement>('.filter-input')!;
+    const focusSpy = vi.spyOn(input, 'focus');
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: '/', metaKey: true, bubbles: true }),
+    );
+    expect(focusSpy).not.toHaveBeenCalled();
+  });
+
+  it('ignores / while typing in another input', async () => {
+    const { el } = await mount();
+    const other = document.createElement('input');
+    document.body.appendChild(other);
+    other.focus();
+    const input = el.shadowRoot!.querySelector<HTMLInputElement>('.filter-input')!;
+    const focusSpy = vi.spyOn(input, 'focus');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: '/', bubbles: true }));
+    expect(focusSpy).not.toHaveBeenCalled();
+    other.remove();
+  });
+
+  it('Escape clears the query and restores all rows', async () => {
+    const { el } = await mount();
+    await setFilter(el, 'cc');
+    expect(lis(el)).toHaveLength(1);
+    const input = el.shadowRoot!.querySelector<HTMLInputElement>('.filter-input')!;
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await el.updateComplete;
+    expect(lis(el)).toHaveLength(3);
+    expect(input.value).toBe('');
+  });
+
+  it('removes the global keydown listener on disconnect', async () => {
+    const removeSpy = vi.spyOn(document, 'removeEventListener');
+    const { el } = await mount();
+    el.remove();
+    expect(removeSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
   });
 
   it('advances the active track when the provider emits ended', async () => {

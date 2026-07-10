@@ -168,9 +168,9 @@ component follows the OS via `prefers-color-scheme`.
 **Skin parts** — target these with `::part()`:
 
 `header`, `title`, `creator`, `playlist`, `now-playing`, `progress`, `seek`,
-`controls`, `control` (+ `prev` / `play` / `next` / `shuffle` / `gear`), `stage`,
-`tracklist`, `track` (carries `data-state="active|orphan|unavailable|pending"`),
-`video`, `settings`.
+`controls`, `control` (+ `prev` / `play` / `next` / `shuffle` / `gear`), `filter`,
+`filter-input`, `filter-clear`, `stage`, `tracklist`, `track` (carries
+`data-state="active|orphan|unavailable|pending"`), `video`, `settings`.
 
 ```css
 /* A skin: restyle via parts + tokens only — no component change */
