@@ -187,3 +187,82 @@ add one.
 - Short playlists are compact; long ones scroll; provider switches don't jump the
   layout.
 - Behavior tests, lint, and build all green.
+
+---
+
+## Addendum — header + tracklist redesign (2026-07-10, second pass)
+
+After the first pass merged (PR #33) and #32's search/filter landed, an
+interactive design session (mockups in `header-tracklist-mockup.html`) reshaped
+the header and tracklist. This addendum is the authority where it differs from
+the body above.
+
+### New data
+
+- `Playlist.annotation?: string` — a host-authored markdown blurb (the playlist's
+  "story"), read from the standard JSPF playlist `annotation` field. On-spec, no
+  custom extension.
+- Total playlist duration is derived from the existing per-track `durationMs`
+  (every sample track carries one); shown only when **all** tracks have a
+  duration (avoids a misleading undercount on generic JSPF).
+
+### Markdown
+
+- Tiny inline renderer (`src/markdown.ts`): **bold** (`**`/`__`), *italic*
+  (`*`/`_`), and `[text](url)` links, plus line breaks. Everything else is
+  deferred. HTML-escape the source first, then apply formatting; sanitize link
+  hrefs to `http(s):`/`mailto:` (drop others). Rendered via Lit `unsafeHTML`.
+  Host-authored, so the trust surface is low — escaping is still done properly.
+
+### Header (replaces the body's "Controls & density" + header notes)
+
+One header block (art + text column), gear pinned top-right, then a transport
+footer:
+
+- **Art slot** — `part="art"`; shows the cover when present, a big centered 🎵
+  (♪ U+1F3B5) fallback otherwise. The cover-art data is a **parallel effort's
+  lane** (see coordination note); this pass renders the slot and leaves a clean
+  seam — do not add `image` parsing here.
+- **Title** — when >1 playlist, a `<select class="title-select">` styled to look
+  like the title with a ▾ caret (options = child titles, value = src; switching
+  changes the playlist); when single, a plain `<h2 class="title">` (manifest
+  title). Replaces the standalone `.playlist-row`/`.playlist-picker`.
+- **Creator** — as before.
+- **Meta line** — `{n} tracks · {total duration} · {creation date}`, each part
+  conditional (count always; duration only if all tracks have one; date from
+  `dateCreated` if present). Muted, tabular.
+- **Description** — the markdown blurb, in the text column below the meta line
+  (fills the space beside the art; long blurbs push the transport down).
+- **Transport footer** — prev / play-pause / next, an **inline seek bar** (the
+  existing `.progress` input) with time labels, and shuffle at the end. The
+  standalone **now-playing line is removed** — the active row + seek carry it.
+
+### Tracklist (replaces the body's opacity-based treatments)
+
+Spotify-style rows: `[number] [title / artist stacked] [duration]`.
+
+- **Number column** shows the track's **real playlist position** (`i + 1`), so it
+  stays meaningful while filtering. Keep the existing `.t-title` / `.t-artist`
+  classes (tests depend on them) inside the stacked cell; add `.dur`.
+- **Number ↔ glyph**: the active row's number becomes ⏸ while playing / ▶ when
+  paused; hovering a playable (not unavailable/pending) row swaps its number for
+  ▶. **Clicking the active row toggles play/pause**; clicking any other row
+  selects + plays it.
+- **Duration** — right-aligned, `m:ss` from `durationMs`.
+- **States** re-expressed on the new row: active (accent bar + tint, accent
+  number/title), orphan (muted + `↯` after title), unavailable (title struck + `✕`
+  in the duration slot), pending (accent `⋯` in the number slot). Keep the
+  `.active/.orphan/.unavailable/.pending` classes + `data-state` + `part="track"`.
+
+### New parts for the skin surface
+
+`art`, `title` (the select or h2), `meta`, `description`, `transport`, plus the
+existing `controls`/`control …`/`seek`/`tracklist`/`track`. Update the README
+parts list.
+
+### Coordination
+
+A separate agent is enriching playlists with **cover art**. To avoid a conflict,
+this pass does **not** parse or add an `image` field — it only renders the art
+slot with the 🎵 fallback and exposes `part="art"`. When that effort lands its
+data (likely `Playlist.image`), the slot lights up with a one-line render change.

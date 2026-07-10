@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>byom-player — full card</title>
+    <style>
+      :root {
+        --byom-bg: #1e1e1e;
+        --byom-surface: #2a2a2a;
+        --byom-text: #ffffff;
+        --byom-text-muted: #a0a0a0;
+        --byom-accent: #ff0055;
+        --byom-on-accent: #14141a;
+        --byom-border: #3a3a3a;
+        --byom-font: system-ui, sans-serif;
+        --byom-border-radius: 8px;
+      }
+      body {
+        margin: 0;
+        padding: 2rem;
+        background: #111;
+        font-family: var(--byom-font);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2rem;
+        align-items: flex-start;
+      }
+      .player {
+        width: 420px;
+        background: var(--byom-bg);
+        color: var(--byom-text);
+        border-radius: var(--byom-border-radius);
+        padding: 1rem;
+        position: relative;
+      }
+      .label {
+        color: #888;
+        font: 600 0.8rem/1 var(--byom-font);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin: 0 0 0.6rem;
+        width: 420px;
+      }
+      .head { display: flex; gap: 0.9rem; align-items: flex-start; }
+      .art {
+        width: 104px; height: 104px; flex: 0 0 auto;
+        background: var(--byom-surface); border: 1px solid var(--byom-border);
+        border-radius: calc(var(--byom-border-radius) / 2);
+        display: flex; align-items: center; justify-content: center;
+        color: var(--byom-text-muted); font-size: 2.6rem;
+      }
+      .meta { min-width: 0; flex: 1; }
+      .title-select {
+        appearance: none; -webkit-appearance: none;
+        background: transparent; border: none; color: var(--byom-text);
+        font-family: inherit; font-size: 1.35rem; line-height: 1.15; font-weight: 700;
+        padding: 0 1.4rem 0 0; margin: 0 0 0 -0.15rem; max-width: 100%; cursor: pointer;
+        background-image: linear-gradient(45deg, transparent 50%, var(--byom-text-muted) 50%),
+          linear-gradient(135deg, var(--byom-text-muted) 50%, transparent 50%);
+        background-position: right 6px top 0.7rem, right 1px top 0.7rem;
+        background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; border-radius: 4px;
+      }
+      .creator { margin: 0.15rem 0 0; color: var(--byom-text-muted); font-size: 0.9rem; }
+      .meta-line {
+        margin: 0.3rem 0 0; color: var(--byom-text-muted);
+        font-size: 0.78rem; font-variant-numeric: tabular-nums; opacity: 0.85;
+      }
+      .desc {
+        color: var(--byom-text-muted); font-size: 0.82rem; line-height: 1.4;
+        margin: 0.5rem 0 0;
+      }
+      .desc a { color: var(--byom-accent); text-decoration: none; }
+      .desc a:hover { text-decoration: underline; }
+      .gear {
+        position: absolute; top: 0.9rem; right: 0.9rem;
+        color: var(--byom-text-muted); font-size: 1.4rem; cursor: pointer;
+      }
+      .transport { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.95rem; }
+      .ctl-group { display: flex; align-items: center; gap: 0.3rem; flex: 0 0 auto; }
+      .ctl {
+        width: 2.2rem; height: 2.2rem; border-radius: 999px; background: transparent;
+        color: var(--byom-text); display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem;
+      }
+      .ctl.play { background: var(--byom-accent); color: var(--byom-on-accent); font-size: 1.35rem; }
+      .seek { flex: 1; display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+      .seek .t { color: var(--byom-text-muted); font-size: 0.72rem; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+      .bar { flex: 1; height: 4px; border-radius: 999px; background: var(--byom-border); position: relative; }
+      .bar .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 22%; background: var(--byom-accent); border-radius: 999px; }
+      .bar .thumb { position: absolute; left: 22%; top: 50%; width: 11px; height: 11px; border-radius: 999px; background: var(--byom-accent); transform: translate(-50%, -50%); }
+      .shuffle { flex: 0 0 auto; border: 1px solid var(--byom-border); border-radius: 999px; color: var(--byom-text-muted); font-size: 0.95rem; padding: 0.25rem 0.5rem; }
+      .filter {
+        margin-top: 0.85rem; width: 100%; box-sizing: border-box;
+        background: var(--byom-surface); border: 1px solid var(--byom-border);
+        border-radius: 999px; color: var(--byom-text-muted); padding: 0.3rem 0.8rem;
+        font: inherit; font-size: 0.85rem;
+      }
+
+      /* ---- tracklist ---- */
+      .tl { margin-top: 0.6rem; }
+      .row {
+        display: grid;
+        grid-template-columns: 1.6rem 1fr auto;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.3rem 0.5rem 0.3rem 0.4rem;
+        border-left: 3px solid transparent;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .row:hover { background: color-mix(in srgb, var(--byom-text) 8%, transparent); }
+      .num {
+        text-align: center; color: var(--byom-text-muted);
+        font-size: 0.8rem; font-variant-numeric: tabular-nums; position: relative;
+      }
+      .num .glyph { display: none; font-size: 0.85rem; }
+      .row:not(.active):not(.unavail):not(.pending):hover .num .idx { visibility: hidden; }
+      .row:not(.active):not(.unavail):not(.pending):hover .num .glyph {
+        display: block; position: absolute; inset: 0; color: var(--byom-text);
+      }
+      .cell { min-width: 0; }
+      .ti {
+        color: var(--byom-text); font-size: 0.9rem; line-height: 1.25;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .ar {
+        color: var(--byom-text-muted); font-size: 0.76rem; line-height: 1.2;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .dur { color: var(--byom-text-muted); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+      .row.active { border-left-color: var(--byom-accent); background: color-mix(in srgb, var(--byom-accent) 12%, transparent); }
+      .row.active .num { color: var(--byom-accent); }
+      .row.active .num .idx { display: none; }
+      .row.active .num .glyph { display: block; color: var(--byom-accent); }
+      .row.active .ti { color: var(--byom-accent); font-weight: 600; }
+      .row.active .ar { color: color-mix(in srgb, var(--byom-accent) 65%, var(--byom-text-muted)); }
+      .row.orphan .ti { color: var(--byom-text-muted); }
+      .row.orphan .ti::after { content: '↯'; margin-left: 0.35rem; opacity: 0.8; }
+      .row.unavail .ti { color: var(--byom-text-muted); text-decoration: line-through; }
+      .row.pending .num { color: var(--byom-accent); }
+      .row.pending .ti, .row.pending .ar { color: var(--byom-text-muted); }
+
+      .hint { color: #667; font-size: 0.75rem; margin: 0.6rem 0 0; width: 420px; }
+    </style>
+  </head>
+  <body>
+    <div>
+      <p class="label">Notes beside the art &middot; transport pushed below</p>
+      <div class="player">
+        <span class="gear">&#9881;</span>
+        <div class="head">
+          <div class="art">&#127925;</div>
+          <div class="meta">
+            <select class="title-select" aria-label="Playlist">
+              <option>Cry Little Sister</option>
+              <option>Road Trip Mix</option>
+            </select>
+            <p class="creator">Les Orchard</p>
+            <p class="meta-line">6 tracks &middot; 24 min &middot; Jul 2026</p>
+            <p class="desc">
+              A <strong>Lost Boys</strong> obsession in six covers &mdash; from
+              <em>synthwave</em> to industrial. See the <a href="#">liner notes</a>.
+            </p>
+          </div>
+        </div>
+
+        <div class="transport">
+          <div class="ctl-group">
+            <span class="ctl">&#9198;</span>
+            <span class="ctl play">&#9208;</span>
+            <span class="ctl">&#9197;</span>
+          </div>
+          <div class="seek">
+            <span class="t">0:42</span>
+            <div class="bar"><div class="fill"></div><div class="thumb"></div></div>
+            <span class="t">4:12</span>
+          </div>
+          <span class="shuffle">&#128256;</span>
+        </div>
+
+        <input class="filter" placeholder="Filter tracks…" />
+
+        <div class="tl">
+          <div class="row active">
+            <span class="num"><span class="idx">1</span><span class="glyph">&#9208;</span></span>
+            <span class="cell"><div class="ti">Cry Little Sister</div><div class="ar">Gerard McMann</div></span>
+            <span class="dur">4:12</span>
+          </div>
+          <div class="row">
+            <span class="num"><span class="idx">2</span><span class="glyph">&#9654;</span></span>
+            <span class="cell"><div class="ti">Cry Little Sister</div><div class="ar">CHVRCHES</div></span>
+            <span class="dur">3:58</span>
+          </div>
+          <div class="row orphan">
+            <span class="num"><span class="idx">3</span><span class="glyph">&#9654;</span></span>
+            <span class="cell"><div class="ti">Cry Little Sister</div><div class="ar">Marilyn Manson</div></span>
+            <span class="dur">4:05</span>
+          </div>
+          <div class="row unavail">
+            <span class="num"><span class="idx">4</span></span>
+            <span class="cell"><div class="ti">Cry Little Sister</div><div class="ar">Blutengel</div></span>
+            <span class="dur">&#10005;</span>
+          </div>
+          <div class="row pending">
+            <span class="num"><span class="idx">&#8943;</span></span>
+            <span class="cell"><div class="ti">Cry Little Sister</div><div class="ar">Tangerine Dream</div></span>
+            <span class="dur">4:30</span>
+          </div>
+          <div class="row">
+            <span class="num"><span class="idx">6</span><span class="glyph">&#9654;</span></span>
+            <span class="cell"><div class="ti">Cry Little Sister</div><div class="ar">The Anix</div></span>
+            <span class="dur">3:45</span>
+          </div>
+        </div>
+      </div>
+      <p class="hint">
+        Notes now fill the space beside the art (below the metadata) and push the transport down.
+        Active row number &rarr; &#9208; while playing / &#9654; when paused (click toggles); hover a
+        playable row to swap its number for &#9654;.
+      </p>
+    </div>
+  </body>
+</html>

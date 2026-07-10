@@ -87,3 +87,53 @@ place, ready to tune against the live component:
 - Per-provider idle-embed check: `.video:empty { display: none }` handles YouTube;
   Spotify's persistent embed stays (correct). Re-verify with live Spotify/YouTube
   when convenient (mock provider has no embed).
+
+---
+
+## Addendum — header + tracklist redesign (second pass, 2026-07-10)
+
+After PR #33 and the merge of #32 (search/filter), an interactive mockup session
+(`header-tracklist-mockup.html`) reshaped the header and tracklist. Built on the
+same branch. Final gate: **267 tests pass** (was 247; +20), build + lint clean.
+
+### What shipped
+
+- `Playlist.annotation` + manifest parse; `src/markdown.ts` (tiny inline
+  renderer: bold/italic/links, escaped + href-sanitized); `src/format.ts`
+  (total-duration sum + "Jul 2026" date), each unit-tested.
+- Header redesign: cover-art slot (🎵 fallback, `part="art"`), title-as-selector
+  (multi) / plain `<h2>` (single), creator, meta line
+  (`n tracks · duration · date`), markdown description in the text column beside
+  the art. Gear moved to a top-right `.corner`.
+- Transport footer: prev/play-pause/next + inline seek + shuffle. **Removed the
+  standalone now-playing line** (active row + seek carry it).
+- Spotify-style tracklist: numbered rows (real playlist index, stable under
+  filtering), stacked title/artist, right-aligned duration. Number ↔ play/pause
+  glyph (active = ⏸/▶, hover a playable row = ▶). **Clicking the active row
+  toggles play/pause**; other rows select + play. States re-expressed on the grid.
+- New skin parts: `art`, `meta`, `meta-line`, `description`, `transport`,
+  `track-number`. README parts list + a manifest/annotation note updated.
+
+### Gotchas / decisions
+
+- **Bare-child-expression gotcha bit again.** Leading the template with a bare
+  `${gear conditional}` at the root mis-rendered under happy-dom and shifted every
+  sibling → ~34 tests failed. Fix (house style): wrap it in a `<div class="corner">`
+  container. Same lesson as the settings-panel session — never lead with / sandwich
+  a bare `${expr}` between block siblings at the template root.
+- Renamed the `.controls` container part to `transport`; updated the part-surface
+  test (`controls` → `transport`) and the two playlist-picker tests
+  (`.playlist-picker` → `.title-select`, plus a plain-title assertion for single).
+- The active row keeps both `active` + `orphan` classes when the playing track is
+  orphaned, so the `↯` shows on the active row too — honest, but a candidate to
+  suppress during live tuning if it reads as noisy.
+- Verified live in the browser (throwaway HTTP config, reverted a temp `annotation`
+  on `sample.jspf.json` after) across Midnight + Daylight: title-selector, meta
+  line, markdown description, transport, active-row glyph, and all row states.
+
+### Coordination
+
+Cover art is a **parallel effort's** lane. This pass renders the art slot with the
+🎵 fallback and exposes `part="art"` but does NOT parse/add an `image` field — see
+[[cover-art-parallel-effort]] and the spec addendum. Their data should light up
+the slot with a ~one-line render change.

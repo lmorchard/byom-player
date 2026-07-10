@@ -800,3 +800,36 @@ Record anything needing live tuning (palette tweaks, spacing) in `notes.md` unde
 **Type consistency:** `theme` property (string) consistent across Tasks 2/6; `trackState` return type consistent with `data-state` usage; `THEMES`/`onDraftTheme` names consistent Task 6; `UserSettings.theme` consistent Tasks 1/2/6. ✅
 
 **Note on TDD granularity:** Pure-CSS tasks (4, 5, 7, 8) have no meaningful happy-dom assertion (no layout/computed-style), so they're gated by the full suite staying green + the Task 10 browser pass rather than a new unit test. This is intentional, not a skipped test.
+
+---
+
+## Addendum plan — header + tracklist redesign (second pass)
+
+Reference mockup: `header-tracklist-mockup.html` (this dir). Spec authority: the
+"Addendum" in `spec.md`. Build TDD where logic-bearing; CSS/layout gated by the
+suite staying green + a browser pass. Keep all existing classes tests depend on
+(`.t-title`, `.t-artist`, `.gear`, `.shuffle`, `.progress`, `.playpause`,
+`.active/.orphan/.unavailable/.pending`, `.title`).
+
+- **Task A — `Playlist.annotation` + parse.** Add to `types.ts`; read
+  `pl.annotation` in `manifest.ts`. Test: manifest maps annotation.
+- **Task B — `src/markdown.ts`.** `renderMarkdownInline(src): string` → escaped
+  HTML with bold/italic/links + `<br>`; href sanitized to http(s)/mailto. Unit
+  tests: escaping, each format, bad href dropped, plain text.
+- **Task C — duration helpers.** `formatDuration(ms)` → `m:ss`;
+  `totalDurationMs(tracks)` → number|null (null if any track lacks it). Unit
+  tests.
+- **Task D — header restructure.** Title-as-selector (multi) / plain `.title`
+  (single); creator; meta line; markdown description via `unsafeHTML`; gear
+  top-right; `part="art|title|meta|description"`. Update the two
+  playlist-picker tests → `.title-select`. Remove `.playlist-row`.
+- **Task E — transport footer.** Move prev/play-pause/next + `.progress` seek +
+  shuffle into a `part="transport"` row; remove the now-playing block.
+- **Task F — tracklist rows.** Grid number/cell/dur; number = `i+1`; number↔glyph
+  (active = ⏸/▶, hover = ▶); duration column; states re-expressed. Active-row
+  click → togglePlay; others → selectTrack. Tests: number = real index while
+  filtered; duration rendered; active row toggles play/pause.
+- **Task G — CSS.** All new styles tokenized; verify each theme + state in the
+  browser (throwaway HTTP config, deleted after).
+- **Task H — docs.** README parts list + a "playlist annotation" note; update
+  session `notes.md`.

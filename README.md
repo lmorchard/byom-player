@@ -167,10 +167,11 @@ component follows the OS via `prefers-color-scheme`.
 
 **Skin parts** — target these with `::part()`:
 
-`header`, `title`, `creator`, `playlist`, `now-playing`, `progress`, `seek`,
-`controls`, `control` (+ `prev` / `play` / `next` / `shuffle` / `gear`), `filter`,
-`filter-input`, `filter-clear`, `stage`, `tracklist`, `track` (carries
-`data-state="active|orphan|unavailable|pending"`), `video`, `settings`.
+`header`, `art`, `meta`, `title`, `creator`, `meta-line`, `description`,
+`transport`, `control` (+ `prev` / `play` / `next` / `shuffle` / `gear`),
+`progress`, `seek`, `filter`, `filter-input`, `filter-clear`, `stage`,
+`tracklist`, `track` (carries `data-state="active|orphan|unavailable|pending"`),
+`track-number`, `video`, `settings`.
 
 ```css
 /* A skin: restyle via parts + tokens only — no component change */
@@ -186,6 +187,13 @@ byom-player::part(track)[data-state='unavailable'] {
 
 Standard JSPF. `sync_state` (orphaned-track info from byom-sync) is read from a
 JSPF track `extension` when present and ignored otherwise, so generic JSPF works.
+
+The header shows the playlist `title`, `creator`, and a meta line
+(`{n} tracks · {total duration} · {creation date}`) derived from the tracks and
+the JSPF `date`. The playlist-level **`annotation`** field is rendered as a short
+description blurb with a tiny inline-markdown subset — `**bold**`, `*italic*`,
+and `[links](https://…)` (other markdown is ignored; link hrefs are restricted to
+http(s)/mailto). Per-track `duration` drives the right-aligned times in the list.
 
 ## Subsonic auth
 
