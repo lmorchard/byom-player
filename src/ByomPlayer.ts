@@ -21,6 +21,18 @@ import {
 
 type ProviderFactory = (name: string, config: Record<string, unknown>) => AudioProvider;
 
+// Built-in themes offered in the Appearance picker. '' = Auto (follow OS).
+// Each named value matches a :host([theme='...']) palette block in `static styles`.
+const THEMES: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Auto' },
+  { value: 'daylight', label: 'Daylight' },
+  { value: 'midnight', label: 'Midnight' },
+  { value: 'terminal', label: 'Terminal' },
+  { value: 'sunset', label: 'Sunset' },
+  { value: 'paper', label: 'Paper' },
+  { value: 'dracula', label: 'Dracula' },
+];
+
 // Per-provider credential fields the settings panel renders + reads back.
 // `advanced` fields are tucked into a collapsible <details>. Providers absent
 // here (mock/youtube/spotify) need no user-entered credentials.
@@ -143,6 +155,7 @@ export class ByomPlayer extends LitElement {
     this.draft = {
       provider: this.provider,
       debug: this.debug,
+      theme: this.theme,
       providers: structuredClone(this.settings.providers),
     };
     this.view = 'settings';
@@ -165,6 +178,11 @@ export class ByomPlayer extends LitElement {
   private onDraftDebug(e: Event): void {
     this.draft = { ...this.draft, debug: (e.currentTarget as HTMLInputElement).checked };
     void this.commitSettings(); // a toggle commits immediately
+  }
+
+  private onDraftTheme(e: Event): void {
+    this.draft = { ...this.draft, theme: (e.currentTarget as HTMLSelectElement).value };
+    void this.commitSettings(); // theme applies immediately, like provider
   }
 
   // Run an interactive-auth action on the active provider (Connect/Link/etc.).
@@ -213,10 +231,12 @@ export class ByomPlayer extends LitElement {
     this.settings = {
       provider: this.draft.provider,
       debug: this.draft.debug,
+      theme: this.draft.theme,
       providers: this.draft.providers,
     };
     saveSettings(this.settings);
     this.debug = this.settings.debug ?? false;
+    this.theme = this.draft.theme ?? '';
     if (this.draft.provider) this.provider = this.draft.provider;
     this.dispatchEvent(
       new CustomEvent('settingschange', { detail: this.settings, bubbles: true, composed: true }),
@@ -631,6 +651,20 @@ export class ByomPlayer extends LitElement {
           <button class="settings-back" @click=${this.closeSettings} aria-label="Back">←</button>
           <span class="settings-title">Settings</span>
         </div>
+        <label class="field">
+          <span>Appearance</span>
+          <select
+            class="theme-select"
+            .value=${this.draft.theme ?? ''}
+            @change=${this.onDraftTheme}
+          >
+            ${THEMES.map(
+              (t) => html`<option value=${t.value} ?selected=${t.value === (this.draft.theme ?? '')}>
+                ${t.label}
+              </option>`,
+            )}
+          </select>
+        </label>
         <label class="field">
           <span>Provider</span>
           <select class="provider-select" .value=${provider} @change=${this.onDraftProvider}>
