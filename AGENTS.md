@@ -31,8 +31,8 @@ Node 22.
 - `src/providers/` — `types.ts` (`AudioProvider`, `ProviderState`,
   `AvailabilityStatus`), `registry.ts` (`createProvider`), `MockProvider`,
   `SubsonicProvider`, `YouTubeProvider`.
-- `index.html` — dev harness (not shipped). `public/` — `sample.jspf.json` and
-  `public/playlists/` (committed JSPF test fixtures the harness presets load).
+- `index.html` — dev harness (not shipped). `public/playlists/` — committed JSPF
+  fixtures the harness presets load.
 
 ## Commands
 
