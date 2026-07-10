@@ -81,6 +81,7 @@ async function settle(el: ByomPlayer): Promise<void> {
 
 describe('<byom-player>', () => {
   beforeEach(() => {
+    localStorage.clear();
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       json: async () => jspf,
     } as Response);
@@ -247,6 +248,75 @@ describe('<byom-player>', () => {
     const { el, provider } = await mount();
     el.remove();
     expect(provider.disposed).toBe(true);
+  });
+
+  it('shows the settings gear by default and hides it with no-settings', async () => {
+    const { el } = await mount();
+    expect(el.shadowRoot!.querySelector('.gear')).toBeTruthy();
+
+    const el2 = document.createElement('byom-player') as ByomPlayer;
+    el2.src = '/playlist.jspf.json';
+    el2.setAttribute('no-settings', '');
+    el2.providerFactory = () => new ControllableProvider();
+    el2.skipDelayMs = 0;
+    el2.prescanDelayMs = 0;
+    document.body.appendChild(el2);
+    await new Promise((r) => setTimeout(r, 0));
+    await el2.updateComplete;
+    expect(el2.shadowRoot!.querySelector('.gear')).toBeNull();
+  });
+
+  it('opens the settings view (inline swap) and closes back to the list', async () => {
+    const { el } = await mount();
+    expect(el.shadowRoot!.querySelector('.settings.open')).toBeNull();
+    (el.shadowRoot!.querySelector('.gear') as HTMLButtonElement).click();
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.settings.open')).toBeTruthy();
+    (el.shadowRoot!.querySelector('.settings-back') as HTMLButtonElement).click();
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.settings.open')).toBeNull();
+  });
+
+  it('applies settings: persists creds + provider and re-inits, emitting settingschange', async () => {
+    const providers: ControllableProvider[] = [];
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = (name) => {
+      const p = new ControllableProvider();
+      p.name = name;
+      providers.push(p);
+      return p;
+    };
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+
+    let fired = false;
+    el.addEventListener('settingschange', () => (fired = true));
+
+    (el.shadowRoot!.querySelector('.gear') as HTMLButtonElement).click();
+    await el.updateComplete;
+    const sel = el.shadowRoot!.querySelector('.provider-select') as HTMLSelectElement;
+    sel.value = 'subsonic';
+    sel.dispatchEvent(new Event('change'));
+    await el.updateComplete;
+    const baseUrl = el.shadowRoot!.querySelector(
+      '.provider-fields input[name="baseUrl"]',
+    ) as HTMLInputElement;
+    baseUrl.value = 'https://nav.example.com';
+    baseUrl.dispatchEvent(new Event('input'));
+    (el.shadowRoot!.querySelector('.apply') as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+
+    expect(fired).toBe(true);
+    expect(el.provider).toBe('subsonic');
+    expect(providers.at(-1)!.name).toBe('subsonic'); // re-init with new provider
+    const stored = JSON.parse(localStorage.getItem('byom-player:settings:v1')!);
+    expect(stored.provider).toBe('subsonic');
+    expect(stored.providers.subsonic.baseUrl).toBe('https://nav.example.com');
   });
 
   it('renders a top-level playlist picker from <byom-playlist> children and switches on change', async () => {

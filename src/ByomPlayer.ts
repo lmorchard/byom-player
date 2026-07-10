@@ -6,8 +6,9 @@ import { loadManifest } from './manifest';
 import { PlaybackController } from './controller';
 import { createProvider } from './providers/registry';
 import { sweepAvailability } from './availability';
-import { loadSettings, effectiveProviderConfig, type UserSettings } from './settings';
+import { loadSettings, saveSettings, effectiveProviderConfig, type UserSettings } from './settings';
 import {
+  parseProviderList,
   parsePlaylistChildren,
   buildDeploymentConfig,
   DEFAULT_SPOTIFY_CLIENT_ID,
@@ -15,6 +16,31 @@ import {
 } from './hostConfig';
 
 type ProviderFactory = (name: string, config: Record<string, unknown>) => AudioProvider;
+
+// Per-provider credential fields the settings panel renders + reads back.
+// Providers absent here (mock/youtube/spotify) need no user-entered credentials.
+const PROVIDER_FIELDS: Record<string, { key: string; label: string; type?: string }[]> = {
+  subsonic: [
+    { key: 'baseUrl', label: 'Base URL' },
+    { key: 'username', label: 'Username' },
+    { key: 'password', label: 'Password', type: 'password' },
+    { key: 'apiKey', label: 'API key' },
+  ],
+  plex: [
+    { key: 'baseUrl', label: 'Base URL' },
+    { key: 'token', label: 'X-Plex-Token' },
+  ],
+  jellyfin: [
+    { key: 'baseUrl', label: 'Base URL' },
+    { key: 'username', label: 'Username' },
+    { key: 'password', label: 'Password', type: 'password' },
+    { key: 'token', label: 'API token' },
+    { key: 'userId', label: 'User ID' },
+  ],
+  youtube: [],
+  spotify: [],
+  mock: [],
+};
 
 @customElement('byom-player')
 export class ByomPlayer extends LitElement {
@@ -59,6 +85,8 @@ export class ByomPlayer extends LitElement {
   @state() private durationMs = 0;
   @state() private hasVideo = false;
   @state() private playlists: PlaylistEntry[] = [];
+  @state() private view: 'list' | 'settings' = 'list';
+  @state() private draft: UserSettings = { providers: {} };
   private settings: UserSettings = { providers: {} };
   private deployment: Record<string, Record<string, unknown>> = {};
 
@@ -86,6 +114,53 @@ export class ByomPlayer extends LitElement {
       this.provider,
     );
     await this.loadAndInit();
+  }
+
+  // The set of providers the user may select in the panel.
+  private get allowedProviders(): string[] {
+    return parseProviderList(this.providers || null);
+  }
+
+  private openSettings(): void {
+    // Deep-copy current settings into a draft the form mutates.
+    this.draft = {
+      provider: this.provider,
+      debug: this.debug,
+      providers: structuredClone(this.settings.providers),
+    };
+    this.view = 'settings';
+  }
+
+  private closeSettings(): void {
+    this.view = 'list';
+  }
+
+  private onDraftProvider(e: Event): void {
+    this.draft = { ...this.draft, provider: (e.currentTarget as HTMLSelectElement).value };
+  }
+
+  private onDraftField(provider: string, key: string, e: Event): void {
+    const value = (e.currentTarget as HTMLInputElement).value;
+    const providers = {
+      ...this.draft.providers,
+      [provider]: { ...this.draft.providers[provider], [key]: value },
+    };
+    this.draft = { ...this.draft, providers };
+  }
+
+  private async applySettings(): Promise<void> {
+    this.settings = {
+      provider: this.draft.provider,
+      debug: this.draft.debug,
+      providers: this.draft.providers,
+    };
+    saveSettings(this.settings);
+    if (this.draft.provider) this.provider = this.draft.provider;
+    this.dispatchEvent(
+      new CustomEvent('settingschange', { detail: this.settings, bubbles: true, composed: true }),
+    );
+    this.view = 'list';
+    await this.initProvider();
   }
 
   disconnectedCallback(): void {
@@ -353,6 +428,18 @@ export class ByomPlayer extends LitElement {
         >
           🔀 ${this.shuffle ? 'On' : 'Off'}
         </button>
+        ${
+          this.noSettings
+            ? nothing
+            : html`<button
+                class="gear"
+                @click=${this.openSettings}
+                aria-label="Settings"
+                title="Settings"
+              >
+                ⚙
+              </button>`
+        }
       </div>
       <div class="status">
         ${
@@ -363,7 +450,10 @@ export class ByomPlayer extends LitElement {
             : nothing
         }
       </div>
-      <ol class="tracklist ${this.hasVideo ? 'with-video' : ''}">
+      <ol
+        class="tracklist ${this.hasVideo ? 'with-video' : ''}"
+        ?hidden=${this.view === 'settings'}
+      >
         ${pl.tracks.map((t, i) => {
           const orphaned = t.syncState?.spotifyPresent === false;
           return html`
@@ -374,7 +464,49 @@ export class ByomPlayer extends LitElement {
           `;
         })}
       </ol>
+      <div class="settings-host">${this.renderSettings()}</div>
       <div class="video" part="video"></div>
+    `;
+  }
+
+  private renderSettings() {
+    const provider = this.draft.provider ?? this.provider;
+    const fields = PROVIDER_FIELDS[provider] ?? [];
+    return html`
+      <div
+        class="settings ${this.view === 'settings' ? 'open' : ''}"
+        ?hidden=${this.view === 'list'}
+      >
+        <div class="settings-head">
+          <button class="settings-back" @click=${this.closeSettings} aria-label="Back">←</button>
+          <span class="settings-title">Settings</span>
+        </div>
+        <label class="field">
+          <span>Provider</span>
+          <select class="provider-select" .value=${provider} @change=${this.onDraftProvider}>
+            ${this.allowedProviders.map((p) => html`<option value=${p} ?selected=${p === provider}>${p}</option>`)}
+          </select>
+        </label>
+        <div class="provider-fields">
+          ${fields.map(
+            (f) =>
+              html`<label class="field">
+                <span>${f.label}</span>
+                <input
+                  name=${f.key}
+                  type=${f.type ?? 'text'}
+                  autocomplete="off"
+                  .value=${this.draft.providers[provider]?.[f.key] ?? ''}
+                  @input=${(e: Event) => this.onDraftField(provider, f.key, e)}
+                />
+              </label>`,
+          )}
+          ${
+            fields.length === 0 ? html`<p class="field-note">No configuration needed.</p>` : nothing
+          }
+        </div>
+        <button class="apply" @click=${this.applySettings}>Apply</button>
+      </div>
     `;
   }
 
@@ -498,6 +630,66 @@ export class ByomPlayer extends LitElement {
     .status .halted {
       color: var(--byom-accent);
       font-size: 0.85rem;
+    }
+    .controls .gear {
+      margin-left: auto;
+      background: transparent;
+      border: none;
+      color: var(--byom-text);
+      font-size: 1.2rem;
+      opacity: 0.7;
+      cursor: pointer;
+    }
+    .settings {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      max-height: 60vh;
+      overflow: auto;
+    }
+    .settings-head {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .settings-back {
+      background: transparent;
+      border: none;
+      color: var(--byom-text);
+      cursor: pointer;
+      font-size: 1.1rem;
+    }
+    .settings .field {
+      display: grid;
+      gap: 0.15rem;
+      font-size: 0.8rem;
+      opacity: 0.9;
+    }
+    .settings .field input,
+    .settings .field select {
+      background: var(--byom-bg);
+      color: var(--byom-text);
+      border: 1px solid var(--byom-accent);
+      border-radius: calc(var(--byom-border-radius) / 2);
+      padding: 0.3rem;
+      font: inherit;
+    }
+    .settings .apply {
+      align-self: flex-start;
+      background: var(--byom-accent);
+      color: var(--byom-bg);
+      border: none;
+      border-radius: 999px;
+      padding: 0.4rem 1rem;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .field-note {
+      font-size: 0.8rem;
+      opacity: 0.6;
+    }
+    [hidden] {
+      display: none !important;
     }
   `;
 }
