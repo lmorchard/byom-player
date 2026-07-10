@@ -23,24 +23,31 @@ import {
 type ProviderFactory = (name: string, config: Record<string, unknown>) => AudioProvider;
 
 // Per-provider credential fields the settings panel renders + reads back.
-// Providers absent here (mock/youtube/spotify) need no user-entered credentials.
-const PROVIDER_FIELDS: Record<string, { key: string; label: string; type?: string }[]> = {
+// `advanced` fields are tucked into a collapsible <details>. Providers absent
+// here (mock/youtube/spotify) need no user-entered credentials.
+interface ProviderField {
+  key: string;
+  label: string;
+  type?: string;
+  advanced?: boolean;
+}
+const PROVIDER_FIELDS: Record<string, ProviderField[]> = {
   subsonic: [
     { key: 'baseUrl', label: 'Base URL' },
     { key: 'username', label: 'Username' },
     { key: 'password', label: 'Password', type: 'password' },
-    { key: 'apiKey', label: 'API key' },
+    { key: 'apiKey', label: 'API key', advanced: true },
   ],
   plex: [
-    { key: 'baseUrl', label: 'Base URL' },
-    { key: 'token', label: 'X-Plex-Token' },
+    { key: 'baseUrl', label: 'Base URL', advanced: true },
+    { key: 'token', label: 'X-Plex-Token', advanced: true },
   ],
   jellyfin: [
     { key: 'baseUrl', label: 'Base URL' },
     { key: 'username', label: 'Username' },
     { key: 'password', label: 'Password', type: 'password' },
-    { key: 'token', label: 'API token' },
-    { key: 'userId', label: 'User ID' },
+    { key: 'token', label: 'API token', advanced: true },
+    { key: 'userId', label: 'User ID', advanced: true },
   ],
   youtube: [],
   spotify: [],
@@ -563,9 +570,24 @@ export class ByomPlayer extends LitElement {
     if ((e.target as HTMLElement).classList.contains('settings-overlay')) this.closeSettings();
   }
 
+  private renderField(provider: string, f: ProviderField) {
+    return html`<label class="field">
+      <span>${f.label}</span>
+      <input
+        name=${f.key}
+        type=${f.type ?? 'text'}
+        autocomplete="off"
+        .value=${this.draft.providers[provider]?.[f.key] ?? ''}
+        @input=${(e: Event) => this.onDraftField(provider, f.key, e)}
+      />
+    </label>`;
+  }
+
   private renderSettings() {
     const provider = this.draft.provider ?? this.provider;
     const fields = PROVIDER_FIELDS[provider] ?? [];
+    const primary = fields.filter((f) => !f.advanced);
+    const advanced = fields.filter((f) => f.advanced);
     return html`
       <div
         class="settings ${this.view === 'settings' ? 'open' : ''}"
@@ -582,24 +604,13 @@ export class ByomPlayer extends LitElement {
             ${this.allowedProviders.map((p) => html`<option value=${p} ?selected=${p === provider}>${p}</option>`)}
           </select>
         </label>
-        <div class="provider-fields">
-          ${fields.map(
-            (f) =>
-              html`<label class="field">
-                <span>${f.label}</span>
-                <input
-                  name=${f.key}
-                  type=${f.type ?? 'text'}
-                  autocomplete="off"
-                  .value=${this.draft.providers[provider]?.[f.key] ?? ''}
-                  @input=${(e: Event) => this.onDraftField(provider, f.key, e)}
-                />
-              </label>`,
-          )}
-          ${
-            fields.length === 0 ? html`<p class="field-note">No configuration needed.</p>` : nothing
-          }
-        </div>
+        ${
+          primary.length
+            ? html`<div class="provider-fields">
+                ${primary.map((f) => this.renderField(provider, f))}
+              </div>`
+            : nothing
+        }
         ${
           this.authState
             ? html`<div class="settings-connection">
@@ -626,6 +637,10 @@ export class ByomPlayer extends LitElement {
         }
         <div class="settings-actions">
           <button class="refresh" @click=${this.refreshAvailability}>Refresh availability</button>
+        </div>
+        <details class="advanced">
+          <summary>Advanced</summary>
+          ${advanced.map((f) => this.renderField(provider, f))}
           <label class="field debug-field">
             <input
               class="debug-toggle"
@@ -635,7 +650,7 @@ export class ByomPlayer extends LitElement {
             />
             <span>Debug diagnostics</span>
           </label>
-        </div>
+        </details>
       </div>
     `;
   }
@@ -849,9 +864,16 @@ export class ByomPlayer extends LitElement {
       cursor: pointer;
       font-weight: bold;
     }
-    .field-note {
+    .advanced {
       font-size: 0.8rem;
+    }
+    .advanced summary {
+      cursor: pointer;
       opacity: 0.6;
+      padding: 0.2rem 0;
+    }
+    .advanced > .field {
+      margin-top: 0.4rem;
     }
     .settings-connection {
       display: grid;
