@@ -35,6 +35,7 @@ function mapTrack(t: JspfTrack): Track {
     artist: t.creator ?? '',
     album: t.album,
     isrc: parseIsrc(t.identifier),
+    byomId: parseByomId(t.identifier),
     durationMs: typeof t.duration === 'number' ? t.duration * 1000 : undefined,
     spotifyUrl: t.location?.[0],
     syncState: readSyncState(t.extension),
@@ -55,6 +56,17 @@ function readResolved(extension?: Record<string, unknown[]>): { youtube?: string
 function parseIsrc(identifiers?: string[]): string | undefined {
   for (const id of identifiers ?? []) {
     const m = /^urn:isrc:(.+)$/i.exec(id);
+    if (m) return m[1];
+  }
+  return undefined;
+}
+
+// parseByomId pulls byom-sync's synthesized content id from a "urn:byom:<hash>"
+// identifier. byom-sync emits it for tracks with no ISRC so they stay stably
+// addressable; the resolution cache keys on it.
+function parseByomId(identifiers?: string[]): string | undefined {
+  for (const id of identifiers ?? []) {
+    const m = /^urn:byom:(.+)$/i.exec(id);
     if (m) return m[1];
   }
   return undefined;

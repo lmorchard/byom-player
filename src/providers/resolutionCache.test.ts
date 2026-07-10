@@ -21,6 +21,16 @@ describe('trackKey', () => {
     expect(trackKey({ title: 'X', artist: 'Y', isrc: 'USABC1234567' })).toBe('isrc:usabc1234567');
   });
 
+  it('uses byomId (over the artist|title fallback) when present without an ISRC', () => {
+    expect(trackKey({ title: 'X', artist: 'Y', byomId: 'abc123' })).toBe('byom:abc123');
+  });
+
+  it('prefers ISRC over byomId', () => {
+    expect(trackKey({ title: 'X', artist: 'Y', isrc: 'USABC1234567', byomId: 'abc123' })).toBe(
+      'isrc:usabc1234567',
+    );
+  });
+
   it('falls back to a normalized artist|title query', () => {
     expect(trackKey({ title: '  Night   Call ', artist: 'Kavinsky ' })).toBe(
       'q:kavinsky|night call',
