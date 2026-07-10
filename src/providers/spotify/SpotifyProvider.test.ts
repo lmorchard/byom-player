@@ -193,7 +193,7 @@ describe('SpotifyProvider engine selection', () => {
     expect(engines.embed.loaded).toBe('spotify:track:Z');
   });
 
-  it('renders a Connect button when there is no token, then connects on click', async () => {
+  it('exposes a Connect action when there is no token, then connects on runAuthAction', async () => {
     const engines = { sdk: new FakeEngine('sdk'), embed: new FakeEngine('embed') };
     let loggedIn = false;
     const auth: AuthLike = {
@@ -217,43 +217,49 @@ describe('SpotifyProvider engine selection', () => {
     p.attach(el);
     await p.initialize();
 
-    // Disconnected mounts the embed for playback AND shows a Connect button.
+    // Disconnected mounts the embed for playback and offers a Connect action.
     expect(engines.embed.attached).toBe(el);
-    const btn = el.querySelector('.byom-spotify-connect');
-    expect(btn).not.toBeNull();
+    expect(p.getAuthState().actions).toEqual([{ id: 'connect', label: 'Connect Spotify' }]);
     expect(engines.sdk.loaded).toBeNull(); // SDK not connected yet
 
-    (btn as HTMLButtonElement).click();
-    await vi.waitFor(() => expect(engines.sdk.attached).toBe(el));
+    await p.runAuthAction('connect');
+    expect(engines.sdk.attached).toBe(el);
+    expect(p.getAuthState().actions[0].id).toBe('disconnect');
     await p.load({ title: 'T', artist: 'A', spotifyUrl: 'spotify:track:Z' });
     expect(engines.sdk.loaded).toBe('spotify:track:Z');
   });
 
-  it('renders the Connect button into the attachAuth slot when provided', async () => {
+  it('notifies onAuthChange as auth state changes', async () => {
     const engines = { sdk: new FakeEngine('sdk'), embed: new FakeEngine('embed') };
+    let loggedIn = false;
     const auth: AuthLike = {
-      hasToken: () => false,
-      getValidToken: async () => null,
-      login: async () => 'TOKEN',
-      logout: () => {},
+      hasToken: () => loggedIn,
+      getValidToken: async () => (loggedIn ? 'TOKEN' : null),
+      login: async () => {
+        loggedIn = true;
+        return 'TOKEN';
+      },
+      logout: () => {
+        loggedIn = false;
+      },
     };
-    const video = document.createElement('div');
-    const authSlot = document.createElement('div');
     const p = new SpotifyProvider({
       clientId: 'CID',
       redirectUri: 'https://x.test/callback.html',
       auth,
       engineFactory: (kind: EngineKind) => engines[kind],
     });
-    p.attach(video);
-    p.attachAuth!(authSlot);
+    let changes = 0;
+    p.onAuthChange(() => (changes += 1));
+    p.attach(document.createElement('div'));
     await p.initialize();
-
-    expect(authSlot.querySelector('.byom-spotify-connect')).not.toBeNull();
-    expect(video.querySelector('.byom-spotify-connect')).toBeNull();
+    const afterInit = changes;
+    await p.runAuthAction('connect');
+    expect(changes).toBeGreaterThan(afterInit);
+    expect(p.getAuthState().status).toBe('Connected');
   });
 
-  it('shows a Disconnect button once connected, and logs out + destroys on click', async () => {
+  it('exposes a Disconnect action once connected, and logs out on runAuthAction', async () => {
     const engines = { sdk: new FakeEngine('sdk'), embed: new FakeEngine('embed') };
     let loggedIn = true;
     const auth: AuthLike = {
@@ -277,13 +283,12 @@ describe('SpotifyProvider engine selection', () => {
     p.attach(el);
     await p.initialize();
 
-    const disconnect = el.querySelector('.byom-spotify-disconnect');
-    expect(disconnect).not.toBeNull();
+    expect(p.getAuthState().actions).toEqual([{ id: 'disconnect', label: 'Disconnect Spotify' }]);
 
-    (disconnect as HTMLButtonElement).click();
+    await p.runAuthAction('disconnect');
     // Disconnect logs out, tears down the SDK, and returns to the embed + Connect state.
-    await vi.waitFor(() => expect(el.querySelector('.byom-spotify-connect')).not.toBeNull());
     expect(loggedIn).toBe(false);
     expect(engines.sdk.destroyed).toBe(true);
+    expect(p.getAuthState().actions[0].id).toBe('connect');
   });
 });

@@ -248,23 +248,23 @@ function fakeAuth(over: Partial<PlexAuthLike> = {}): PlexAuthLike {
 }
 
 describe('PlexProvider auth integration', () => {
-  it('uses config token-in directly (no link button)', async () => {
-    const el = document.createElement('div');
+  it('uses config token-in directly (linked, no link action)', async () => {
     const p = new PlexProvider(CFG);
-    p.attach(el);
     await p.initialize();
-    expect(el.querySelector('.byom-plex-link')).toBeNull();
+    expect(p.getAuthState()).toEqual({
+      status: 'Linked',
+      actions: [{ id: 'unlink', label: 'Unlink Plex' }],
+      busy: false,
+    });
   });
 
   it('uses a cached session when present', async () => {
-    const el = document.createElement('div');
     const p = new PlexProvider({
       auth: fakeAuth({
         hasSession: () => true,
         getSession: async () => ({ baseUrl: 'https://c.example:32400', token: 'CT' }),
       }),
     });
-    p.attach(el);
     await p.initialize();
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(searchResponse('/p/1'));
     await p.load({ title: 'T', artist: 'A' });
@@ -273,64 +273,34 @@ describe('PlexProvider auth integration', () => {
     expect(audio.src).toContain('X-Plex-Token=CT');
   });
 
-  it('renders a Link button with no session, then links + plays on click', async () => {
-    const el = document.createElement('div');
+  it('offers a Link action with no session, then links on runAuthAction', async () => {
     const p = new PlexProvider({ auth: fakeAuth() });
-    p.attach(el);
     await p.initialize();
-    const btn = el.querySelector('.byom-plex-link') as HTMLButtonElement;
-    expect(btn).not.toBeNull();
-    btn.click();
-    await vi.waitFor(() => expect((p as unknown as { token: string }).token).toBe('AT'));
+    expect(p.getAuthState().actions).toEqual([{ id: 'link', label: 'Link Plex' }]);
+    await p.runAuthAction('link');
+    expect((p as unknown as { token: string }).token).toBe('AT');
+    expect(p.getAuthState().actions[0].id).toBe('unlink');
   });
 
-  it('does not render Link after dispose (late initialize resolving into a disposed provider)', async () => {
-    const slot = document.createElement('div');
-    let resolveSession: (v: null) => void = () => {};
-    const p = new PlexProvider({
-      auth: fakeAuth({ getSession: () => new Promise((r) => (resolveSession = r)) }),
-    });
-    p.attach(document.createElement('div'));
-    p.attachAuth!(slot);
-    const initPromise = p.initialize(); // pending on getSession
-    p.dispose(); // provider replaced before the session resolves
-    resolveSession(null); // late resolution would otherwise renderLink()
-    await initPromise;
-    expect(slot.querySelector('.byom-plex-link')).toBeNull();
-  });
-
-  it('renders the Link button into the attachAuth slot when provided', async () => {
-    const video = document.createElement('div');
-    const authSlot = document.createElement('div');
-    const p = new PlexProvider({ auth: fakeAuth() });
-    p.attach(video);
-    p.attachAuth!(authSlot);
-    await p.initialize();
-    expect(authSlot.querySelector('.byom-plex-link')).not.toBeNull();
-    expect(video.querySelector('.byom-plex-link')).toBeNull();
-  });
-
-  it('fires onReset when the user unlinks', async () => {
-    const el = document.createElement('div');
+  it('fires onReset + onAuthChange when the user unlinks', async () => {
     let reset = 0;
+    let changes = 0;
     const p = new PlexProvider({
       auth: fakeAuth({
         hasSession: () => true,
         getSession: async () => ({ baseUrl: 'https://c.example:32400', token: 'CT' }),
       }),
     });
-    p.onReset(() => {
-      reset += 1;
-    });
-    p.attach(el);
+    p.onReset(() => (reset += 1));
+    p.onAuthChange(() => (changes += 1));
     await p.initialize();
-    (el.querySelector('.byom-plex-unlink') as HTMLButtonElement).click();
-    await vi.waitFor(() => expect(el.querySelector('.byom-plex-link')).not.toBeNull());
+    await p.runAuthAction('unlink');
+    expect(p.getAuthState().actions[0].id).toBe('link');
     expect(reset).toBe(1);
+    expect(changes).toBeGreaterThan(0);
   });
 
-  it('shows an Unlink button for a cached session; clicking it logs out and returns to Link', async () => {
-    const el = document.createElement('div');
+  it('logs out and clears the token on unlink', async () => {
     let loggedIn = true;
     const p = new PlexProvider({
       auth: fakeAuth({
@@ -342,18 +312,15 @@ describe('PlexProvider auth integration', () => {
         },
       }),
     });
-    p.attach(el);
     await p.initialize();
-    const unlink = el.querySelector('.byom-plex-unlink') as HTMLButtonElement;
-    expect(unlink).not.toBeNull();
-    unlink.click();
-    await vi.waitFor(() => expect(el.querySelector('.byom-plex-link')).not.toBeNull());
+    expect(p.getAuthState().actions[0].id).toBe('unlink');
+    await p.runAuthAction('unlink');
     expect(loggedIn).toBe(false);
     expect((p as unknown as { token: string }).token).toBe('');
+    expect(p.getAuthState().actions[0].id).toBe('link');
   });
 
-  it('shows a server picker when linking returns multiple servers', async () => {
-    const el = document.createElement('div');
+  it('offers a server picker when linking returns multiple servers', async () => {
     const p = new PlexProvider({
       auth: fakeAuth({
         link: async () => ({
@@ -365,11 +332,14 @@ describe('PlexProvider auth integration', () => {
         selectServer: async () => ({ baseUrl: 'https://picked:32400', token: 'PT' }),
       }),
     });
-    p.attach(el);
     await p.initialize();
-    (el.querySelector('.byom-plex-link') as HTMLButtonElement).click();
-    await vi.waitFor(() => expect(el.querySelectorAll('.byom-plex-server').length).toBe(2));
-    (el.querySelectorAll('.byom-plex-server')[1] as HTMLButtonElement).click();
-    await vi.waitFor(() => expect((p as unknown as { token: string }).token).toBe('PT'));
+    await p.runAuthAction('link');
+    expect(p.getAuthState().actions).toEqual([
+      { id: 'server:a', label: 'A' },
+      { id: 'server:b', label: 'B' },
+    ]);
+    await p.runAuthAction('server:b');
+    expect((p as unknown as { token: string }).token).toBe('PT');
+    expect(p.getAuthState().actions[0].id).toBe('unlink');
   });
 });

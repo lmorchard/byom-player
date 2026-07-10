@@ -1,7 +1,12 @@
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { Playlist } from './types';
-import type { AudioProvider, AvailabilityStatus, ProviderState } from './providers/types';
+import type {
+  AudioProvider,
+  AvailabilityStatus,
+  ProviderState,
+  AuthState,
+} from './providers/types';
 import { loadManifest } from './manifest';
 import { PlaybackController } from './controller';
 import { createProvider } from './providers/registry';
@@ -87,6 +92,7 @@ export class ByomPlayer extends LitElement {
   @state() private playlists: PlaylistEntry[] = [];
   @state() private view: 'list' | 'settings' = 'list';
   @state() private draft: UserSettings = { providers: {} };
+  @state() private authState: AuthState | null = null;
   private settings: UserSettings = { providers: {} };
   private deployment: Record<string, Record<string, unknown>> = {};
 
@@ -146,6 +152,12 @@ export class ByomPlayer extends LitElement {
 
   private onDraftDebug(e: Event): void {
     this.draft = { ...this.draft, debug: (e.currentTarget as HTMLInputElement).checked };
+  }
+
+  // Run an interactive-auth action on the active provider (Connect/Link/etc.).
+  // The provider fires onAuthChange, which refreshes this.authState → re-render.
+  private async runAuth(id: string): Promise<void> {
+    await this.activeProvider?.runAuthAction?.(id);
   }
 
   private onDraftProvider(e: Event): void {
@@ -239,14 +251,41 @@ export class ByomPlayer extends LitElement {
     this.failed = new Set();
     this.hasVideo = false; // reset; re-set below only if the new provider attaches
 
-    // Clear the shared video + auth regions so nothing from the previous provider
-    // (e.g. a Spotify embed or Connect button) lingers under the new one.
+    // Clear the shared video region so a previous provider's embed doesn't linger
+    // under the new one. (Auth is now rendered declaratively — no shared slot.)
     await this.updateComplete;
     this.renderRoot.querySelector('.video')?.replaceChildren();
-    this.renderRoot.querySelector('.auth-slot')?.replaceChildren();
+
+    // Switch away from the previous provider up front so a construction/init
+    // failure (e.g. Subsonic with no baseUrl yet) never leaves the old provider
+    // active or shows its stale auth UI.
+    this.activeProvider = null;
+    this.authState = null;
 
     const factory = this.providerFactory ?? createProvider;
-    const prov = factory(this.provider, this.buildEffectiveConfig());
+    let prov: AudioProvider;
+    try {
+      prov = factory(this.provider, this.buildEffectiveConfig());
+    } catch (err) {
+      // Some providers validate required config in their constructor (Subsonic
+      // needs a baseUrl). Surface an error and stop; the user can fix config in
+      // the settings panel and re-apply.
+      if (this.debug) console.debug('[byom-player] provider construction failed', err);
+      this.playbackState = 'error';
+      return;
+    }
+    // Reflect the new provider's auth state and react to changes. The
+    // active-provider guard means a disposed provider firing a late onAuthChange
+    // is ignored (no shared-slot races).
+    this.activeProvider = prov;
+    if (prov.getAuthState) {
+      prov.onAuthChange?.(() => {
+        if (this.activeProvider === prov) this.authState = prov.getAuthState?.() ?? null;
+      });
+      this.authState = prov.getAuthState();
+    } else {
+      this.authState = null;
+    }
     if (prov.attach) {
       // Ensure the .video region is rendered, then let the provider mount into it.
       await this.updateComplete;
@@ -256,15 +295,14 @@ export class ByomPlayer extends LitElement {
         this.hasVideo = true; // reserve space + shorten the tracklist
       }
     }
-    if (prov.attachAuth) {
-      // The .settings container is always rendered (just hidden in list view),
-      // so the auth slot exists for the provider to mount into.
-      await this.updateComplete;
-      const authHost = this.renderRoot.querySelector('.auth-slot');
-      if (authHost) prov.attachAuth(authHost as HTMLElement);
+    try {
+      await prov.initialize();
+    } catch (err) {
+      if (this.debug) console.debug('[byom-player] provider initialize failed', err);
+      this.playbackState = 'error';
     }
-    await prov.initialize();
-    this.activeProvider = prov;
+    // Refresh the snapshot in case initialize() changed auth state without firing.
+    if (prov.getAuthState) this.authState = prov.getAuthState();
     this.controller = new PlaybackController(
       prov,
       this.playlist.tracks,
@@ -537,10 +575,30 @@ export class ByomPlayer extends LitElement {
             fields.length === 0 ? html`<p class="field-note">No configuration needed.</p>` : nothing
           }
         </div>
-        <div class="settings-connection">
-          <span class="settings-label">Connection</span>
-          <div class="auth-slot" part="auth"></div>
-        </div>
+        ${
+          this.authState
+            ? html`<div class="settings-connection">
+                <span class="settings-label">Connection</span>
+                ${
+                  this.authState.status
+                    ? html`<span class="auth-status">${this.authState.status}</span>`
+                    : nothing
+                }
+                <div class="auth-actions">
+                  ${this.authState.actions.map(
+                    (a) =>
+                      html`<button
+                        class="auth-btn"
+                        ?disabled=${this.authState?.busy}
+                        @click=${() => this.runAuth(a.id)}
+                      >
+                        ${a.label}
+                      </button>`,
+                  )}
+                </div>
+              </div>`
+            : nothing
+        }
         <div class="settings-actions">
           <button class="refresh" @click=${this.refreshAvailability}>Refresh availability</button>
           <label class="field debug-field">
@@ -771,12 +829,16 @@ export class ByomPlayer extends LitElement {
       letter-spacing: 0.05em;
       opacity: 0.6;
     }
-    .auth-slot {
+    .auth-status {
+      font-size: 0.8rem;
+      opacity: 0.85;
+    }
+    .auth-actions {
       display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
     }
-    .auth-slot button {
+    .auth-btn {
       cursor: pointer;
       background: var(--byom-accent);
       color: var(--byom-bg);
@@ -784,6 +846,10 @@ export class ByomPlayer extends LitElement {
       border-radius: 999px;
       padding: 0.35rem 0.9rem;
       font: inherit;
+    }
+    .auth-btn[disabled] {
+      opacity: 0.5;
+      cursor: default;
     }
     .settings-actions {
       display: grid;

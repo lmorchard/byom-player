@@ -1,5 +1,5 @@
 import type { Track } from '../../types';
-import type { AudioProvider, ProviderState, AvailabilityStatus } from '../types';
+import type { AudioProvider, ProviderState, AvailabilityStatus, AuthState } from '../types';
 import { AuthClient } from './auth';
 import { WebPlaybackEngine } from './WebPlaybackEngine';
 import { EmbedEngine } from './EmbedEngine';
@@ -32,8 +32,10 @@ export class SpotifyProvider implements AudioProvider {
   private readonly auth: AuthLike;
   private engine: SpotifyEngine | null = null;
   private target: HTMLElement | null = null;
-  private authTarget: HTMLElement | null = null;
   private disposed = false;
+  private connected = false;
+  private busy = false;
+  private authCallback: () => void = () => {};
   private stateCallback: (s: ProviderState) => void = () => {};
   private progressCallback: (pos: number, dur: number) => void = () => {};
   private ticker: ReturnType<typeof setInterval> | null = null;
@@ -47,13 +49,9 @@ export class SpotifyProvider implements AudioProvider {
     this.target = element;
   }
 
-  attachAuth(element: HTMLElement): void {
-    this.authTarget = element;
-  }
-
   // Pick a playback tier: embed when forced; otherwise the SDK when a token is
-  // available (falling back to embed for non-Premium), or the embed + a Connect
-  // button when disconnected.
+  // available (falling back to embed for non-Premium), or the embed while
+  // disconnected (the panel shows a Connect button to upgrade to the SDK).
   async initialize(): Promise<void> {
     if (this.cfg.forceEmbed) {
       await this.useEngine('embed');
@@ -65,17 +63,62 @@ export class SpotifyProvider implements AudioProvider {
     else await this.enterDisconnected();
   }
 
+  // --- interactive auth (rendered declaratively by the host settings panel) ---
+
+  getAuthState(): AuthState {
+    if (this.cfg.forceEmbed) return { status: 'Preview only', actions: [] };
+    return this.connected
+      ? {
+          status: 'Connected',
+          actions: [{ id: 'disconnect', label: 'Disconnect Spotify' }],
+          busy: this.busy,
+        }
+      : {
+          status: 'Not connected',
+          actions: [{ id: 'connect', label: 'Connect Spotify' }],
+          busy: this.busy,
+        };
+  }
+
+  onAuthChange(cb: () => void): void {
+    this.authCallback = cb;
+  }
+
+  async runAuthAction(id: string): Promise<void> {
+    if (id === 'connect') {
+      this.busy = true;
+      this.notifyAuth();
+      try {
+        await this.auth.login();
+        await this.connectWithFallback();
+      } catch (err) {
+        this.log('login failed', err);
+        this.stateCallback('error');
+      } finally {
+        this.busy = false;
+        this.notifyAuth();
+      }
+    } else if (id === 'disconnect') {
+      this.auth.logout();
+      await this.enterDisconnected();
+    }
+  }
+
+  private notifyAuth(): void {
+    this.authCallback();
+  }
+
   // Disconnected: play through the embed (works for a viewer already signed into
-  // Spotify — full tracks if Premium, 30s previews if free) and offer a Connect
-  // button to upgrade to headless SDK playback.
+  // Spotify — full tracks if Premium, 30s previews if free).
   private async enterDisconnected(): Promise<void> {
     await this.useEngine('embed');
-    this.renderControl('connect');
+    this.connected = false;
+    this.notifyAuth();
     this.stateCallback('ready');
   }
 
   // With a token in hand, try the SDK, falling back to the embed for non-Premium
-  // accounts. Offers a Disconnect button.
+  // accounts.
   private async connectWithFallback(): Promise<void> {
     try {
       await this.useEngine('sdk');
@@ -89,51 +132,9 @@ export class SpotifyProvider implements AudioProvider {
         return;
       }
     }
-    this.renderControl('disconnect');
+    this.connected = true;
+    this.notifyAuth();
     this.stateCallback('ready');
-  }
-
-  private renderControl(kind: 'connect' | 'disconnect'): void {
-    // A provider replaced mid-init (async token check still in flight) must not
-    // render into the now-shared auth slot / video region.
-    if (this.disposed) return;
-    // Prefer the panel's auth slot; fall back to the video target (button
-    // prepended above the embed, cleared by useEngine) when no slot is given.
-    const target = this.authTarget ?? this.target;
-    if (!target) return;
-    // Slot mode reuses a persistent element across connect/disconnect, so clear
-    // any prior control button first. (Video-fallback mode is already cleared by
-    // useEngine before this runs.)
-    target.querySelector('.byom-spotify-connect, .byom-spotify-disconnect')?.remove();
-    const btn = target.ownerDocument.createElement('button');
-    btn.className = kind === 'connect' ? 'byom-spotify-connect' : 'byom-spotify-disconnect';
-    btn.textContent = kind === 'connect' ? 'Connect Spotify' : 'Disconnect Spotify';
-    btn.addEventListener('click', () => {
-      if (kind === 'connect') void this.handleConnectClick(btn);
-      else void this.handleDisconnect();
-    });
-    // Slot mode appends into the dedicated auth area; video-fallback mode
-    // prepends above the embed iframe.
-    if (this.authTarget) target.appendChild(btn);
-    else target.prepend(btn);
-  }
-
-  private async handleConnectClick(btn: HTMLButtonElement): Promise<void> {
-    btn.disabled = true;
-    try {
-      await this.auth.login();
-      // useEngine() clears the disconnected embed + Connect button before mounting.
-      await this.connectWithFallback();
-    } catch (err) {
-      this.log('login failed', err);
-      btn.disabled = false;
-      this.stateCallback('error');
-    }
-  }
-
-  private async handleDisconnect(): Promise<void> {
-    this.auth.logout();
-    await this.enterDisconnected();
   }
 
   async load(track: Track): Promise<void> {
@@ -191,8 +192,11 @@ export class SpotifyProvider implements AudioProvider {
   }
 
   protected async useEngine(kind: EngineKind): Promise<void> {
-    // Tear down any current engine and its DOM so engines (and their control
-    // buttons) can be swapped cleanly on connect/disconnect.
+    // A provider replaced mid-init (async token check still in flight) must not
+    // mount an engine into the now-shared .video region.
+    if (this.disposed) return;
+    // Tear down any current engine and its DOM so engines can be swapped cleanly
+    // on connect/disconnect.
     this.stopTicker();
     this.engine?.destroy();
     this.engine = null;

@@ -250,20 +250,22 @@ describe('<byom-player>', () => {
     expect(provider.disposed).toBe(true);
   });
 
-  it('clears the auth slot when re-initializing (no stale button from the old provider)', async () => {
+  it('ignores a late onAuthChange from a replaced (disposed) provider', async () => {
     let n = 0;
+    let firstAuthCb: (() => void) | null = null;
     const el = document.createElement('byom-player') as ByomPlayer;
     el.src = '/playlist.jspf.json';
     el.providerFactory = () => {
-      const p = new ControllableProvider();
-      // First provider renders an auth button into the slot; later ones don't.
+      const p = new ControllableProvider() as AudioProvider & ControllableProvider;
       if (n++ === 0) {
-        (p as AudioProvider).attachAuth = (slot: HTMLElement) => {
-          const b = slot.ownerDocument.createElement('button');
-          b.className = 'stale-auth-btn';
-          slot.appendChild(b);
-        };
+        // First provider has interactive auth and captures its change callback.
+        p.getAuthState = () => ({
+          status: 'Not connected',
+          actions: [{ id: 'connect', label: 'Connect' }],
+        });
+        p.onAuthChange = (cb: () => void) => (firstAuthCb = cb);
       }
+      // Later providers have no interactive auth.
       return p;
     };
     el.skipDelayMs = 0;
@@ -271,13 +273,51 @@ describe('<byom-player>', () => {
     document.body.appendChild(el);
     await new Promise((r) => setTimeout(r, 0));
     await el.updateComplete;
-    expect(el.shadowRoot!.querySelector('.auth-slot .stale-auth-btn')).toBeTruthy();
+    expect(el.shadowRoot!.querySelector('.auth-actions .auth-btn')).toBeTruthy();
 
-    // Re-init with a provider that has no attachAuth — the old button must go.
+    // Re-init with a provider that has no auth — the Connection section goes away.
     await el['initProvider']();
     await new Promise((r) => setTimeout(r, 0));
     await el.updateComplete;
-    expect(el.shadowRoot!.querySelector('.auth-slot .stale-auth-btn')).toBeNull();
+    expect(el.shadowRoot!.querySelector('.auth-actions')).toBeNull();
+
+    // A late fire from the disposed first provider must not resurrect its auth UI.
+    firstAuthCb!();
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.auth-actions')).toBeNull();
+  });
+
+  it('switches away cleanly when the new provider fails to construct (no stale auth)', async () => {
+    let n = 0;
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = () => {
+      // First provider has interactive auth; the second throws at construction
+      // (like Subsonic with no baseUrl).
+      if (n++ === 0) {
+        const p = new ControllableProvider() as AudioProvider & ControllableProvider;
+        p.getAuthState = () => ({
+          status: 'Connected',
+          actions: [{ id: 'disconnect', label: 'Disconnect' }],
+        });
+        return p;
+      }
+      throw new Error('bad config');
+    };
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.auth-actions')).toBeTruthy();
+
+    // Second provider fails to construct — the old provider must not stay active
+    // and its auth UI must be gone.
+    await el['initProvider']();
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.auth-actions')).toBeNull();
+    expect(el['activeProvider']).toBeNull();
   });
 
   it('refresh availability clears the resolution cache and re-inits', async () => {
@@ -330,13 +370,19 @@ describe('<byom-player>', () => {
     expect(stored.debug).toBe(true);
   });
 
-  it('passes the panel auth slot to a provider that supports attachAuth', async () => {
-    let authEl: HTMLElement | null = null;
+  it('renders a provider’s auth state in the panel and runs actions on click', async () => {
+    const ran: string[] = [];
     const el = document.createElement('byom-player') as ByomPlayer;
     el.src = '/playlist.jspf.json';
     el.providerFactory = () => {
-      const p = new ControllableProvider();
-      (p as AudioProvider).attachAuth = (e: HTMLElement) => (authEl = e);
+      const p = new ControllableProvider() as AudioProvider & ControllableProvider;
+      p.getAuthState = () => ({
+        status: 'Not connected',
+        actions: [{ id: 'connect', label: 'Connect Spotify' }],
+      });
+      p.runAuthAction = async (id: string) => {
+        ran.push(id);
+      };
       return p;
     };
     el.skipDelayMs = 0;
@@ -344,9 +390,15 @@ describe('<byom-player>', () => {
     document.body.appendChild(el);
     await new Promise((r) => setTimeout(r, 0));
     await el.updateComplete;
-    const slot = el.shadowRoot!.querySelector('.auth-slot');
-    expect(slot).not.toBeNull();
-    expect(authEl).toBe(slot);
+    (el.shadowRoot!.querySelector('.gear') as HTMLButtonElement).click();
+    await el.updateComplete;
+
+    expect(el.shadowRoot!.querySelector('.auth-status')!.textContent).toContain('Not connected');
+    const btn = el.shadowRoot!.querySelector('.auth-btn') as HTMLButtonElement;
+    expect(btn.textContent!.trim()).toBe('Connect Spotify');
+    btn.click();
+    await el.updateComplete;
+    expect(ran).toEqual(['connect']);
   });
 
   it('shows the settings gear by default and hides it with no-settings', async () => {
