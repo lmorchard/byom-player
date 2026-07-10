@@ -239,6 +239,12 @@ export class ByomPlayer extends LitElement {
     this.failed = new Set();
     this.hasVideo = false; // reset; re-set below only if the new provider attaches
 
+    // Clear the shared video + auth regions so nothing from the previous provider
+    // (e.g. a Spotify embed or Connect button) lingers under the new one.
+    await this.updateComplete;
+    this.renderRoot.querySelector('.video')?.replaceChildren();
+    this.renderRoot.querySelector('.auth-slot')?.replaceChildren();
+
     const factory = this.providerFactory ?? createProvider;
     const prov = factory(this.provider, this.buildEffectiveConfig());
     if (prov.attach) {
@@ -471,10 +477,7 @@ export class ByomPlayer extends LitElement {
             : nothing
         }
       </div>
-      <ol
-        class="tracklist ${this.hasVideo ? 'with-video' : ''}"
-        ?hidden=${this.view === 'settings'}
-      >
+      <ol class="tracklist ${this.hasVideo ? 'with-video' : ''}">
         ${pl.tracks.map((t, i) => {
           const orphaned = t.syncState?.spotifyPresent === false;
           return html`
@@ -485,9 +488,16 @@ export class ByomPlayer extends LitElement {
           `;
         })}
       </ol>
-      <div class="settings-host">${this.renderSettings()}</div>
+      <div class="settings-overlay" ?hidden=${this.view === 'list'} @click=${this.onOverlayClick}>
+        ${this.renderSettings()}
+      </div>
       <div class="video" part="video"></div>
     `;
+  }
+
+  // Close when the backdrop (not the settings card) is clicked.
+  private onOverlayClick(e: Event): void {
+    if ((e.target as HTMLElement).classList.contains('settings-overlay')) this.closeSettings();
   }
 
   private renderSettings() {
@@ -496,7 +506,8 @@ export class ByomPlayer extends LitElement {
     return html`
       <div
         class="settings ${this.view === 'settings' ? 'open' : ''}"
-        ?hidden=${this.view === 'list'}
+        role="dialog"
+        aria-modal="true"
       >
         <div class="settings-head">
           <button class="settings-back" @click=${this.closeSettings} aria-label="Back">←</button>
@@ -561,6 +572,7 @@ export class ByomPlayer extends LitElement {
       font-family: var(--byom-font);
       border-radius: var(--byom-border-radius);
       padding: 1rem;
+      position: relative; /* anchor for the settings modal overlay */
     }
     .playlist-picker {
       margin: 0.25rem 0 0.5rem;
@@ -673,16 +685,40 @@ export class ByomPlayer extends LitElement {
       background: transparent;
       border: none;
       color: var(--byom-text);
-      font-size: 1.2rem;
-      opacity: 0.7;
+      font-size: 1.8rem;
+      line-height: 1;
+      padding: 0.1rem 0.3rem;
+      opacity: 0.75;
       cursor: pointer;
+    }
+    .controls .gear:hover {
+      opacity: 1;
+    }
+    /* Modal overlay: covers the player + blocks interaction with it while open. */
+    .settings-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: var(--byom-border-radius);
     }
     .settings {
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
-      max-height: 60vh;
+      width: 100%;
+      max-width: 22rem;
+      max-height: 100%;
       overflow: auto;
+      background: var(--byom-bg);
+      border: 1px solid var(--byom-accent);
+      border-radius: var(--byom-border-radius);
+      padding: 1rem;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     }
     .settings-head {
       display: flex;

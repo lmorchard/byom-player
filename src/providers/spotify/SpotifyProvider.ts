@@ -33,6 +33,7 @@ export class SpotifyProvider implements AudioProvider {
   private engine: SpotifyEngine | null = null;
   private target: HTMLElement | null = null;
   private authTarget: HTMLElement | null = null;
+  private disposed = false;
   private stateCallback: (s: ProviderState) => void = () => {};
   private progressCallback: (pos: number, dur: number) => void = () => {};
   private ticker: ReturnType<typeof setInterval> | null = null;
@@ -93,6 +94,9 @@ export class SpotifyProvider implements AudioProvider {
   }
 
   private renderControl(kind: 'connect' | 'disconnect'): void {
+    // A provider replaced mid-init (async token check still in flight) must not
+    // render into the now-shared auth slot / video region.
+    if (this.disposed) return;
     // Prefer the panel's auth slot; fall back to the video target (button
     // prepended above the embed, cleared by useEngine) when no slot is given.
     const target = this.authTarget ?? this.target;
@@ -170,6 +174,7 @@ export class SpotifyProvider implements AudioProvider {
   }
 
   dispose(): void {
+    this.disposed = true;
     this.stopTicker();
     this.engine?.destroy();
     this.engine = null;

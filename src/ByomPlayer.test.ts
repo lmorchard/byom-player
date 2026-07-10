@@ -250,6 +250,36 @@ describe('<byom-player>', () => {
     expect(provider.disposed).toBe(true);
   });
 
+  it('clears the auth slot when re-initializing (no stale button from the old provider)', async () => {
+    let n = 0;
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = () => {
+      const p = new ControllableProvider();
+      // First provider renders an auth button into the slot; later ones don't.
+      if (n++ === 0) {
+        (p as AudioProvider).attachAuth = (slot: HTMLElement) => {
+          const b = slot.ownerDocument.createElement('button');
+          b.className = 'stale-auth-btn';
+          slot.appendChild(b);
+        };
+      }
+      return p;
+    };
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.auth-slot .stale-auth-btn')).toBeTruthy();
+
+    // Re-init with a provider that has no attachAuth — the old button must go.
+    await el['initProvider']();
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.auth-slot .stale-auth-btn')).toBeNull();
+  });
+
   it('refresh availability clears the resolution cache and re-inits', async () => {
     localStorage.setItem('byom-player:resolv:v1', '{"some":"cache"}');
     const providers: ControllableProvider[] = [];
