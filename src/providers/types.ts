@@ -39,6 +39,10 @@ export interface AudioProvider {
   // Optional: render a visible surface (e.g. a video) into the host element.
   // Called before initialize(). Providers without one simply omit it.
   attach?(element: HTMLElement): void;
+  // Optional: render auth controls (Connect/Link/Disconnect) into a host-provided
+  // element — the settings panel's auth slot. Providers without interactive auth
+  // omit it. When not called, providers fall back to the attach()/video target.
+  attachAuth?(element: HTMLElement): void;
   // Optional: register a callback fired when the provider's session is reset
   // (e.g. the user unlinks/disconnects), so the host can clear cached
   // availability marks that no longer apply.

@@ -39,6 +39,7 @@ export class PlexProvider implements AudioProvider {
   protected token = '';
   private readonly auth?: PlexAuthLike;
   private target: HTMLElement | null = null;
+  private authTarget: HTMLElement | null = null;
   private resetCallback: () => void = () => {};
 
   // Stale-id recovery state (reset in load()).
@@ -90,8 +91,17 @@ export class PlexProvider implements AudioProvider {
     this.target = element;
   }
 
+  attachAuth(element: HTMLElement): void {
+    this.authTarget = element;
+  }
+
   onReset(cb: () => void): void {
     this.resetCallback = cb;
+  }
+
+  // Auth controls render into the panel's slot when given, else the attach target.
+  private get authHost(): HTMLElement | null {
+    return this.authTarget ?? this.target;
   }
 
   async initialize(): Promise<void> {
@@ -116,13 +126,14 @@ export class PlexProvider implements AudioProvider {
   }
 
   private renderLink(): void {
-    if (!this.target) return;
-    this.target.replaceChildren();
-    const btn = this.target.ownerDocument.createElement('button');
+    const host = this.authHost;
+    if (!host) return;
+    host.replaceChildren();
+    const btn = host.ownerDocument.createElement('button');
     btn.className = 'byom-plex-link';
     btn.textContent = 'Link Plex';
     btn.addEventListener('click', () => void this.handleLink(btn));
-    this.target.appendChild(btn);
+    host.appendChild(btn);
   }
 
   private async handleLink(btn: HTMLButtonElement): Promise<void> {
@@ -145,14 +156,15 @@ export class PlexProvider implements AudioProvider {
   }
 
   private renderPicker(servers: { id: string; name: string }[]): void {
-    if (!this.target) return;
-    this.target.replaceChildren();
+    const host = this.authHost;
+    if (!host) return;
+    host.replaceChildren();
     for (const s of servers) {
-      const b = this.target.ownerDocument.createElement('button');
+      const b = host.ownerDocument.createElement('button');
       b.className = 'byom-plex-server';
       b.textContent = s.name;
       b.addEventListener('click', () => void this.handlePick(s.id));
-      this.target.appendChild(b);
+      host.appendChild(b);
     }
   }
 
@@ -169,13 +181,14 @@ export class PlexProvider implements AudioProvider {
   }
 
   private renderUnlink(): void {
-    if (!this.target) return;
-    this.target.replaceChildren();
-    const btn = this.target.ownerDocument.createElement('button');
+    const host = this.authHost;
+    if (!host) return;
+    host.replaceChildren();
+    const btn = host.ownerDocument.createElement('button');
     btn.className = 'byom-plex-unlink';
     btn.textContent = 'Unlink Plex';
     btn.addEventListener('click', () => void this.handleUnlink());
-    this.target.appendChild(btn);
+    host.appendChild(btn);
   }
 
   private handleUnlink(): void {

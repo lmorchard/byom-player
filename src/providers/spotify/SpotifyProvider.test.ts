@@ -229,6 +229,30 @@ describe('SpotifyProvider engine selection', () => {
     expect(engines.sdk.loaded).toBe('spotify:track:Z');
   });
 
+  it('renders the Connect button into the attachAuth slot when provided', async () => {
+    const engines = { sdk: new FakeEngine('sdk'), embed: new FakeEngine('embed') };
+    const auth: AuthLike = {
+      hasToken: () => false,
+      getValidToken: async () => null,
+      login: async () => 'TOKEN',
+      logout: () => {},
+    };
+    const video = document.createElement('div');
+    const authSlot = document.createElement('div');
+    const p = new SpotifyProvider({
+      clientId: 'CID',
+      redirectUri: 'https://x.test/callback.html',
+      auth,
+      engineFactory: (kind: EngineKind) => engines[kind],
+    });
+    p.attach(video);
+    p.attachAuth!(authSlot);
+    await p.initialize();
+
+    expect(authSlot.querySelector('.byom-spotify-connect')).not.toBeNull();
+    expect(video.querySelector('.byom-spotify-connect')).toBeNull();
+  });
+
   it('shows a Disconnect button once connected, and logs out + destroys on click', async () => {
     const engines = { sdk: new FakeEngine('sdk'), embed: new FakeEngine('embed') };
     let loggedIn = true;

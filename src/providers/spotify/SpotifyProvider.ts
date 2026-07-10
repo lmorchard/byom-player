@@ -32,6 +32,7 @@ export class SpotifyProvider implements AudioProvider {
   private readonly auth: AuthLike;
   private engine: SpotifyEngine | null = null;
   private target: HTMLElement | null = null;
+  private authTarget: HTMLElement | null = null;
   private stateCallback: (s: ProviderState) => void = () => {};
   private progressCallback: (pos: number, dur: number) => void = () => {};
   private ticker: ReturnType<typeof setInterval> | null = null;
@@ -43,6 +44,10 @@ export class SpotifyProvider implements AudioProvider {
 
   attach(element: HTMLElement): void {
     this.target = element;
+  }
+
+  attachAuth(element: HTMLElement): void {
+    this.authTarget = element;
   }
 
   // Pick a playback tier: embed when forced; otherwise the SDK when a token is
@@ -88,17 +93,25 @@ export class SpotifyProvider implements AudioProvider {
   }
 
   private renderControl(kind: 'connect' | 'disconnect'): void {
-    if (!this.target) return;
-    const btn = this.target.ownerDocument.createElement('button');
+    // Prefer the panel's auth slot; fall back to the video target (button
+    // prepended above the embed, cleared by useEngine) when no slot is given.
+    const target = this.authTarget ?? this.target;
+    if (!target) return;
+    // Slot mode reuses a persistent element across connect/disconnect, so clear
+    // any prior control button first. (Video-fallback mode is already cleared by
+    // useEngine before this runs.)
+    target.querySelector('.byom-spotify-connect, .byom-spotify-disconnect')?.remove();
+    const btn = target.ownerDocument.createElement('button');
     btn.className = kind === 'connect' ? 'byom-spotify-connect' : 'byom-spotify-disconnect';
     btn.textContent = kind === 'connect' ? 'Connect Spotify' : 'Disconnect Spotify';
     btn.addEventListener('click', () => {
       if (kind === 'connect') void this.handleConnectClick(btn);
       else void this.handleDisconnect();
     });
-    // Sits above the embed iframe (when present); the SDK tier's surface is
-    // otherwise empty.
-    this.target.prepend(btn);
+    // Slot mode appends into the dedicated auth area; video-fallback mode
+    // prepends above the embed iframe.
+    if (this.authTarget) target.appendChild(btn);
+    else target.prepend(btn);
   }
 
   private async handleConnectClick(btn: HTMLButtonElement): Promise<void> {

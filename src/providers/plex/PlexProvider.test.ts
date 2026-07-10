@@ -284,6 +284,17 @@ describe('PlexProvider auth integration', () => {
     await vi.waitFor(() => expect((p as unknown as { token: string }).token).toBe('AT'));
   });
 
+  it('renders the Link button into the attachAuth slot when provided', async () => {
+    const video = document.createElement('div');
+    const authSlot = document.createElement('div');
+    const p = new PlexProvider({ auth: fakeAuth() });
+    p.attach(video);
+    p.attachAuth!(authSlot);
+    await p.initialize();
+    expect(authSlot.querySelector('.byom-plex-link')).not.toBeNull();
+    expect(video.querySelector('.byom-plex-link')).toBeNull();
+  });
+
   it('fires onReset when the user unlinks', async () => {
     const el = document.createElement('div');
     let reset = 0;
