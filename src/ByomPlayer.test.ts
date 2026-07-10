@@ -344,7 +344,7 @@ describe('<byom-player>', () => {
     expect(providers.length).toBeGreaterThan(1);
   });
 
-  it('debug toggle is persisted and flows into the effective config on apply', async () => {
+  it('debug toggle auto-commits: persisted + flows into the effective config', async () => {
     const configs: Record<string, unknown>[] = [];
     const el = document.createElement('byom-player') as ByomPlayer;
     el.src = '/playlist.jspf.json';
@@ -361,8 +361,7 @@ describe('<byom-player>', () => {
     await el.updateComplete;
     const dbg = el.shadowRoot!.querySelector('.debug-toggle') as HTMLInputElement;
     dbg.checked = true;
-    dbg.dispatchEvent(new Event('change'));
-    (el.shadowRoot!.querySelector('.apply') as HTMLButtonElement).click();
+    dbg.dispatchEvent(new Event('change')); // toggling commits immediately (no Apply button)
     await new Promise((r) => setTimeout(r, 0));
     await el.updateComplete;
     expect(configs.at(-1)!.debug).toBe(true);
@@ -462,7 +461,7 @@ describe('<byom-player>', () => {
     expect(el.shadowRoot!.querySelector('.settings.open')).toBeNull();
   });
 
-  it('applies settings: persists creds + provider and re-inits, emitting settingschange', async () => {
+  it('auto-commits provider + credential edits (no Apply), re-inits, emits settingschange', async () => {
     const providers: ControllableProvider[] = [];
     const el = document.createElement('byom-player') as ByomPlayer;
     el.src = '/playlist.jspf.json';
@@ -477,27 +476,31 @@ describe('<byom-player>', () => {
     document.body.appendChild(el);
     await new Promise((r) => setTimeout(r, 0));
     await el.updateComplete;
+    el['commitDelayMs'] = 0; // fire the field-edit debounce on the next macrotask
 
     let fired = false;
     el.addEventListener('settingschange', () => (fired = true));
 
     (el.shadowRoot!.querySelector('.gear') as HTMLButtonElement).click();
     await el.updateComplete;
+    // Selecting a provider commits immediately.
     const sel = el.shadowRoot!.querySelector('.provider-select') as HTMLSelectElement;
     sel.value = 'subsonic';
     sel.dispatchEvent(new Event('change'));
+    await new Promise((r) => setTimeout(r, 0));
     await el.updateComplete;
+    expect(el.provider).toBe('subsonic');
+
+    // Typing a credential auto-commits after the (0ms) debounce — no Apply click.
     const baseUrl = el.shadowRoot!.querySelector(
       '.provider-fields input[name="baseUrl"]',
     ) as HTMLInputElement;
     baseUrl.value = 'https://nav.example.com';
     baseUrl.dispatchEvent(new Event('input'));
-    (el.shadowRoot!.querySelector('.apply') as HTMLButtonElement).click();
     await new Promise((r) => setTimeout(r, 0));
     await el.updateComplete;
 
     expect(fired).toBe(true);
-    expect(el.provider).toBe('subsonic');
     expect(providers.at(-1)!.name).toBe('subsonic'); // re-init with new provider
     const stored = JSON.parse(localStorage.getItem('byom-player:settings:v1')!);
     expect(stored.provider).toBe('subsonic');

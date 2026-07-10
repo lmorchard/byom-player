@@ -88,7 +88,6 @@ export class ByomPlayer extends LitElement {
   @state() private scanning = false;
   @state() private positionMs = 0;
   @state() private durationMs = 0;
-  @state() private hasVideo = false;
   @state() private playlists: PlaylistEntry[] = [];
   @state() private view: 'list' | 'settings' = 'list';
   @state() private draft: UserSettings = { providers: {} };
@@ -100,6 +99,8 @@ export class ByomPlayer extends LitElement {
   private activeProvider: AudioProvider | null = null;
   private sweepAbort: AbortController | null = null;
   private seeking = false; // user is dragging the progress bar
+  private commitTimer: ReturnType<typeof setTimeout> | null = null;
+  private commitDelayMs = 600; // debounce before auto-applying a field edit
 
   async connectedCallback(): Promise<void> {
     super.connectedCallback();
@@ -138,6 +139,7 @@ export class ByomPlayer extends LitElement {
   }
 
   private closeSettings(): void {
+    this.flushCommit(); // commit any pending debounced field edit before closing
     this.view = 'list';
   }
 
@@ -152,6 +154,7 @@ export class ByomPlayer extends LitElement {
 
   private onDraftDebug(e: Event): void {
     this.draft = { ...this.draft, debug: (e.currentTarget as HTMLInputElement).checked };
+    void this.commitSettings(); // a toggle commits immediately
   }
 
   // Run an interactive-auth action on the active provider (Connect/Link/etc.).
@@ -160,21 +163,15 @@ export class ByomPlayer extends LitElement {
     await this.activeProvider?.runAuthAction?.(id);
   }
 
-  // Switching provider applies immediately (persist + re-init) rather than
-  // waiting for Apply, so the new provider's connection UI (Spotify Connect,
-  // Plex Link) appears inline. Credential fields still commit via Apply.
+  // Selecting a provider commits immediately so its connection UI (Spotify
+  // Connect, Plex Link) appears inline without waiting for a debounce.
   private async onDraftProvider(e: Event): Promise<void> {
-    const provider = (e.currentTarget as HTMLSelectElement).value;
-    this.draft = { ...this.draft, provider };
-    this.provider = provider;
-    this.settings = { ...this.settings, provider };
-    saveSettings(this.settings);
-    this.dispatchEvent(
-      new CustomEvent('settingschange', { detail: this.settings, bubbles: true, composed: true }),
-    );
-    await this.initProvider();
+    this.draft = { ...this.draft, provider: (e.currentTarget as HTMLSelectElement).value };
+    await this.commitSettings();
   }
 
+  // Credential edits auto-commit after a short debounce — there is no Apply
+  // button; the settings apply live.
   private onDraftField(provider: string, key: string, e: Event): void {
     const value = (e.currentTarget as HTMLInputElement).value;
     const providers = {
@@ -182,9 +179,27 @@ export class ByomPlayer extends LitElement {
       [provider]: { ...this.draft.providers[provider], [key]: value },
     };
     this.draft = { ...this.draft, providers };
+    this.scheduleCommit();
   }
 
-  private async applySettings(): Promise<void> {
+  private scheduleCommit(): void {
+    if (this.commitTimer) clearTimeout(this.commitTimer);
+    this.commitTimer = setTimeout(() => {
+      this.commitTimer = null;
+      void this.commitSettings();
+    }, this.commitDelayMs);
+  }
+
+  private flushCommit(): void {
+    if (!this.commitTimer) return;
+    clearTimeout(this.commitTimer);
+    this.commitTimer = null;
+    void this.commitSettings();
+  }
+
+  // Persist the draft as the active settings and re-initialize the provider in
+  // place. Does NOT close the panel — settings apply live.
+  private async commitSettings(): Promise<void> {
     this.settings = {
       provider: this.draft.provider,
       debug: this.draft.debug,
@@ -196,12 +211,13 @@ export class ByomPlayer extends LitElement {
     this.dispatchEvent(
       new CustomEvent('settingschange', { detail: this.settings, bubbles: true, composed: true }),
     );
-    this.view = 'list';
     await this.initProvider();
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    if (this.commitTimer) clearTimeout(this.commitTimer);
+    this.commitTimer = null;
     this.sweepAbort?.abort();
     this.sweepAbort = null;
     this.controller?.dispose();
@@ -232,7 +248,6 @@ export class ByomPlayer extends LitElement {
   private async loadPlaylist(): Promise<boolean> {
     this.sweepAbort?.abort();
     this.availability = new Map();
-    this.hasVideo = false;
     try {
       const res = await fetch(this.src);
       this.playlist = loadManifest(await res.json());
@@ -260,7 +275,6 @@ export class ByomPlayer extends LitElement {
     this.controller = null;
     this.availability = new Map();
     this.failed = new Set();
-    this.hasVideo = false; // reset; re-set below only if the new provider attaches
 
     // Clear the shared video region so a previous provider's embed doesn't linger
     // under the new one. (Auth is now rendered declaratively — no shared slot.)
@@ -299,12 +313,10 @@ export class ByomPlayer extends LitElement {
     }
     if (prov.attach) {
       // Ensure the .video region is rendered, then let the provider mount into it.
+      // The .stage flex + .video:empty handle showing/hiding it — no flag needed.
       await this.updateComplete;
       const host = this.renderRoot.querySelector('.video');
-      if (host) {
-        prov.attach(host as HTMLElement);
-        this.hasVideo = true; // reserve space + shorten the tracklist
-      }
+      if (host) prov.attach(host as HTMLElement);
     }
     try {
       await prov.initialize();
@@ -526,21 +538,23 @@ export class ByomPlayer extends LitElement {
             : nothing
         }
       </div>
-      <ol class="tracklist ${this.hasVideo ? 'with-video' : ''}">
-        ${pl.tracks.map((t, i) => {
-          const orphaned = t.syncState?.spotifyPresent === false;
-          return html`
-            <li class=${this.trackClasses(i, orphaned)} @click=${() => this.selectTrack(i)}>
-              <span class="t-title">${t.title}</span>
-              <span class="t-artist">${t.artist}</span>
-            </li>
-          `;
-        })}
-      </ol>
+      <div class="stage">
+        <ol class="tracklist">
+          ${pl.tracks.map((t, i) => {
+            const orphaned = t.syncState?.spotifyPresent === false;
+            return html`
+              <li class=${this.trackClasses(i, orphaned)} @click=${() => this.selectTrack(i)}>
+                <span class="t-title">${t.title}</span>
+                <span class="t-artist">${t.artist}</span>
+              </li>
+            `;
+          })}
+        </ol>
+        <div class="video" part="video"></div>
+      </div>
       <div class="settings-overlay" ?hidden=${this.view === 'list'} @click=${this.onOverlayClick}>
         ${this.renderSettings()}
       </div>
-      <div class="video" part="video"></div>
     `;
   }
 
@@ -622,7 +636,6 @@ export class ByomPlayer extends LitElement {
             <span>Debug diagnostics</span>
           </label>
         </div>
-        <button class="apply" @click=${this.applySettings}>Apply</button>
       </div>
     `;
   }
@@ -667,9 +680,18 @@ export class ByomPlayer extends LitElement {
       font-size: 0.75rem;
       opacity: 0.7;
     }
-    .video {
-      aspect-ratio: 16 / 9;
+    /* Fixed-height stage: total height stays constant across providers; the
+       tracklist flexes to fill whatever space the embed leaves. */
+    .stage {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      height: 60vh;
       margin-top: 0.5rem;
+    }
+    .video {
+      flex: 0 0 auto;
+      aspect-ratio: 16 / 9;
       background: #000;
       border-radius: calc(var(--byom-border-radius) / 2);
       overflow: hidden;
@@ -714,11 +736,9 @@ export class ByomPlayer extends LitElement {
       list-style: none;
       margin: 0;
       padding: 0;
-      max-height: 60vh;
+      flex: 1 1 auto;
+      min-height: 0;
       overflow: auto;
-    }
-    .tracklist.with-video {
-      max-height: 30vh;
     }
     .tracklist li {
       cursor: pointer;
@@ -769,7 +789,9 @@ export class ByomPlayer extends LitElement {
       inset: 0;
       z-index: 10;
       display: flex;
-      align-items: center;
+      /* Stretch the card to a consistent height so the modal doesn't resize as
+         providers (with differing field counts) change. */
+      align-items: stretch;
       justify-content: center;
       padding: 1rem;
       background: rgba(0, 0, 0, 0.6);
@@ -781,7 +803,7 @@ export class ByomPlayer extends LitElement {
       gap: 0.5rem;
       width: 100%;
       max-width: 22rem;
-      max-height: 100%;
+      height: 100%;
       overflow: auto;
       background: var(--byom-bg);
       border: 1px solid var(--byom-accent);
