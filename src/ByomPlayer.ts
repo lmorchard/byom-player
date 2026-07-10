@@ -583,21 +583,6 @@ export class ByomPlayer extends LitElement {
     // <byom-playlist> children), falling back to the loaded manifest title.
     const currentTitle = this.playlists.find((p) => p.src === this.src)?.title ?? pl.title;
     return html`
-      <div class="corner">
-        ${
-          this.noSettings
-            ? nothing
-            : html`<button
-                class="gear"
-                part="control gear"
-                @click=${this.openSettings}
-                aria-label="Settings"
-                title="Settings"
-              >
-                ⚙
-              </button>`
-        }
-      </div>
       <div class="head" part="header">
         <div class="art" part="art">🎵</div>
         <div class="meta" part="meta">
@@ -632,6 +617,19 @@ export class ByomPlayer extends LitElement {
               : nothing
           }
         </div>
+        ${
+          this.noSettings
+            ? nothing
+            : html`<button
+                class="gear"
+                part="control gear"
+                @click=${this.openSettings}
+                aria-label="Settings"
+                title="Settings"
+              >
+                ⚙
+              </button>`
+        }
       </div>
       <div class="transport" part="transport">
         <div class="ctl-group">
@@ -966,14 +964,9 @@ export class ByomPlayer extends LitElement {
       --byom-on-accent: #282a36;
       --byom-border: #44475a;
     }
-    /* Settings gear, pinned to the top-right corner of the card. */
-    .corner {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      z-index: 5;
-    }
-    /* Header block: cover art + text column (title/creator/meta/description). */
+    /* Header block: cover art + text column (title/creator/meta/description) +
+       the settings gear, which sits as the last flex item so it top-aligns with
+       the art/title and the gap reserves space between it and the text column. */
     .head {
       display: flex;
       gap: 0.9rem;
@@ -1321,12 +1314,14 @@ export class ByomPlayer extends LitElement {
       font-size: 0.85rem;
     }
     .gear {
+      flex: 0 0 auto;
       background: transparent;
       border: none;
       color: var(--byom-text-muted);
       font-size: 2.2rem;
       line-height: 1;
-      padding: 0.1rem 0.2rem;
+      padding: 0;
+      margin-left: 0.2rem;
       cursor: pointer;
     }
     .gear:hover {
