@@ -1,6 +1,9 @@
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import type { Playlist, Track } from './types';
+import { renderMarkdownInline } from './markdown';
+import { sumDurationMs, formatTotalDuration, formatMonthYear } from './format';
 import type {
   AudioProvider,
   AvailabilityStatus,
@@ -429,6 +432,23 @@ export class ByomPlayer extends LitElement {
     void this.controller?.start(index);
   }
 
+  // The active row's number is the play/pause control, so clicking it toggles
+  // playback instead of restarting; any other row selects + plays.
+  private onRowClick(index: number): void {
+    if (index === this.currentIndex) this.togglePlay();
+    else this.selectTrack(index);
+  }
+
+  // "{n} tracks · {total duration} · {creation date}", each part conditional.
+  private renderMetaLine(pl: Playlist) {
+    const parts: string[] = [`${pl.tracks.length} ${pl.tracks.length === 1 ? 'track' : 'tracks'}`];
+    const total = sumDurationMs(pl.tracks);
+    if (total != null) parts.push(formatTotalDuration(total));
+    const date = formatMonthYear(pl.dateCreated);
+    if (date) parts.push(date);
+    return html`<p class="meta-line" part="meta-line">${parts.join(' · ')}</p>`;
+  }
+
   private async onPlaylistChange(e: Event): Promise<void> {
     const src = (e.currentTarget as HTMLSelectElement).value;
     if (src === this.src) return;
@@ -554,82 +574,13 @@ export class ByomPlayer extends LitElement {
   render() {
     const pl = this.playlist;
     if (!pl) return html`<div class="loading">Loading…</div>`;
-    const current = pl.tracks[this.currentIndex];
     // Derived, filtered view — never mutates pl.tracks or playback indices. Each
     // row carries its real pl.tracks index so selection maps back correctly.
     const q = this.filterQuery.trim();
     const rows = pl.tracks.map((t, i) => ({ t, i })).filter(({ t }) => this.matchesFilter(t));
+    const playing = this.playbackState === 'playing';
     return html`
-      <header class="header" part="header">
-        <h2 class="title" part="title">${pl.title}</h2>
-        ${pl.creator ? html`<p class="creator" part="creator">${pl.creator}</p>` : nothing}
-      </header>
-      <div class="playlist-row">
-        ${
-          this.playlists.length > 1
-            ? html`<select
-                class="playlist-picker"
-                part="playlist"
-                aria-label="Playlist"
-                @change=${this.onPlaylistChange}
-              >
-                ${this.playlists.map(
-                  (p) =>
-                    html`<option value=${p.src} ?selected=${p.src === this.src}>
-                      ${p.title}
-                    </option>`,
-                )}
-              </select>`
-            : nothing
-        }
-      </div>
-      <div class="now-playing" part="now-playing">
-        ${
-          current
-            ? html`<span class="np-title">${current.title}</span>
-                <span class="np-artist">${current.artist}</span>`
-            : nothing
-        }
-      </div>
-      <div class="progress-row" part="progress">
-        <span class="time">${ByomPlayer.formatTime(this.positionMs)}</span>
-        <input
-          class="progress"
-          part="seek"
-          type="range"
-          min="0"
-          max=${this.durationMs || 0}
-          .value=${String(this.positionMs)}
-          ?disabled=${!this.durationMs}
-          aria-label="Seek"
-          @input=${this.onSeekInput}
-          @change=${this.onSeekChange}
-        />
-        <span class="time">${ByomPlayer.formatTime(this.durationMs)}</span>
-      </div>
-      <div class="controls" part="controls">
-        <button class="prev" part="control prev" @click=${this.prev} aria-label="Previous">
-          ⏮
-        </button>
-        <button
-          class="playpause"
-          part="control play"
-          @click=${this.togglePlay}
-          aria-label="Play/Pause"
-        >
-          ${this.playbackState === 'playing' ? '⏸' : '▶'}
-        </button>
-        <button class="next" part="control next" @click=${this.next} aria-label="Next">⏭</button>
-        <button
-          class="shuffle ${this.shuffle ? 'on' : ''}"
-          part="control shuffle"
-          @click=${this.toggleShuffle}
-          aria-label="Shuffle"
-          aria-pressed=${this.shuffle ? 'true' : 'false'}
-          title=${this.shuffle ? 'Shuffle: on' : 'Shuffle: off'}
-        >
-          🔀 ${this.shuffle ? 'On' : 'Off'}
-        </button>
+      <div class="corner">
         ${
           this.noSettings
             ? nothing
@@ -643,6 +594,79 @@ export class ByomPlayer extends LitElement {
                 ⚙
               </button>`
         }
+      </div>
+      <div class="head" part="header">
+        <div class="art" part="art">🎵</div>
+        <div class="meta" part="meta">
+          ${
+            this.playlists.length > 1
+              ? html`<select
+                  class="title-select"
+                  part="title"
+                  aria-label="Playlist"
+                  @change=${this.onPlaylistChange}
+                >
+                  ${this.playlists.map(
+                    (p) =>
+                      html`<option value=${p.src} ?selected=${p.src === this.src}>
+                        ${p.title}
+                      </option>`,
+                  )}
+                </select>`
+              : html`<h2 class="title" part="title">${pl.title}</h2>`
+          }
+          ${pl.creator ? html`<p class="creator" part="creator">${pl.creator}</p>` : nothing}
+          ${this.renderMetaLine(pl)}
+          ${
+            pl.annotation
+              ? html`<div class="description" part="description">
+                  ${unsafeHTML(renderMarkdownInline(pl.annotation))}
+                </div>`
+              : nothing
+          }
+        </div>
+      </div>
+      <div class="transport" part="transport">
+        <div class="ctl-group">
+          <button class="prev" part="control prev" @click=${this.prev} aria-label="Previous">
+            ⏮
+          </button>
+          <button
+            class="playpause"
+            part="control play"
+            @click=${this.togglePlay}
+            aria-label="Play/Pause"
+          >
+            ${playing ? '⏸' : '▶'}
+          </button>
+          <button class="next" part="control next" @click=${this.next} aria-label="Next">⏭</button>
+        </div>
+        <div class="seek" part="progress">
+          <span class="time">${ByomPlayer.formatTime(this.positionMs)}</span>
+          <input
+            class="progress"
+            part="seek"
+            type="range"
+            min="0"
+            max=${this.durationMs || 0}
+            .value=${String(this.positionMs)}
+            ?disabled=${!this.durationMs}
+            aria-label="Seek"
+            @input=${this.onSeekInput}
+            @change=${this.onSeekChange}
+          />
+          <span class="time">${ByomPlayer.formatTime(this.durationMs)}</span>
+        </div>
+        <button
+          class="shuffle ${this.shuffle ? 'on' : ''}"
+          part="control shuffle"
+          @click=${this.toggleShuffle}
+          aria-label="Shuffle"
+          aria-pressed=${this.shuffle ? 'true' : 'false'}
+          title=${this.shuffle ? 'Shuffle: on' : 'Shuffle: off'}
+        >
+          🔀
+        </button>
       </div>
       <div class="status">
         ${
@@ -684,15 +708,33 @@ export class ByomPlayer extends LitElement {
         <ol class="tracklist" part="tracklist">
           ${rows.map(({ t, i }) => {
             const orphaned = t.syncState?.spotifyPresent === false;
+            const state = this.trackState(i, orphaned);
+            // The active row's glyph mirrors playback; any other row offers play.
+            const glyph = state === 'active' ? (playing ? '⏸' : '▶') : '▶';
             return html`
               <li
                 class=${this.trackClasses(i, orphaned)}
                 part="track"
-                data-state=${this.trackState(i, orphaned)}
-                @click=${() => this.selectTrack(i)}
+                data-state=${state}
+                @click=${() => this.onRowClick(i)}
               >
-                <span class="t-title">${t.title}</span>
-                <span class="t-artist">${t.artist}</span>
+                <span class="num" part="track-number">
+                  <span class="idx">${state === 'pending' ? '⋯' : i + 1}</span>
+                  <span class="glyph">${glyph}</span>
+                </span>
+                <span class="cell">
+                  <span class="t-title">${t.title}</span>
+                  <span class="t-artist">${t.artist}</span>
+                </span>
+                <span class="dur"
+                  >${
+                    state === 'unavailable'
+                      ? '✕'
+                      : t.durationMs
+                        ? ByomPlayer.formatTime(t.durationMs)
+                        : ''
+                  }</span
+                >
               </li>
             `;
           })}

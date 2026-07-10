@@ -47,14 +47,17 @@ const jspf = {
   playlist: {
     title: 'Test PL',
     creator: 'Les',
+    date: '2026-07-08T12:00:00Z',
+    annotation: 'A **great** mix',
     track: [
-      { title: 'A', creator: 'aa' },
+      { title: 'A', creator: 'aa', duration: 60 },
       {
         title: 'B',
         creator: 'bb',
+        duration: 120,
         extension: { [BYOM_EXT_NS]: [{ spotify_present: false }] },
       },
-      { title: 'C', creator: 'cc', album: 'Greatest Hits' },
+      { title: 'C', creator: 'cc', album: 'Greatest Hits', duration: 60 },
     ],
   },
 };
@@ -636,7 +639,7 @@ describe('<byom-player>', () => {
     expect(stored.providers.subsonic.baseUrl).toBe('https://nav.example.com');
   });
 
-  it('renders a top-level playlist picker from <byom-playlist> children and switches on change', async () => {
+  it('renders the title as a playlist selector from <byom-playlist> children and switches on change', async () => {
     const el = document.createElement('byom-player') as ByomPlayer;
     el.innerHTML =
       '<byom-playlist title="One" src="/one.json"></byom-playlist>' +
@@ -647,7 +650,7 @@ describe('<byom-player>', () => {
     document.body.appendChild(el);
     await new Promise((r) => setTimeout(r, 0));
     await el.updateComplete;
-    const picker = el.shadowRoot!.querySelector('.playlist-picker') as HTMLSelectElement;
+    const picker = el.shadowRoot!.querySelector('.title-select') as HTMLSelectElement;
     expect(picker).toBeTruthy();
     expect([...picker.options].map((o) => o.textContent!.trim())).toEqual(['One', 'Two']);
     expect(el.src).toBe('/one.json'); // first entry is the initial src
@@ -659,7 +662,7 @@ describe('<byom-player>', () => {
     expect(el.src).toBe('/two.json');
   });
 
-  it('does not render a playlist picker for a single playlist', async () => {
+  it('renders a plain title (no selector) for a single playlist', async () => {
     const el = document.createElement('byom-player') as ByomPlayer;
     el.src = '/one.json';
     el.providerFactory = () => new ControllableProvider();
@@ -668,7 +671,8 @@ describe('<byom-player>', () => {
     document.body.appendChild(el);
     await new Promise((r) => setTimeout(r, 0));
     await el.updateComplete;
-    expect(el.shadowRoot!.querySelector('.playlist-picker')).toBeNull();
+    expect(el.shadowRoot!.querySelector('.title-select')).toBeNull();
+    expect(el.shadowRoot!.querySelector('h2.title')).toBeTruthy();
   });
 
   it('re-initializes the provider in place (dispose old, install new)', async () => {
@@ -738,7 +742,7 @@ describe('<byom-player>', () => {
 
   it('exposes a part surface for skins', async () => {
     const { el } = await mount();
-    const parts = ['header', 'controls', 'tracklist', 'stage', 'progress'];
+    const parts = ['header', 'transport', 'tracklist', 'stage', 'progress'];
     for (const p of parts) {
       expect(el.shadowRoot!.querySelector(`[part~="${p}"]`), `part=${p}`).toBeTruthy();
     }
@@ -755,5 +759,45 @@ describe('<byom-player>', () => {
     (lis(el)[2] as HTMLElement).click();
     await settle(el);
     expect(lis(el)[2].getAttribute('data-state')).toBe('active');
+  });
+
+  it('renders the playlist annotation as inline markdown', async () => {
+    const { el } = await mount();
+    const desc = el.shadowRoot!.querySelector('.description')!;
+    expect(desc).toBeTruthy();
+    expect(desc.innerHTML).toContain('<strong>great</strong>');
+  });
+
+  it('renders a meta line with track count, total duration, and date', async () => {
+    const { el } = await mount();
+    const meta = el.shadowRoot!.querySelector('.meta-line')!.textContent!;
+    expect(meta).toContain('3 tracks');
+    expect(meta).toContain('4 min'); // 60+120+60s = 4 min
+    expect(meta).toContain('Jul 2026');
+  });
+
+  it('numbers rows by real playlist position, even while filtered', async () => {
+    const { el } = await mount();
+    await setFilter(el, 'cc'); // matches only track C (real index 2)
+    expect(lis(el)).toHaveLength(1);
+    expect(lis(el)[0].querySelector('.idx')!.textContent!.trim()).toBe('3');
+  });
+
+  it('shows each track duration in the row', async () => {
+    const { el } = await mount();
+    expect(lis(el)[0].querySelector('.dur')!.textContent!.trim()).toBe('1:00'); // 60s
+    expect(lis(el)[1].querySelector('.dur')!.textContent!.trim()).toBe('2:00'); // 120s
+  });
+
+  it('clicking the active row toggles play/pause (does not restart)', async () => {
+    const { el, provider } = await mount();
+    await el['controller']!.start(0);
+    await el.updateComplete;
+    expect(lis(el)[0].classList.contains('active')).toBe(true);
+    const loadsBefore = provider.loadedIndex.length;
+    (lis(el)[0] as HTMLElement).click(); // active row → toggle, not reload
+    await settle(el);
+    expect(provider.loadedIndex.length).toBe(loadsBefore); // no reload
+    expect(el.shadowRoot!.querySelector('.playpause')!.textContent!.trim()).toBe('▶'); // paused
   });
 });
