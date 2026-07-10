@@ -461,20 +461,34 @@ export class ByomPlayer extends LitElement {
       .join(' ');
   }
 
+  // The single dominant state for the track part's `data-state` attribute.
+  // active dominates (a playing row reads as active even if orphaned), then
+  // unavailable, orphan, pending — mirroring the visual precedence.
+  private trackState(index: number, orphaned: boolean): string {
+    const unavailable = this.failed.has(index) || this.availability.get(index) === 'unavailable';
+    const pending = this.scanning && !this.availability.has(index) && !this.failed.has(index);
+    if (index === this.currentIndex) return 'active';
+    if (unavailable) return 'unavailable';
+    if (orphaned) return 'orphan';
+    if (pending) return 'pending';
+    return '';
+  }
+
   render() {
     const pl = this.playlist;
     if (!pl) return html`<div class="loading">Loading…</div>`;
     const current = pl.tracks[this.currentIndex];
     return html`
-      <header class="header">
-        <h2 class="title">${pl.title}</h2>
-        ${pl.creator ? html`<p class="creator">${pl.creator}</p>` : nothing}
+      <header class="header" part="header">
+        <h2 class="title" part="title">${pl.title}</h2>
+        ${pl.creator ? html`<p class="creator" part="creator">${pl.creator}</p>` : nothing}
       </header>
       <div class="playlist-row">
         ${
           this.playlists.length > 1
             ? html`<select
                 class="playlist-picker"
+                part="playlist"
                 aria-label="Playlist"
                 @change=${this.onPlaylistChange}
               >
@@ -488,7 +502,7 @@ export class ByomPlayer extends LitElement {
             : nothing
         }
       </div>
-      <div class="now-playing">
+      <div class="now-playing" part="now-playing">
         ${
           current
             ? html`<span class="np-title">${current.title}</span>
@@ -496,10 +510,11 @@ export class ByomPlayer extends LitElement {
             : nothing
         }
       </div>
-      <div class="progress-row">
+      <div class="progress-row" part="progress">
         <span class="time">${ByomPlayer.formatTime(this.positionMs)}</span>
         <input
           class="progress"
+          part="seek"
           type="range"
           min="0"
           max=${this.durationMs || 0}
@@ -511,14 +526,22 @@ export class ByomPlayer extends LitElement {
         />
         <span class="time">${ByomPlayer.formatTime(this.durationMs)}</span>
       </div>
-      <div class="controls">
-        <button class="prev" @click=${this.prev} aria-label="Previous">⏮</button>
-        <button class="playpause" @click=${this.togglePlay} aria-label="Play/Pause">
+      <div class="controls" part="controls">
+        <button class="prev" part="control prev" @click=${this.prev} aria-label="Previous">
+          ⏮
+        </button>
+        <button
+          class="playpause"
+          part="control play"
+          @click=${this.togglePlay}
+          aria-label="Play/Pause"
+        >
           ${this.playbackState === 'playing' ? '⏸' : '▶'}
         </button>
-        <button class="next" @click=${this.next} aria-label="Next">⏭</button>
+        <button class="next" part="control next" @click=${this.next} aria-label="Next">⏭</button>
         <button
           class="shuffle ${this.shuffle ? 'on' : ''}"
+          part="control shuffle"
           @click=${this.toggleShuffle}
           aria-label="Shuffle"
           aria-pressed=${this.shuffle ? 'true' : 'false'}
@@ -531,6 +554,7 @@ export class ByomPlayer extends LitElement {
             ? nothing
             : html`<button
                 class="gear"
+                part="control gear"
                 @click=${this.openSettings}
                 aria-label="Settings"
                 title="Settings"
@@ -548,12 +572,17 @@ export class ByomPlayer extends LitElement {
             : nothing
         }
       </div>
-      <div class="stage">
-        <ol class="tracklist">
+      <div class="stage" part="stage">
+        <ol class="tracklist" part="tracklist">
           ${pl.tracks.map((t, i) => {
             const orphaned = t.syncState?.spotifyPresent === false;
             return html`
-              <li class=${this.trackClasses(i, orphaned)} @click=${() => this.selectTrack(i)}>
+              <li
+                class=${this.trackClasses(i, orphaned)}
+                part="track"
+                data-state=${this.trackState(i, orphaned)}
+                @click=${() => this.selectTrack(i)}
+              >
                 <span class="t-title">${t.title}</span>
                 <span class="t-artist">${t.artist}</span>
               </li>
@@ -594,6 +623,7 @@ export class ByomPlayer extends LitElement {
     return html`
       <div
         class="settings ${this.view === 'settings' ? 'open' : ''}"
+        part="settings"
         role="dialog"
         aria-modal="true"
       >
