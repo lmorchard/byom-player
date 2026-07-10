@@ -86,34 +86,7 @@
       <h1>byom-player dev harness</h1>
       <form id="cfg">
         <label>
-          Manifest URL
-          <input name="manifestUrl" value="sample.jspf.json" />
-        </label>
-        <label>
-          Preset
-          <select name="preset">
-            <option value="">— choose a playlist —</option>
-            <option value="sample.jspf.json">Sample — Cry little sister (6)</option>
-            <option value="playlists/20150907.jspf.json">2015-09-07 — YouTube-enriched (30)</option>
-            <option value="playlists/2014-top-songs.jspf.json">
-              2014 Top Songs — YouTube-enriched (100)
-            </option>
-            <option value="playlists/bleep-bloop-bop-synthpop.jspf.json">
-              Bleep Bloop Bop (Synthpop) (153)
-            </option>
-            <option value="playlists/industrial-accident-industrial-ebm.jspf.json">
-              Industrial Accident (Industrial / EBM) (120)
-            </option>
-            <option value="playlists/sometimes-i-miss-city-club.jspf.json">
-              Sometimes, I miss City Club (96)
-            </option>
-            <option value="playlists/some-of-my-90s-dance-bullshit.jspf.json">
-              Some of my 90s dance bullshit (164)
-            </option>
-          </select>
-        </label>
-        <label>
-          Provider
+          Provider (initial selection)
           <select name="provider">
             <option value="mock">mock</option>
             <option value="subsonic">subsonic (Navidrome / any Subsonic)</option>
@@ -123,80 +96,22 @@
             <option value="jellyfin">jellyfin</option>
           </select>
         </label>
-        <fieldset id="fs-subsonic">
-          <legend>Subsonic / OpenSubsonic</legend>
-          <label>Base URL <input name="baseUrl" placeholder="https://music.example.com" /></label>
-          <label>Username <input name="username" autocomplete="off" /></label>
-          <label>Password <input name="password" type="password" autocomplete="off" /></label>
-          <p class="or">— or —</p>
-          <label>API key <input name="apiKey" autocomplete="off" /></label>
-        </fieldset>
-        <fieldset id="fs-youtube">
-          <legend>YouTube</legend>
+        <fieldset>
+          <legend>Deployment (host attributes)</legend>
+          <label>Spotify client ID <input name="spotifyClientId" autocomplete="off" /></label>
+          <label>YouTube Data API key <input name="ytApiKey" autocomplete="off" /></label>
           <label>
-            Search endpoint
+            YouTube search endpoint
             <input name="searchEndpoint" placeholder="https://your-proxy/yt-search" />
           </label>
-          <p class="or">GET ?q=… → { videoId } — keeps the key server-side. Or:</p>
-          <label>YouTube Data API key <input name="ytApiKey" autocomplete="off" /></label>
-          <p class="or">(client-visible — dev/personal use only)</p>
         </fieldset>
-        <fieldset id="fs-spotify">
-          <legend>Spotify</legend>
-          <label
-            >Client ID
-            <input
-              name="spotifyClientId"
-              autocomplete="off"
-              value="948c8b941fb1411cab54ea71beb0d7a4"
-          /></label>
-          <label>
-            Redirect URI
-            <input
-              name="spotifyRedirectUri"
-              placeholder="(defaults to <this page>/callback.html)"
-            />
-          </label>
-          <p class="or">
-            Register a Spotify app, add the Redirect URI to it, then click "Connect Spotify" in the
-            player. Premium → full tracks; free → 30s previews.
-          </p>
-        </fieldset>
-        <fieldset id="fs-plex">
-          <legend>Plex</legend>
-          <label
-            >Base URL <input name="plexBaseUrl" placeholder="https://<id>.plex.direct:32400"
-          /></label>
-          <label>X-Plex-Token <input name="plexToken" autocomplete="off" /></label>
-          <p class="or">
-            Leave both blank to use the in-player "Link Plex" button (sign in at plex.tv). Direct
-            play only; the server must allow this origin (CORS).
-          </p>
-        </fieldset>
-        <fieldset id="fs-jellyfin">
-          <legend>Jellyfin</legend>
-          <label
-            >Base URL <input name="jfBaseUrl" placeholder="https://jellyfin.example.com"
-          /></label>
-          <label>Username <input name="jfUsername" autocomplete="off" /></label>
-          <label>Password <input name="jfPassword" type="password" autocomplete="off" /></label>
-          <p class="or">— or paste a token —</p>
-          <label>API token <input name="jfToken" autocomplete="off" /></label>
-          <label
-            >User ID <input name="jfUserId" autocomplete="off" placeholder="(token mode)"
-          /></label>
-          <p class="or">
-            Must be reachable over HTTPS and allow this origin (CORS), since the harness runs on
-            https://localhost.
-          </p>
-        </fieldset>
-        <button type="submit">Connect</button>
+        <button type="submit">Mount player</button>
         <button type="button" id="random">🎲 Play random from Navidrome</button>
-        <button type="button" id="clear-cache">🔄 Clear cache &amp; rescan</button>
       </form>
       <p class="hint">
-        Saved to this browser's localStorage only — never committed or sent anywhere but your
-        Navidrome server.
+        Provider credentials are now entered in the player's own settings panel (⚙), which persists
+        them to this browser's localStorage. The fields above are host-side deployment attributes
+        only. The playlists below are authored as <code>&lt;byom-playlist&gt;</code> children.
       </p>
       <p class="hint" id="status"></p>
     </div>
@@ -207,87 +122,80 @@
       import '/src/index.ts';
 
       const KEY = 'byom-player-dev-config';
+      const SETTINGS_KEY = 'byom-player:settings:v1';
       const form = document.getElementById('cfg');
       const host = document.getElementById('host');
+      const status = document.getElementById('status');
+
+      // The playlists the harness offers, authored as <byom-playlist> children so
+      // the component's real top-level picker is exercised.
+      const PRESETS = [
+        { title: 'Sample — Cry little sister (6)', src: 'sample.jspf.json' },
+        { title: '2015-09-07 — YouTube-enriched (30)', src: 'playlists/20150907.jspf.json' },
+        { title: '2014 Top Songs (100)', src: 'playlists/2014-top-songs.jspf.json' },
+        {
+          title: 'Bleep Bloop Bop (Synthpop) (153)',
+          src: 'playlists/bleep-bloop-bop-synthpop.jspf.json',
+        },
+        {
+          title: 'Industrial Accident (Industrial / EBM) (120)',
+          src: 'playlists/industrial-accident-industrial-ebm.jspf.json',
+        },
+        {
+          title: 'Sometimes, I miss City Club (96)',
+          src: 'playlists/sometimes-i-miss-city-club.jspf.json',
+        },
+        {
+          title: 'Some of my 90s dance bullshit (164)',
+          src: 'playlists/some-of-my-90s-dance-bullshit.jspf.json',
+        },
+      ];
 
       const saved = JSON.parse(localStorage.getItem(KEY) || '{}');
-      if (saved.provider === 'direct') saved.provider = 'subsonic'; // migrate old saved config
       for (const [k, v] of Object.entries(saved)) {
         if (form.elements[k]) form.elements[k].value = v;
       }
 
-      // Show only the selected provider's config fields (and the Navidrome-only
-      // random button).
+      // Only the subsonic path uses the random-from-Navidrome dev tool.
       function syncProviderUI() {
-        const provider = form.elements['provider'].value;
-        document.getElementById('fs-subsonic').hidden = provider !== 'subsonic';
-        document.getElementById('fs-youtube').hidden = provider !== 'youtube';
-        document.getElementById('fs-spotify').hidden = provider !== 'spotify';
-        document.getElementById('fs-plex').hidden = provider !== 'plex';
-        document.getElementById('fs-jellyfin').hidden = provider !== 'jellyfin';
-        document.getElementById('random').hidden = provider !== 'subsonic';
-        // Resolution-caching library providers can re-scan; others have no
-        // per-track id cache worth clearing.
-        document.getElementById('clear-cache').hidden = !['subsonic', 'plex', 'jellyfin'].includes(
-          provider,
-        );
+        document.getElementById('random').hidden = form.elements['provider'].value !== 'subsonic';
       }
       form.elements['provider'].addEventListener('change', syncProviderUI);
       syncProviderUI();
 
-      // Preset dropdown fills the manifest URL field.
-      form.elements['preset'].addEventListener('change', (e) => {
-        if (e.target.value) form.elements['manifestUrl'].value = e.target.value;
-      });
-
-      // Build the per-provider config (keeps each provider's fields separate).
-      function buildProviderConfig(cfg) {
-        if (cfg.provider === 'subsonic') {
-          const c = {};
-          for (const k of ['baseUrl', 'username', 'password', 'apiKey']) if (cfg[k]) c[k] = cfg[k];
-          return c;
+      // Read the subsonic credentials the user entered in the player's settings
+      // panel (persisted to localStorage) — the harness no longer collects them.
+      function subsonicSettings() {
+        try {
+          return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}').providers?.subsonic ?? {};
+        } catch {
+          return {};
         }
-        if (cfg.provider === 'youtube') {
-          const c = {};
-          if (cfg.searchEndpoint) c.searchEndpoint = cfg.searchEndpoint;
-          if (cfg.ytApiKey) c.apiKey = cfg.ytApiKey; // YouTube's own key field
-          return c;
-        }
-        if (cfg.provider === 'spotify') {
-          return {
-            clientId: cfg.spotifyClientId || '',
-            // Resolve against the page's base URL so it's correct under the
-            // GitHub Pages subpath (/byom-player/) as well as local dev.
-            redirectUri: cfg.spotifyRedirectUri || new URL('callback.html', document.baseURI).href,
-          };
-        }
-        if (cfg.provider === 'plex') {
-          const c = {};
-          if (cfg.plexBaseUrl) c.baseUrl = cfg.plexBaseUrl;
-          if (cfg.plexToken) c.token = cfg.plexToken;
-          return c;
-        }
-        if (cfg.provider === 'jellyfin') {
-          const c = {};
-          for (const [src, dst] of [
-            ['jfBaseUrl', 'baseUrl'],
-            ['jfUsername', 'username'],
-            ['jfPassword', 'password'],
-            ['jfToken', 'token'],
-            ['jfUserId', 'userId'],
-          ])
-            if (cfg[src]) c[dst] = cfg[src];
-          return c;
-        }
-        return {};
       }
 
+      // Mount a fresh player with the host deployment attributes + preset children.
       function mount(cfg) {
         host.innerHTML = '';
         const el = document.createElement('byom-player');
-        el.src = cfg.manifestUrl || 'sample.jspf.json';
         el.provider = cfg.provider || 'mock';
-        el.providerConfig = buildProviderConfig(cfg);
+        if (cfg.spotifyClientId) el.setAttribute('spotify-client-id', cfg.spotifyClientId);
+        if (cfg.ytApiKey) el.setAttribute('youtube-api-key', cfg.ytApiKey);
+        if (cfg.searchEndpoint) el.setAttribute('youtube-search-endpoint', cfg.searchEndpoint);
+        for (const p of PRESETS) {
+          const pl = document.createElement('byom-playlist');
+          pl.setAttribute('title', p.title);
+          pl.setAttribute('src', p.src);
+          el.appendChild(pl);
+        }
+        host.appendChild(el);
+      }
+
+      // Mount a fresh player against a single ad-hoc manifest (no preset children).
+      function mountSingle(cfg, src) {
+        host.innerHTML = '';
+        const el = document.createElement('byom-player');
+        el.provider = cfg.provider || 'mock';
+        el.src = src;
         host.appendChild(el);
       }
 
@@ -298,47 +206,33 @@
         mount(cfg);
       });
 
-      // Clear the resolved-id cache (all servers; root key mirrors ROOT_KEY in
-      // src/providers/resolutionCache.ts) and re-mount the player so its
-      // availability sweep re-resolves every track from scratch. Clearing alone
-      // wouldn't help: negative-cached misses linger (1h TTL) and the existing
-      // sweep's marks persist until a fresh mount.
-      document.getElementById('clear-cache').addEventListener('click', () => {
-        localStorage.removeItem('byom-player:resolv:v1');
-        const cfg = Object.fromEntries(new FormData(form).entries());
-        mount(cfg);
-        document.getElementById('status').textContent =
-          'Cleared id cache — re-scanning all tracks…';
-      });
-
-      // Build Subsonic auth query params for the harness-only getRandomSongs call.
+      // Build Subsonic auth query params from the player's persisted settings.
       // (Sends plaintext p for simplicity; the player itself uses salted tokens.)
-      function authParams(cfg) {
+      function authParams(sub) {
         const p = new URLSearchParams({ v: '1.16.1', c: 'byom-player-dev', f: 'json' });
-        if (cfg.apiKey) p.set('apiKey', cfg.apiKey);
-        else if (cfg.username && cfg.password) {
-          p.set('u', cfg.username);
-          p.set('p', cfg.password);
+        if (sub.apiKey) p.set('apiKey', sub.apiKey);
+        else if (sub.username && sub.password) {
+          p.set('u', sub.username);
+          p.set('p', sub.password);
         }
         return p;
       }
 
-      const status = document.getElementById('status');
-
       // Pull random songs straight from Navidrome and feed them to the player as a
       // synthetic JSPF (via a blob URL). Guarantees resolvable tracks for a real
-      // playback test.
+      // playback test. Reads credentials from the player's settings panel.
       document.getElementById('random').addEventListener('click', async () => {
         const cfg = Object.fromEntries(new FormData(form).entries());
         localStorage.setItem(KEY, JSON.stringify(cfg));
-        if (!cfg.baseUrl) {
-          status.textContent = 'Set a Base URL first.';
+        const sub = subsonicSettings();
+        if (!sub.baseUrl) {
+          status.textContent = 'Set Subsonic Base URL + credentials in the player settings (⚙) first.';
           return;
         }
         status.textContent = 'Fetching random songs…';
         try {
-          const base = cfg.baseUrl.replace(/\/$/, '');
-          const params = authParams(cfg);
+          const base = sub.baseUrl.replace(/\/$/, '');
+          const params = authParams(sub);
           params.set('size', '15');
           const res = await fetch(`${base}/rest/getRandomSongs.view?${params.toString()}`);
           const data = await res.json();
@@ -350,7 +244,7 @@
           const jspf = {
             playlist: {
               title: 'Random from Navidrome',
-              creator: cfg.username || 'navidrome',
+              creator: sub.username || 'navidrome',
               track: songs.map((s) => ({
                 title: s.title,
                 creator: s.artist,
@@ -362,7 +256,7 @@
           const url = URL.createObjectURL(
             new Blob([JSON.stringify(jspf)], { type: 'application/json' }),
           );
-          mount({ ...cfg, provider: 'subsonic', manifestUrl: url });
+          mountSingle({ ...cfg, provider: 'subsonic' }, url);
           status.textContent = `Loaded ${songs.length} random songs — press play.`;
         } catch (err) {
           status.textContent = 'Error: ' + (err?.message ?? err);
