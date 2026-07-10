@@ -899,23 +899,43 @@ export class ByomPlayer extends LitElement {
     .tracklist li {
       cursor: pointer;
       display: flex;
+      align-items: center;
       justify-content: space-between;
       gap: 0.5rem;
-      padding: 0.25rem 0.5rem;
+      padding: 0.3rem 0.5rem 0.3rem 0.75rem;
+      border-left: 3px solid transparent; /* reserve the active bar's width */
+      border-radius: calc(var(--byom-border-radius) / 2);
+    }
+    .tracklist li:hover {
+      background: color-mix(in srgb, var(--byom-text) 8%, transparent);
     }
     .tracklist li.active {
       color: var(--byom-accent);
-      font-weight: bold;
+      font-weight: 600;
+      border-left-color: var(--byom-accent);
+      background: color-mix(in srgb, var(--byom-accent) 12%, transparent);
     }
     .tracklist li.orphan {
-      opacity: 0.55;
+      color: var(--byom-text-muted);
+    }
+    .tracklist li.orphan .t-title::after {
+      content: '↯';
+      margin-left: 0.4rem;
+      opacity: 0.8;
+      font-size: 0.85em;
     }
     .tracklist li.unavailable {
+      color: var(--byom-text-muted);
       text-decoration: line-through;
-      opacity: 0.4;
+    }
+    .tracklist li.unavailable .t-title::after {
+      content: '✕';
+      margin-left: 0.4rem;
+      text-decoration: none;
+      opacity: 0.7;
     }
     .tracklist li.pending {
-      opacity: 0.5;
+      color: var(--byom-text-muted);
     }
     .tracklist li.pending .t-title::before {
       content: '⋯ ';
