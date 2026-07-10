@@ -579,6 +579,9 @@ export class ByomPlayer extends LitElement {
     const q = this.filterQuery.trim();
     const rows = pl.tracks.map((t, i) => ({ t, i })).filter(({ t }) => this.matchesFilter(t));
     const playing = this.playbackState === 'playing';
+    // The selector's visible label is the current playlist's title (from the
+    // <byom-playlist> children), falling back to the loaded manifest title.
+    const currentTitle = this.playlists.find((p) => p.src === this.src)?.title ?? pl.title;
     return html`
       <div class="corner">
         ${
@@ -600,19 +603,23 @@ export class ByomPlayer extends LitElement {
         <div class="meta" part="meta">
           ${
             this.playlists.length > 1
-              ? html`<select
-                  class="title-select"
-                  part="title"
-                  aria-label="Playlist"
-                  @change=${this.onPlaylistChange}
-                >
-                  ${this.playlists.map(
-                    (p) =>
-                      html`<option value=${p.src} ?selected=${p.src === this.src}>
-                        ${p.title}
-                      </option>`,
-                  )}
-                </select>`
+              ? html`<div class="title-wrap" part="title">
+                  <h2 class="title title--switch">
+                    ${currentTitle}<span class="caret" aria-hidden="true">▾</span>
+                  </h2>
+                  <select
+                    class="title-select"
+                    aria-label="Playlist"
+                    @change=${this.onPlaylistChange}
+                  >
+                    ${this.playlists.map(
+                      (p) =>
+                        html`<option value=${p.src} ?selected=${p.src === this.src}>
+                          ${p.title}
+                        </option>`,
+                    )}
+                  </select>
+                </div>`
               : html`<h2 class="title" part="title">${pl.title}</h2>`
           }
           ${pl.creator ? html`<p class="creator" part="creator">${pl.creator}</p>` : nothing}
@@ -665,7 +672,23 @@ export class ByomPlayer extends LitElement {
           aria-pressed=${this.shuffle ? 'true' : 'false'}
           title=${this.shuffle ? 'Shuffle: on' : 'Shuffle: off'}
         >
-          🔀
+          <svg
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <polyline points="16 3 21 3 21 8"></polyline>
+            <line x1="4" y1="20" x2="21" y2="3"></line>
+            <polyline points="21 16 21 21 16 21"></polyline>
+            <line x1="15" y1="15" x2="21" y2="21"></line>
+            <line x1="4" y1="4" x2="9" y2="9"></line>
+          </svg>
         </button>
       </div>
       <div class="status">
@@ -981,35 +1004,42 @@ export class ByomPlayer extends LitElement {
       font-weight: 700;
       color: var(--byom-text);
     }
-    /* A <select> styled to read as the title, with a caret affordance. */
-    .title-select {
-      appearance: none;
-      -webkit-appearance: none;
+    /* Title-as-selector: a visible title + adjacent ▾, with a transparent native
+       <select> overlaid for interaction. Keeps the caret glued to the title
+       regardless of how wide the widest option is. */
+    .title-wrap {
+      position: relative;
+      display: inline-block;
       max-width: 100%;
-      margin: 0 0 0 -0.15rem;
-      padding: 0 1.4rem 0 0;
-      background: transparent;
-      border: none;
-      border-radius: 4px;
-      color: var(--byom-text);
-      font: inherit;
-      font-size: 1.35rem;
-      line-height: 1.15;
-      font-weight: 700;
-      cursor: pointer;
-      background-image:
-        linear-gradient(45deg, transparent 50%, var(--byom-text-muted) 50%),
-        linear-gradient(135deg, var(--byom-text-muted) 50%, transparent 50%);
-      background-position:
-        right 6px top 0.7rem,
-        right 1px top 0.7rem;
-      background-size:
-        6px 6px,
-        6px 6px;
-      background-repeat: no-repeat;
     }
-    .title-select:hover {
+    .title--switch {
+      cursor: pointer;
+    }
+    .title--switch .caret {
+      margin-left: 0.35rem;
+      font-size: 0.6em;
+      color: var(--byom-text-muted);
+      vertical-align: middle;
+    }
+    .title-wrap:hover .title--switch,
+    .title-wrap:focus-within .title--switch,
+    .title-wrap:hover .title--switch .caret,
+    .title-wrap:focus-within .title--switch .caret {
       color: var(--byom-accent);
+    }
+    .title-select {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: transparent;
+      font: inherit;
+      opacity: 0;
+      cursor: pointer;
     }
     .creator {
       margin: 0.15rem 0 0;
@@ -1100,17 +1130,20 @@ export class ByomPlayer extends LitElement {
       background: var(--byom-accent);
       filter: brightness(1.08);
     }
+    /* Shuffle is a round icon button like the transport controls; the accent
+       fill signals the on state (toggle). */
     .transport .shuffle {
       flex: 0 0 auto;
-      border: 1px solid var(--byom-border);
-      padding: 0.25rem 0.55rem;
-      font-size: 1rem;
-      opacity: 0.75;
+      opacity: 0.7;
+    }
+    .transport .shuffle svg {
+      width: 1.15rem;
+      height: 1.15rem;
+      display: block;
     }
     .transport .shuffle.on {
       background: var(--byom-accent);
       color: var(--byom-on-accent);
-      border-color: var(--byom-accent);
       opacity: 1;
     }
     .seek {
@@ -1291,7 +1324,7 @@ export class ByomPlayer extends LitElement {
       background: transparent;
       border: none;
       color: var(--byom-text-muted);
-      font-size: 1.4rem;
+      font-size: 2.2rem;
       line-height: 1;
       padding: 0.1rem 0.2rem;
       cursor: pointer;
