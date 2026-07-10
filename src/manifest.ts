@@ -24,6 +24,7 @@ export function loadManifest(json: unknown): Playlist {
     title: pl.title ?? '',
     creator: pl.creator,
     dateCreated: pl.date ?? pl.date_created,
+    annotation: pl.annotation,
     tracks: tracks.map(mapTrack),
   };
 }
