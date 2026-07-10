@@ -789,9 +789,7 @@ export class ByomPlayer extends LitElement {
       inset: 0;
       z-index: 10;
       display: flex;
-      /* Stretch the card to a consistent height so the modal doesn't resize as
-         providers (with differing field counts) change. */
-      align-items: stretch;
+      align-items: center;
       justify-content: center;
       padding: 1rem;
       background: rgba(0, 0, 0, 0.6);
@@ -803,7 +801,10 @@ export class ByomPlayer extends LitElement {
       gap: 0.5rem;
       width: 100%;
       max-width: 22rem;
-      height: 100%;
+      /* A consistent height (~60% of the component) so the modal doesn't resize
+         as providers with differing field counts change; content scrolls if it
+         exceeds this. */
+      height: 60%;
       overflow: auto;
       background: var(--byom-bg);
       border: 1px solid var(--byom-accent);
