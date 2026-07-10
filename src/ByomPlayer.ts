@@ -59,6 +59,8 @@ export class ByomPlayer extends LitElement {
   @property() src = '';
   /** Which audio provider to use ('mock' | 'subsonic'). */
   @property() provider = 'mock';
+  /** Selected named theme; '' = Auto (follow OS via prefers-color-scheme). */
+  @property({ reflect: true }) theme = '';
   /** Provider-specific configuration (e.g. Navidrome credentials). */
   @property({ attribute: false }) providerConfig: Record<string, unknown> = {};
   /** Optional override for provider construction (host-supplied custom providers / tests). */
@@ -111,6 +113,8 @@ export class ByomPlayer extends LitElement {
   async connectedCallback(): Promise<void> {
     super.connectedCallback();
     this.settings = loadSettings();
+    // Persisted theme wins over the host default (mirrors the provider rule).
+    if (this.settings.theme) this.theme = this.settings.theme;
     this.playlists = parsePlaylistChildren(this);
     // Multiple playlists: the first is the initial src unless the host set one.
     if (this.playlists.length && !this.src) this.src = this.playlists[0].src;
@@ -656,19 +660,93 @@ export class ByomPlayer extends LitElement {
 
   static styles = css`
     :host {
-      display: block;
-      --byom-bg: #1e1e1e;
-      --byom-text: #ffffff;
-      --byom-accent: #ff0055;
+      /* Token vocabulary (the theme contract). Defaults below are the Auto
+         light palette; @media dark supplies the Auto dark palette; named
+         themes (:host([theme])) override both. Host inline --byom-* wins. */
+      --byom-bg: #f7f7f5;
+      --byom-surface: #ffffff;
+      --byom-text: #1a1a1a;
+      --byom-text-muted: #6b6b6b;
+      --byom-accent: #3b5bdb;
+      --byom-on-accent: #ffffff;
+      --byom-border: #d9d9d6;
       --byom-font: system-ui, sans-serif;
       --byom-border-radius: 8px;
 
+      display: block;
       background: var(--byom-bg);
       color: var(--byom-text);
       font-family: var(--byom-font);
       border-radius: var(--byom-border-radius);
       padding: 1rem;
       position: relative; /* anchor for the settings modal overlay */
+    }
+    /* Auto dark default = Midnight */
+    @media (prefers-color-scheme: dark) {
+      :host {
+        --byom-bg: #1e1e1e;
+        --byom-surface: #2a2a2a;
+        --byom-text: #ffffff;
+        --byom-text-muted: #a0a0a0;
+        --byom-accent: #ff0055;
+        --byom-on-accent: #14141a;
+        --byom-border: #3a3a3a;
+      }
+    }
+    :host([theme='daylight']) {
+      --byom-bg: #f7f7f5;
+      --byom-surface: #ffffff;
+      --byom-text: #1a1a1a;
+      --byom-text-muted: #6b6b6b;
+      --byom-accent: #3b5bdb;
+      --byom-on-accent: #ffffff;
+      --byom-border: #d9d9d6;
+    }
+    :host([theme='midnight']) {
+      --byom-bg: #1e1e1e;
+      --byom-surface: #2a2a2a;
+      --byom-text: #ffffff;
+      --byom-text-muted: #a0a0a0;
+      --byom-accent: #ff0055;
+      --byom-on-accent: #14141a;
+      --byom-border: #3a3a3a;
+    }
+    :host([theme='terminal']) {
+      --byom-bg: #0b0f0b;
+      --byom-surface: #121812;
+      --byom-text: #c8f7c8;
+      --byom-text-muted: #5a8a5a;
+      --byom-accent: #39ff14;
+      --byom-on-accent: #06120a;
+      --byom-border: #1f3a1f;
+    }
+    :host([theme='sunset']) {
+      --byom-bg: #241a17;
+      --byom-surface: #2f221d;
+      --byom-text: #f5e6dc;
+      --byom-text-muted: #b08d7d;
+      --byom-accent: #ff8c42;
+      --byom-on-accent: #241a17;
+      --byom-border: #4a352c;
+    }
+    :host([theme='paper']) {
+      --byom-bg: #f4ecd8;
+      --byom-surface: #fffaf0;
+      --byom-text: #3a2f26;
+      --byom-text-muted: #8a7a66;
+      --byom-accent: #0f766e;
+      --byom-on-accent: #fffaf0;
+      --byom-border: #ddd0b8;
+    }
+    /* Stretch: Dracula */
+    :host([theme='dracula']) {
+      --byom-bg: #282a36;
+      --byom-surface: #343746;
+      --byom-text: #f8f8f2;
+      --byom-text-muted: #6272a4;
+      --byom-accent: #bd93f9;
+      --byom-on-accent: #282a36;
+      --byom-border: #44475a;
     }
     .playlist-picker {
       margin: 0.25rem 0 0.5rem;

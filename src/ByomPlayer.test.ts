@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import './ByomPlayer';
 import type { ByomPlayer } from './ByomPlayer';
 import { BYOM_EXT_NS } from './manifest';
+import { loadSettings, saveSettings } from './settings';
 import type { AudioProvider, ProviderState } from './providers/types';
 
 // A provider whose state transitions the test drives directly.
@@ -574,5 +575,57 @@ describe('<byom-player>', () => {
     btn.click();
     await el.updateComplete;
     expect(btn.textContent!.trim()).toBe('▶'); // paused
+  });
+
+  it('reflects the theme property to a host attribute', async () => {
+    const { el } = await mount();
+    el.theme = 'midnight';
+    await el.updateComplete;
+    expect(el.getAttribute('theme')).toBe('midnight');
+  });
+
+  it('applies a persisted theme on connect', async () => {
+    saveSettings({ providers: {}, theme: 'terminal' });
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = () => new ControllableProvider();
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(el.getAttribute('theme')).toBe('terminal');
+  });
+
+  it('theme picker changes the theme, persists it, and reflects the attribute', async () => {
+    const { el } = await mount();
+    el['openSettings']();
+    await el.updateComplete;
+    const select = el.shadowRoot!.querySelector('.theme-select') as HTMLSelectElement;
+    expect(select).toBeTruthy();
+    select.value = 'sunset';
+    select.dispatchEvent(new Event('change'));
+    await el.updateComplete;
+    expect(el.getAttribute('theme')).toBe('sunset');
+    expect(loadSettings().theme).toBe('sunset');
+  });
+
+  it('exposes a part surface for skins', async () => {
+    const { el } = await mount();
+    const parts = ['header', 'controls', 'tracklist', 'stage', 'progress'];
+    for (const p of parts) {
+      expect(el.shadowRoot!.querySelector(`[part~="${p}"]`), `part=${p}`).toBeTruthy();
+    }
+  });
+
+  it('sets data-state on track rows', async () => {
+    const { el } = await mount();
+    // Row 1 (index 1) is the orphaned track in the fixture.
+    expect(lis(el)[1].getAttribute('data-state')).toBe('orphan');
+  });
+
+  it('data-state=active follows the playing row', async () => {
+    const { el } = await mount();
+    (lis(el)[2] as HTMLElement).click();
+    await settle(el);
+    expect(lis(el)[2].getAttribute('data-state')).toBe('active');
   });
 });
