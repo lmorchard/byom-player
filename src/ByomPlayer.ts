@@ -236,6 +236,13 @@ export class ByomPlayer extends LitElement {
         this.hasVideo = true; // reserve space + shorten the tracklist
       }
     }
+    if (prov.attachAuth) {
+      // The .settings container is always rendered (just hidden in list view),
+      // so the auth slot exists for the provider to mount into.
+      await this.updateComplete;
+      const authHost = this.renderRoot.querySelector('.auth-slot');
+      if (authHost) prov.attachAuth(authHost as HTMLElement);
+    }
     await prov.initialize();
     this.activeProvider = prov;
     this.controller = new PlaybackController(
@@ -505,6 +512,10 @@ export class ByomPlayer extends LitElement {
             fields.length === 0 ? html`<p class="field-note">No configuration needed.</p>` : nothing
           }
         </div>
+        <div class="settings-connection">
+          <span class="settings-label">Connection</span>
+          <div class="auth-slot" part="auth"></div>
+        </div>
         <button class="apply" @click=${this.applySettings}>Apply</button>
       </div>
     `;
@@ -687,6 +698,30 @@ export class ByomPlayer extends LitElement {
     .field-note {
       font-size: 0.8rem;
       opacity: 0.6;
+    }
+    .settings-connection {
+      display: grid;
+      gap: 0.3rem;
+    }
+    .settings-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.6;
+    }
+    .auth-slot {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .auth-slot button {
+      cursor: pointer;
+      background: var(--byom-accent);
+      color: var(--byom-bg);
+      border: none;
+      border-radius: 999px;
+      padding: 0.35rem 0.9rem;
+      font: inherit;
     }
     [hidden] {
       display: none !important;

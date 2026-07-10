@@ -250,6 +250,25 @@ describe('<byom-player>', () => {
     expect(provider.disposed).toBe(true);
   });
 
+  it('passes the panel auth slot to a provider that supports attachAuth', async () => {
+    let authEl: HTMLElement | null = null;
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = () => {
+      const p = new ControllableProvider();
+      (p as AudioProvider).attachAuth = (e: HTMLElement) => (authEl = e);
+      return p;
+    };
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    const slot = el.shadowRoot!.querySelector('.auth-slot');
+    expect(slot).not.toBeNull();
+    expect(authEl).toBe(slot);
+  });
+
   it('shows the settings gear by default and hides it with no-settings', async () => {
     const { el } = await mount();
     expect(el.shadowRoot!.querySelector('.gear')).toBeTruthy();
