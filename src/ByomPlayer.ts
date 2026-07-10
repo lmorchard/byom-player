@@ -659,9 +659,10 @@ export class ByomPlayer extends LitElement {
             @change=${this.onDraftTheme}
           >
             ${THEMES.map(
-              (t) => html`<option value=${t.value} ?selected=${t.value === (this.draft.theme ?? '')}>
-                ${t.label}
-              </option>`,
+              (t) =>
+                html`<option value=${t.value} ?selected=${t.value === (this.draft.theme ?? '')}>
+                  ${t.label}
+                </option>`,
             )}
           </select>
         </label>
