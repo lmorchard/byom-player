@@ -23,5 +23,7 @@ export interface Playlist {
   title: string;
   creator?: string;
   dateCreated?: string;
+  // Host-authored markdown blurb (the playlist's "story"), from JSPF `annotation`.
+  annotation?: string;
   tracks: Track[];
 }

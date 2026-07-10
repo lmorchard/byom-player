@@ -25,6 +25,11 @@ describe('settings', () => {
     expect(loadSettings()).toEqual(s);
   });
 
+  it('round-trips a theme selection', () => {
+    saveSettings({ providers: {}, theme: 'midnight' });
+    expect(loadSettings().theme).toBe('midnight');
+  });
+
   it('returns the empty shape on malformed JSON (never throws)', () => {
     localStorage.setItem(SETTINGS_KEY, '{not json');
     expect(loadSettings()).toEqual({ providers: {} });

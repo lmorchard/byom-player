@@ -8,6 +8,8 @@ export const SETTINGS_KEY = 'byom-player:settings:v1';
 export interface UserSettings {
   provider?: string;
   debug?: boolean;
+  /** Selected named theme (e.g. 'midnight'); '' or absent = Auto (follow OS). */
+  theme?: string;
   // Per-provider credentials/URLs the user typed in the panel, keyed by
   // provider name (e.g. { subsonic: { baseUrl, username, password } }).
   providers: Record<string, Record<string, string>>;

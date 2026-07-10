@@ -79,6 +79,7 @@ unless noted as a JS property.
 | ------------------------- | -------- | ----------------------------------------------------------------------- |
 | `src`                     | `''`     | URL to the JSPF manifest (single playlist)                              |
 | `provider`                | `'mock'` | Initial selection; a user's panel choice (persisted) wins once set      |
+| `theme`                   | `''`     | Named color theme; `''` = Auto (follow OS). Persisted panel choice wins |
 | `providers`               | (all)    | CSV allowlist of selectable providers, e.g. `"youtube,subsonic"`        |
 | `no-settings`             | `false`  | Boolean attribute; hides the settings gear/panel                        |
 | `spotify-client-id`       | `''`     | Deployment default: Spotify app client ID                               |
@@ -109,6 +110,7 @@ Shadow DOM); the first is the initial selection.
 The component ships with an in-player settings panel, opened from the ⚙ button in
 the controls (hide it with the `no-settings` attribute). From the panel a user can:
 
+- **Choose an appearance** — Auto (follow OS light/dark) or a named theme.
 - **Pick a provider** from the allowed set and enter its **credentials** (Subsonic
   / Plex / Jellyfin). `mock` and `youtube` need no credentials.
 - **Connect / disconnect** interactive auth (Spotify Connect, Plex Link) — the
@@ -125,15 +127,59 @@ re-initializes the active provider in place, and emits a `settingschange` event.
 > where users shouldn't enter credentials, set `no-settings` and supply any
 > needed config as deployment attributes.
 
-### Theming
+### Theming & skins
+
+Styling has two layers over one clean Shadow-DOM structure:
+
+- **Theme** — a palette expressed as CSS custom properties. Switch built-in themes
+  via the `theme` attribute / Appearance picker, or override any token from the
+  host (host inline values always win).
+- **Skin** — a stylesheet that restyles the component's exposed `::part()`s. A
+  skin can move, reshape, and re-space the controls without any change to the
+  component.
+
+**Theme tokens** (defaults are the Auto light palette; the Auto dark palette
+applies via `prefers-color-scheme`):
+
+| Token                  | Role                                      |
+| ---------------------- | ----------------------------------------- |
+| `--byom-bg`            | base background                           |
+| `--byom-surface`       | elevated surfaces (settings card, embed)  |
+| `--byom-text`          | primary text                              |
+| `--byom-text-muted`    | secondary text, timestamps, dimmed states |
+| `--byom-accent`        | accent / active / fills                   |
+| `--byom-on-accent`     | text/glyph on an accent fill              |
+| `--byom-border`        | hairlines, control outlines               |
+| `--byom-font`          | font stack                                |
+| `--byom-border-radius` | corner rounding                           |
 
 ```css
+/* Override individual tokens (wins over any built-in theme) */
 byom-player {
-  --byom-bg: #1e1e1e;
-  --byom-text: #ffffff;
   --byom-accent: #ff0055;
-  --byom-font: system-ui, sans-serif;
   --byom-border-radius: 8px;
+}
+```
+
+**Built-in themes** (`theme="…"`): `daylight`, `midnight` (the Auto light/dark
+defaults), `terminal`, `sunset`, `paper`, `dracula`. With no `theme` set, the
+component follows the OS via `prefers-color-scheme`.
+
+**Skin parts** — target these with `::part()`:
+
+`header`, `art`, `meta`, `title`, `creator`, `meta-line`, `description`,
+`transport`, `control` (+ `prev` / `play` / `next` / `shuffle` / `gear`),
+`progress`, `seek`, `filter`, `filter-input`, `filter-clear`, `stage`,
+`tracklist`, `track` (carries `data-state="active|orphan|unavailable|pending"`),
+`track-number`, `video`, `settings`.
+
+```css
+/* A skin: restyle via parts + tokens only — no component change */
+byom-player::part(controls) {
+  justify-content: center;
+}
+byom-player::part(track)[data-state='unavailable'] {
+  opacity: 0.5;
 }
 ```
 
@@ -141,6 +187,13 @@ byom-player {
 
 Standard JSPF. `sync_state` (orphaned-track info from byom-sync) is read from a
 JSPF track `extension` when present and ignored otherwise, so generic JSPF works.
+
+The header shows the playlist `title`, `creator`, and a meta line
+(`{n} tracks · {total duration} · {creation date}`) derived from the tracks and
+the JSPF `date`. The playlist-level **`annotation`** field is rendered as a short
+description blurb with a tiny inline-markdown subset — `**bold**`, `*italic*`,
+and `[links](https://…)` (other markdown is ignored; link hrefs are restricted to
+http(s)/mailto). Per-track `duration` drives the right-aligned times in the list.
 
 ## Subsonic auth
 

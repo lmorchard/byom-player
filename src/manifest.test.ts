@@ -6,6 +6,7 @@ const jspf = {
     title: 'Road Trip',
     creator: 'Les',
     date: '2026-07-08T00:00:00Z',
+    annotation: 'Songs for the **open road**.',
     track: [
       {
         title: 'Nightcall',
@@ -29,6 +30,7 @@ describe('loadManifest', () => {
     expect(pl.title).toBe('Road Trip');
     expect(pl.creator).toBe('Les');
     expect(pl.dateCreated).toBe('2026-07-08T00:00:00Z');
+    expect(pl.annotation).toBe('Songs for the **open road**.');
     expect(pl.tracks).toHaveLength(2);
   });
 

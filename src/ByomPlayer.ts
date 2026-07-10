@@ -1,6 +1,9 @@
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import type { Playlist, Track } from './types';
+import { renderMarkdownInline } from './markdown';
+import { sumDurationMs, formatTotalDuration, formatMonthYear } from './format';
 import type {
   AudioProvider,
   AvailabilityStatus,
@@ -20,6 +23,18 @@ import {
 } from './hostConfig';
 
 type ProviderFactory = (name: string, config: Record<string, unknown>) => AudioProvider;
+
+// Built-in themes offered in the Appearance picker. '' = Auto (follow OS).
+// Each named value matches a :host([theme='...']) palette block in `static styles`.
+const THEMES: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Auto' },
+  { value: 'daylight', label: 'Daylight' },
+  { value: 'midnight', label: 'Midnight' },
+  { value: 'terminal', label: 'Terminal' },
+  { value: 'sunset', label: 'Sunset' },
+  { value: 'paper', label: 'Paper' },
+  { value: 'dracula', label: 'Dracula' },
+];
 
 // Per-provider credential fields the settings panel renders + reads back.
 // `advanced` fields are tucked into a collapsible <details>. Providers absent
@@ -59,6 +74,8 @@ export class ByomPlayer extends LitElement {
   @property() src = '';
   /** Which audio provider to use ('mock' | 'subsonic'). */
   @property() provider = 'mock';
+  /** Selected named theme; '' = Auto (follow OS via prefers-color-scheme). */
+  @property({ reflect: true }) theme = '';
   /** Provider-specific configuration (e.g. Navidrome credentials). */
   @property({ attribute: false }) providerConfig: Record<string, unknown> = {};
   /** Optional override for provider construction (host-supplied custom providers / tests). */
@@ -113,6 +130,8 @@ export class ByomPlayer extends LitElement {
     super.connectedCallback();
     document.addEventListener('keydown', this.onGlobalKeydown);
     this.settings = loadSettings();
+    // Persisted theme wins over the host default (mirrors the provider rule).
+    if (this.settings.theme) this.theme = this.settings.theme;
     this.playlists = parsePlaylistChildren(this);
     // Multiple playlists: the first is the initial src unless the host set one.
     if (this.playlists.length && !this.src) this.src = this.playlists[0].src;
@@ -141,6 +160,7 @@ export class ByomPlayer extends LitElement {
     this.draft = {
       provider: this.provider,
       debug: this.debug,
+      theme: this.theme,
       providers: structuredClone(this.settings.providers),
     };
     this.view = 'settings';
@@ -163,6 +183,11 @@ export class ByomPlayer extends LitElement {
   private onDraftDebug(e: Event): void {
     this.draft = { ...this.draft, debug: (e.currentTarget as HTMLInputElement).checked };
     void this.commitSettings(); // a toggle commits immediately
+  }
+
+  private onDraftTheme(e: Event): void {
+    this.draft = { ...this.draft, theme: (e.currentTarget as HTMLSelectElement).value };
+    void this.commitSettings(); // theme applies immediately, like provider
   }
 
   // Run an interactive-auth action on the active provider (Connect/Link/etc.).
@@ -211,10 +236,12 @@ export class ByomPlayer extends LitElement {
     this.settings = {
       provider: this.draft.provider,
       debug: this.draft.debug,
+      theme: this.draft.theme,
       providers: this.draft.providers,
     };
     saveSettings(this.settings);
     this.debug = this.settings.debug ?? false;
+    this.theme = this.draft.theme ?? '';
     if (this.draft.provider) this.provider = this.draft.provider;
     this.dispatchEvent(
       new CustomEvent('settingschange', { detail: this.settings, bubbles: true, composed: true }),
@@ -405,6 +432,23 @@ export class ByomPlayer extends LitElement {
     void this.controller?.start(index);
   }
 
+  // The active row's number is the play/pause control, so clicking it toggles
+  // playback instead of restarting; any other row selects + plays.
+  private onRowClick(index: number): void {
+    if (index === this.currentIndex) this.togglePlay();
+    else this.selectTrack(index);
+  }
+
+  // "{n} tracks · {total duration} · {creation date}", each part conditional.
+  private renderMetaLine(pl: Playlist) {
+    const parts: string[] = [`${pl.tracks.length} ${pl.tracks.length === 1 ? 'track' : 'tracks'}`];
+    const total = sumDurationMs(pl.tracks);
+    if (total != null) parts.push(formatTotalDuration(total));
+    const date = formatMonthYear(pl.dateCreated);
+    if (date) parts.push(date);
+    return html`<p class="meta-line" part="meta-line">${parts.join(' · ')}</p>`;
+  }
+
   private async onPlaylistChange(e: Event): Promise<void> {
     const src = (e.currentTarget as HTMLSelectElement).value;
     if (src === this.src) return;
@@ -514,80 +558,38 @@ export class ByomPlayer extends LitElement {
       .join(' ');
   }
 
+  // The single dominant state for the track part's `data-state` attribute.
+  // active dominates (a playing row reads as active even if orphaned), then
+  // unavailable, orphan, pending — mirroring the visual precedence.
+  private trackState(index: number, orphaned: boolean): string {
+    const unavailable = this.failed.has(index) || this.availability.get(index) === 'unavailable';
+    const pending = this.scanning && !this.availability.has(index) && !this.failed.has(index);
+    if (index === this.currentIndex) return 'active';
+    if (unavailable) return 'unavailable';
+    if (orphaned) return 'orphan';
+    if (pending) return 'pending';
+    return '';
+  }
+
   render() {
     const pl = this.playlist;
     if (!pl) return html`<div class="loading">Loading…</div>`;
-    const current = pl.tracks[this.currentIndex];
     // Derived, filtered view — never mutates pl.tracks or playback indices. Each
     // row carries its real pl.tracks index so selection maps back correctly.
     const q = this.filterQuery.trim();
     const rows = pl.tracks.map((t, i) => ({ t, i })).filter(({ t }) => this.matchesFilter(t));
+    const playing = this.playbackState === 'playing';
+    // The selector's visible label is the current playlist's title (from the
+    // <byom-playlist> children), falling back to the loaded manifest title.
+    const currentTitle = this.playlists.find((p) => p.src === this.src)?.title ?? pl.title;
     return html`
-      <header class="header">
-        <h2 class="title">${pl.title}</h2>
-        ${pl.creator ? html`<p class="creator">${pl.creator}</p>` : nothing}
-      </header>
-      <div class="playlist-row">
-        ${
-          this.playlists.length > 1
-            ? html`<select
-                class="playlist-picker"
-                aria-label="Playlist"
-                @change=${this.onPlaylistChange}
-              >
-                ${this.playlists.map(
-                  (p) =>
-                    html`<option value=${p.src} ?selected=${p.src === this.src}>
-                      ${p.title}
-                    </option>`,
-                )}
-              </select>`
-            : nothing
-        }
-      </div>
-      <div class="now-playing">
-        ${
-          current
-            ? html`<span class="np-title">${current.title}</span>
-                <span class="np-artist">${current.artist}</span>`
-            : nothing
-        }
-      </div>
-      <div class="progress-row">
-        <span class="time">${ByomPlayer.formatTime(this.positionMs)}</span>
-        <input
-          class="progress"
-          type="range"
-          min="0"
-          max=${this.durationMs || 0}
-          .value=${String(this.positionMs)}
-          ?disabled=${!this.durationMs}
-          aria-label="Seek"
-          @input=${this.onSeekInput}
-          @change=${this.onSeekChange}
-        />
-        <span class="time">${ByomPlayer.formatTime(this.durationMs)}</span>
-      </div>
-      <div class="controls">
-        <button class="prev" @click=${this.prev} aria-label="Previous">⏮</button>
-        <button class="playpause" @click=${this.togglePlay} aria-label="Play/Pause">
-          ${this.playbackState === 'playing' ? '⏸' : '▶'}
-        </button>
-        <button class="next" @click=${this.next} aria-label="Next">⏭</button>
-        <button
-          class="shuffle ${this.shuffle ? 'on' : ''}"
-          @click=${this.toggleShuffle}
-          aria-label="Shuffle"
-          aria-pressed=${this.shuffle ? 'true' : 'false'}
-          title=${this.shuffle ? 'Shuffle: on' : 'Shuffle: off'}
-        >
-          🔀 ${this.shuffle ? 'On' : 'Off'}
-        </button>
+      <div class="corner">
         ${
           this.noSettings
             ? nothing
             : html`<button
                 class="gear"
+                part="control gear"
                 @click=${this.openSettings}
                 aria-label="Settings"
                 title="Settings"
@@ -595,6 +597,99 @@ export class ByomPlayer extends LitElement {
                 ⚙
               </button>`
         }
+      </div>
+      <div class="head" part="header">
+        <div class="art" part="art">🎵</div>
+        <div class="meta" part="meta">
+          ${
+            this.playlists.length > 1
+              ? html`<div class="title-wrap" part="title">
+                  <h2 class="title title--switch">
+                    ${currentTitle}<span class="caret" aria-hidden="true">▾</span>
+                  </h2>
+                  <select
+                    class="title-select"
+                    aria-label="Playlist"
+                    @change=${this.onPlaylistChange}
+                  >
+                    ${this.playlists.map(
+                      (p) =>
+                        html`<option value=${p.src} ?selected=${p.src === this.src}>
+                          ${p.title}
+                        </option>`,
+                    )}
+                  </select>
+                </div>`
+              : html`<h2 class="title" part="title">${pl.title}</h2>`
+          }
+          ${pl.creator ? html`<p class="creator" part="creator">${pl.creator}</p>` : nothing}
+          ${this.renderMetaLine(pl)}
+          ${
+            pl.annotation
+              ? html`<div class="description" part="description">
+                  ${unsafeHTML(renderMarkdownInline(pl.annotation))}
+                </div>`
+              : nothing
+          }
+        </div>
+      </div>
+      <div class="transport" part="transport">
+        <div class="ctl-group">
+          <button class="prev" part="control prev" @click=${this.prev} aria-label="Previous">
+            ⏮
+          </button>
+          <button
+            class="playpause"
+            part="control play"
+            @click=${this.togglePlay}
+            aria-label="Play/Pause"
+          >
+            ${playing ? '⏸' : '▶'}
+          </button>
+          <button class="next" part="control next" @click=${this.next} aria-label="Next">⏭</button>
+        </div>
+        <div class="seek" part="progress">
+          <span class="time">${ByomPlayer.formatTime(this.positionMs)}</span>
+          <input
+            class="progress"
+            part="seek"
+            type="range"
+            min="0"
+            max=${this.durationMs || 0}
+            .value=${String(this.positionMs)}
+            ?disabled=${!this.durationMs}
+            aria-label="Seek"
+            @input=${this.onSeekInput}
+            @change=${this.onSeekChange}
+          />
+          <span class="time">${ByomPlayer.formatTime(this.durationMs)}</span>
+        </div>
+        <button
+          class="shuffle ${this.shuffle ? 'on' : ''}"
+          part="control shuffle"
+          @click=${this.toggleShuffle}
+          aria-label="Shuffle"
+          aria-pressed=${this.shuffle ? 'true' : 'false'}
+          title=${this.shuffle ? 'Shuffle: on' : 'Shuffle: off'}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <polyline points="16 3 21 3 21 8"></polyline>
+            <line x1="4" y1="20" x2="21" y2="3"></line>
+            <polyline points="21 16 21 21 16 21"></polyline>
+            <line x1="15" y1="15" x2="21" y2="21"></line>
+            <line x1="4" y1="4" x2="9" y2="9"></line>
+          </svg>
+        </button>
       </div>
       <div class="status">
         ${
@@ -605,9 +700,10 @@ export class ByomPlayer extends LitElement {
             : nothing
         }
       </div>
-      <div class="filter-row">
+      <div class="filter-row" part="filter">
         <input
           class="filter-input"
+          part="filter-input"
           type="text"
           placeholder="Filter tracks…"
           .value=${this.filterQuery}
@@ -619,6 +715,7 @@ export class ByomPlayer extends LitElement {
           this.filterQuery
             ? html`<button
                 class="filter-clear"
+                part="filter-clear"
                 @click=${this.clearFilter}
                 aria-label="Clear filter"
               >
@@ -627,17 +724,40 @@ export class ByomPlayer extends LitElement {
             : nothing
         }
       </div>
-      <div class="stage">
+      <div class="stage" part="stage">
         <div class="tracklist-empty">
           ${rows.length === 0 && q ? html`<p class="no-matches">No tracks match "${q}"</p>` : nothing}
         </div>
-        <ol class="tracklist">
+        <ol class="tracklist" part="tracklist">
           ${rows.map(({ t, i }) => {
             const orphaned = t.syncState?.spotifyPresent === false;
+            const state = this.trackState(i, orphaned);
+            // The active row's glyph mirrors playback; any other row offers play.
+            const glyph = state === 'active' ? (playing ? '⏸' : '▶') : '▶';
             return html`
-              <li class=${this.trackClasses(i, orphaned)} @click=${() => this.selectTrack(i)}>
-                <span class="t-title">${t.title}</span>
-                <span class="t-artist">${t.artist}</span>
+              <li
+                class=${this.trackClasses(i, orphaned)}
+                part="track"
+                data-state=${state}
+                @click=${() => this.onRowClick(i)}
+              >
+                <span class="num" part="track-number">
+                  <span class="idx">${state === 'pending' ? '⋯' : i + 1}</span>
+                  <span class="glyph">${glyph}</span>
+                </span>
+                <span class="cell">
+                  <span class="t-title">${t.title}</span>
+                  <span class="t-artist">${t.artist}</span>
+                </span>
+                <span class="dur"
+                  >${
+                    state === 'unavailable'
+                      ? '✕'
+                      : t.durationMs
+                        ? ByomPlayer.formatTime(t.durationMs)
+                        : ''
+                  }</span
+                >
               </li>
             `;
           })}
@@ -676,6 +796,7 @@ export class ByomPlayer extends LitElement {
     return html`
       <div
         class="settings ${this.view === 'settings' ? 'open' : ''}"
+        part="settings"
         role="dialog"
         aria-modal="true"
       >
@@ -683,6 +804,21 @@ export class ByomPlayer extends LitElement {
           <button class="settings-back" @click=${this.closeSettings} aria-label="Back">←</button>
           <span class="settings-title">Settings</span>
         </div>
+        <label class="field">
+          <span>Appearance</span>
+          <select
+            class="theme-select"
+            .value=${this.draft.theme ?? ''}
+            @change=${this.onDraftTheme}
+          >
+            ${THEMES.map(
+              (t) =>
+                html`<option value=${t.value} ?selected=${t.value === (this.draft.theme ?? '')}>
+                  ${t.label}
+                </option>`,
+            )}
+          </select>
+        </label>
         <label class="field">
           <span>Provider</span>
           <select class="provider-select" .value=${provider} @change=${this.onDraftProvider}>
@@ -742,13 +878,20 @@ export class ByomPlayer extends LitElement {
 
   static styles = css`
     :host {
-      display: block;
-      --byom-bg: #1e1e1e;
-      --byom-text: #ffffff;
-      --byom-accent: #ff0055;
+      /* Token vocabulary (the theme contract). Defaults below are the Auto
+         light palette; @media dark supplies the Auto dark palette; named
+         themes (:host([theme])) override both. Host inline --byom-* wins. */
+      --byom-bg: #f7f7f5;
+      --byom-surface: #ffffff;
+      --byom-text: #1a1a1a;
+      --byom-text-muted: #6b6b6b;
+      --byom-accent: #3b5bdb;
+      --byom-on-accent: #ffffff;
+      --byom-border: #d9d9d6;
       --byom-font: system-ui, sans-serif;
       --byom-border-radius: 8px;
 
+      display: block;
       background: var(--byom-bg);
       color: var(--byom-text);
       font-family: var(--byom-font);
@@ -756,43 +899,186 @@ export class ByomPlayer extends LitElement {
       padding: 1rem;
       position: relative; /* anchor for the settings modal overlay */
     }
-    .playlist-picker {
-      margin: 0.25rem 0 0.5rem;
-      background: var(--byom-bg);
-      color: var(--byom-text);
-      border: 1px solid var(--byom-accent);
-      border-radius: calc(var(--byom-border-radius) / 2);
-      padding: 0.25rem 0.4rem;
-      font: inherit;
+    /* Auto dark default = Midnight */
+    @media (prefers-color-scheme: dark) {
+      :host {
+        --byom-bg: #1e1e1e;
+        --byom-surface: #2a2a2a;
+        --byom-text: #ffffff;
+        --byom-text-muted: #a0a0a0;
+        --byom-accent: #ff0055;
+        --byom-on-accent: #14141a;
+        --byom-border: #3a3a3a;
+      }
     }
-    .progress-row {
+    :host([theme='daylight']) {
+      --byom-bg: #f7f7f5;
+      --byom-surface: #ffffff;
+      --byom-text: #1a1a1a;
+      --byom-text-muted: #6b6b6b;
+      --byom-accent: #3b5bdb;
+      --byom-on-accent: #ffffff;
+      --byom-border: #d9d9d6;
+    }
+    :host([theme='midnight']) {
+      --byom-bg: #1e1e1e;
+      --byom-surface: #2a2a2a;
+      --byom-text: #ffffff;
+      --byom-text-muted: #a0a0a0;
+      --byom-accent: #ff0055;
+      --byom-on-accent: #14141a;
+      --byom-border: #3a3a3a;
+    }
+    :host([theme='terminal']) {
+      --byom-bg: #0b0f0b;
+      --byom-surface: #121812;
+      --byom-text: #c8f7c8;
+      --byom-text-muted: #5a8a5a;
+      --byom-accent: #39ff14;
+      --byom-on-accent: #06120a;
+      --byom-border: #1f3a1f;
+    }
+    :host([theme='sunset']) {
+      --byom-bg: #241a17;
+      --byom-surface: #2f221d;
+      --byom-text: #f5e6dc;
+      --byom-text-muted: #b08d7d;
+      --byom-accent: #ff8c42;
+      --byom-on-accent: #241a17;
+      --byom-border: #4a352c;
+    }
+    :host([theme='paper']) {
+      --byom-bg: #f4ecd8;
+      --byom-surface: #fffaf0;
+      --byom-text: #3a2f26;
+      --byom-text-muted: #8a7a66;
+      --byom-accent: #0f766e;
+      --byom-on-accent: #fffaf0;
+      --byom-border: #ddd0b8;
+    }
+    /* Stretch: Dracula */
+    :host([theme='dracula']) {
+      --byom-bg: #282a36;
+      --byom-surface: #343746;
+      --byom-text: #f8f8f2;
+      --byom-text-muted: #6272a4;
+      --byom-accent: #bd93f9;
+      --byom-on-accent: #282a36;
+      --byom-border: #44475a;
+    }
+    /* Settings gear, pinned to the top-right corner of the card. */
+    .corner {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      z-index: 5;
+    }
+    /* Header block: cover art + text column (title/creator/meta/description). */
+    .head {
+      display: flex;
+      gap: 0.9rem;
+      align-items: flex-start;
+    }
+    .art {
+      width: 104px;
+      height: 104px;
+      flex: 0 0 auto;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      margin: 0.5rem 0;
+      justify-content: center;
+      overflow: hidden;
+      background: var(--byom-surface);
+      border: 1px solid var(--byom-border);
+      border-radius: calc(var(--byom-border-radius) / 2);
+      color: var(--byom-text-muted);
+      font-size: 2.6rem;
     }
-    .progress-row .progress {
+    .meta {
+      min-width: 0;
       flex: 1;
-      accent-color: var(--byom-accent);
     }
-    .progress-row .time {
+    .title {
+      margin: 0;
+      font-size: 1.35rem;
+      line-height: 1.15;
+      font-weight: 700;
+      color: var(--byom-text);
+    }
+    /* Title-as-selector: a visible title + adjacent ▾, with a transparent native
+       <select> overlaid for interaction. Keeps the caret glued to the title
+       regardless of how wide the widest option is. */
+    .title-wrap {
+      position: relative;
+      display: inline-block;
+      max-width: 100%;
+    }
+    .title--switch {
+      cursor: pointer;
+    }
+    .title--switch .caret {
+      margin-left: 0.35rem;
+      font-size: 0.6em;
+      color: var(--byom-text-muted);
+      vertical-align: middle;
+    }
+    .title-wrap:hover .title--switch,
+    .title-wrap:focus-within .title--switch,
+    .title-wrap:hover .title--switch .caret,
+    .title-wrap:focus-within .title--switch .caret {
+      color: var(--byom-accent);
+    }
+    .title-select {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: transparent;
+      font: inherit;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .creator {
+      margin: 0.15rem 0 0;
+      color: var(--byom-text-muted);
+      font-size: 0.9rem;
+    }
+    .meta-line {
+      margin: 0.3rem 0 0;
+      color: var(--byom-text-muted);
+      font-size: 0.78rem;
       font-variant-numeric: tabular-nums;
-      font-size: 0.75rem;
-      opacity: 0.7;
     }
-    /* Fixed-height stage: total height stays constant across providers; the
-       tracklist flexes to fill whatever space the embed leaves. */
+    .description {
+      margin: 0.5rem 0 0;
+      color: var(--byom-text-muted);
+      font-size: 0.82rem;
+      line-height: 1.4;
+    }
+    .description a {
+      color: var(--byom-accent);
+      text-decoration: none;
+    }
+    .description a:hover {
+      text-decoration: underline;
+    }
+    /* Content-driven stage with a cap: short playlists stay compact (no void),
+       long ones scroll inside the tracklist, and a mounted 16:9 embed still
+       reserves its space while the tracklist flexes into the remainder. */
     .stage {
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
-      height: 60vh;
+      max-height: 60vh;
       margin-top: 0.5rem;
     }
     .video {
       flex: 0 0 auto;
       aspect-ratio: 16 / 9;
-      background: #000;
+      background: var(--byom-surface);
       border-radius: calc(var(--byom-border-radius) / 2);
       overflow: hidden;
     }
@@ -805,32 +1091,78 @@ export class ByomPlayer extends LitElement {
       height: 100%;
       border: 0;
     }
-    .controls {
+    /* Transport footer: prev/play-pause/next + inline seek + shuffle. */
+    .transport {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-top: 0.9rem;
+    }
+    .ctl-group {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      flex: 0 0 auto;
+    }
+    .transport button {
+      cursor: pointer;
+      font-size: 1.3rem;
+      line-height: 1;
+      color: var(--byom-text);
+      background: transparent;
+      border: none;
+      border-radius: 999px;
+      min-width: 2.4rem;
+      min-height: 2.4rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .transport button:hover {
+      background: color-mix(in srgb, var(--byom-text) 10%, transparent);
+    }
+    .transport .playpause {
+      font-size: 1.6rem;
+      color: var(--byom-on-accent);
+      background: var(--byom-accent);
+    }
+    .transport .playpause:hover {
+      background: var(--byom-accent);
+      filter: brightness(1.08);
+    }
+    /* Shuffle is a round icon button like the transport controls; the accent
+       fill signals the on state (toggle). */
+    .transport .shuffle {
+      flex: 0 0 auto;
+      opacity: 0.7;
+    }
+    .transport .shuffle svg {
+      width: 1.15rem;
+      height: 1.15rem;
+      display: block;
+    }
+    .transport .shuffle.on {
+      background: var(--byom-accent);
+      color: var(--byom-on-accent);
+      opacity: 1;
+    }
+    .seek {
+      flex: 1;
       display: flex;
       align-items: center;
       gap: 0.5rem;
+      min-width: 0;
     }
-    .controls button {
-      cursor: pointer;
-      font-size: 1.4rem;
-      line-height: 1;
+    .seek .progress {
+      flex: 1;
+      min-width: 0;
+      accent-color: var(--byom-accent);
     }
-    .controls .playpause {
-      font-size: 2rem;
-    }
-    .controls .shuffle {
-      border: 1px solid var(--byom-accent);
-      border-radius: 999px;
-      background: transparent;
-      color: var(--byom-text);
-      padding: 0.3rem 0.9rem;
-      font-size: 1rem;
-      opacity: 0.6;
-    }
-    .controls .shuffle.on {
-      background: var(--byom-accent);
-      color: var(--byom-bg);
-      opacity: 1;
+    .seek .time {
+      flex: 0 0 auto;
+      font-variant-numeric: tabular-nums;
+      font-size: 0.72rem;
+      color: var(--byom-text-muted);
     }
     .filter-row {
       display: flex;
@@ -840,9 +1172,9 @@ export class ByomPlayer extends LitElement {
     }
     .filter-row .filter-input {
       flex: 1;
-      background: rgba(255, 255, 255, 0.07);
+      background: var(--byom-surface);
       color: var(--byom-text);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      border: 1px solid var(--byom-border);
       border-radius: 999px;
       padding: 0.3rem 0.8rem;
       font: inherit;
@@ -856,17 +1188,16 @@ export class ByomPlayer extends LitElement {
       cursor: pointer;
       background: transparent;
       border: none;
-      color: var(--byom-text);
-      opacity: 0.6;
+      color: var(--byom-text-muted);
       font-size: 1.2rem;
       line-height: 1;
       padding: 0 0.3rem;
     }
     .filter-row .filter-clear:hover {
-      opacity: 1;
+      color: var(--byom-text);
     }
     .no-matches {
-      opacity: 0.6;
+      color: var(--byom-text-muted);
       font-size: 0.85rem;
       padding: 0.5rem;
       margin: 0;
@@ -879,48 +1210,127 @@ export class ByomPlayer extends LitElement {
       min-height: 0;
       overflow: auto;
     }
+    /* Spotify-style rows: number | title/artist | duration. */
     .tracklist li {
       cursor: pointer;
-      display: flex;
-      justify-content: space-between;
-      gap: 0.5rem;
-      padding: 0.25rem 0.5rem;
+      display: grid;
+      grid-template-columns: 1.6rem 1fr auto;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.3rem 0.5rem 0.3rem 0.4rem;
+      border-left: 3px solid transparent; /* reserve the active bar's width */
+      border-radius: calc(var(--byom-border-radius) / 2);
     }
+    .tracklist li:hover {
+      background: color-mix(in srgb, var(--byom-text) 8%, transparent);
+    }
+    .num {
+      position: relative;
+      text-align: center;
+      color: var(--byom-text-muted);
+      font-size: 0.8rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .num .glyph {
+      display: none;
+      font-size: 0.85rem;
+    }
+    /* Hover a playable row → its number becomes a play glyph. */
+    .tracklist li:not(.active):not(.unavailable):not(.pending):hover .num .idx {
+      visibility: hidden;
+    }
+    .tracklist li:not(.active):not(.unavailable):not(.pending):hover .num .glyph {
+      display: block;
+      position: absolute;
+      inset: 0;
+      color: var(--byom-text);
+    }
+    .cell {
+      min-width: 0;
+    }
+    .t-title {
+      display: block;
+      color: var(--byom-text);
+      font-size: 0.9rem;
+      line-height: 1.25;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .t-artist {
+      display: block;
+      color: var(--byom-text-muted);
+      font-size: 0.76rem;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .dur {
+      color: var(--byom-text-muted);
+      font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
+    }
+    /* active: accent bar + tint, number becomes the pause/play glyph */
     .tracklist li.active {
+      border-left-color: var(--byom-accent);
+      background: color-mix(in srgb, var(--byom-accent) 12%, transparent);
+    }
+    .tracklist li.active .num {
       color: var(--byom-accent);
-      font-weight: bold;
     }
-    .tracklist li.orphan {
-      opacity: 0.55;
+    .tracklist li.active .num .idx {
+      display: none;
     }
-    .tracklist li.unavailable {
+    .tracklist li.active .num .glyph {
+      display: block;
+      color: var(--byom-accent);
+    }
+    .tracklist li.active .t-title {
+      color: var(--byom-accent);
+      font-weight: 600;
+    }
+    .tracklist li.active .t-artist {
+      color: color-mix(in srgb, var(--byom-accent) 65%, var(--byom-text-muted));
+    }
+    /* orphan: muted + a detached marker after the title */
+    .tracklist li.orphan .t-title {
+      color: var(--byom-text-muted);
+    }
+    .tracklist li.orphan .t-title::after {
+      content: '↯';
+      margin-left: 0.35rem;
+      opacity: 0.8;
+      font-size: 0.85em;
+    }
+    /* unavailable: struck title (the ✕ lives in the duration slot) */
+    .tracklist li.unavailable .t-title {
+      color: var(--byom-text-muted);
       text-decoration: line-through;
-      opacity: 0.4;
     }
-    .tracklist li.pending {
-      opacity: 0.5;
-    }
-    .tracklist li.pending .t-title::before {
-      content: '⋯ ';
+    /* pending: muted, accent ⋯ shown in the number slot (rendered in markup) */
+    .tracklist li.pending .num {
       color: var(--byom-accent);
+    }
+    .tracklist li.pending .t-title,
+    .tracklist li.pending .t-artist {
+      color: var(--byom-text-muted);
     }
     .status .halted {
       color: var(--byom-accent);
       font-size: 0.85rem;
     }
-    .controls .gear {
-      margin-left: auto;
+    .gear {
       background: transparent;
       border: none;
-      color: var(--byom-text);
-      font-size: 1.8rem;
+      color: var(--byom-text-muted);
+      font-size: 2.2rem;
       line-height: 1;
-      padding: 0.1rem 0.3rem;
-      opacity: 0.75;
+      padding: 0.1rem 0.2rem;
       cursor: pointer;
     }
-    .controls .gear:hover {
-      opacity: 1;
+    .gear:hover {
+      color: var(--byom-text);
     }
     /* Modal overlay: covers the player + blocks interaction with it while open. */
     .settings-overlay {
@@ -940,15 +1350,16 @@ export class ByomPlayer extends LitElement {
       gap: 0.5rem;
       width: 100%;
       max-width: 22rem;
-      /* A consistent height (~60% of the component) so the modal doesn't resize
-         as providers with differing field counts change; content scrolls if it
-         exceeds this. */
-      height: 60%;
+      /* Height is decoupled from the (now content-driven) stage: a comfortable
+         min so it doesn't collapse for sparse providers, capped so it never
+         outgrows the component; content scrolls past the cap. */
+      min-height: 16rem;
+      max-height: min(80%, 32rem);
       overflow: auto;
-      background: var(--byom-bg);
-      border: 1px solid var(--byom-accent);
+      background: var(--byom-surface);
+      border: 1px solid var(--byom-border);
       border-radius: var(--byom-border-radius);
-      padding: 1rem;
+      padding: 1.25rem;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     }
     .settings-head {
@@ -973,15 +1384,20 @@ export class ByomPlayer extends LitElement {
     .settings .field select {
       background: var(--byom-bg);
       color: var(--byom-text);
-      border: 1px solid var(--byom-accent);
+      border: 1px solid var(--byom-border);
       border-radius: calc(var(--byom-border-radius) / 2);
       padding: 0.3rem;
       font: inherit;
     }
+    .settings .field input:focus,
+    .settings .field select:focus {
+      border-color: var(--byom-accent);
+      outline: none;
+    }
     .settings .apply {
       align-self: flex-start;
       background: var(--byom-accent);
-      color: var(--byom-bg);
+      color: var(--byom-on-accent);
       border: none;
       border-radius: 999px;
       padding: 0.4rem 1rem;
@@ -1021,7 +1437,7 @@ export class ByomPlayer extends LitElement {
     .auth-btn {
       cursor: pointer;
       background: var(--byom-accent);
-      color: var(--byom-bg);
+      color: var(--byom-on-accent);
       border: none;
       border-radius: 999px;
       padding: 0.35rem 0.9rem;
