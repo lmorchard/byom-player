@@ -1,5 +1,5 @@
 import type { Track } from '../../types';
-import type { AudioProvider, AvailabilityStatus, ProviderState } from '../types';
+import type { AudioProvider, AvailabilityStatus, ProviderState, AuthState } from '../types';
 import { trackKey, LocalStorageResolutionCache, type ResolutionCache } from '../resolutionCache';
 import { PlexAuth } from './auth';
 import type { PlexAuthLike, PlexConfig, PlexSession } from './types';
@@ -38,8 +38,12 @@ export class PlexProvider implements AudioProvider {
   protected base = '';
   protected token = '';
   private readonly auth?: PlexAuthLike;
-  private target: HTMLElement | null = null;
   private resetCallback: () => void = () => {};
+  // Interactive-auth state, rendered declaratively by the host settings panel.
+  private authStatus: 'linked' | 'unlinked' | 'picker' = 'unlinked';
+  private pendingServers: { id: string; name: string }[] = [];
+  private busy = false;
+  private authCallback: () => void = () => {};
 
   // Stale-id recovery state (reset in load()).
   private currentTrack: Track | null = null;
@@ -86,27 +90,24 @@ export class PlexProvider implements AudioProvider {
     return !!(this.base && this.token);
   }
 
-  attach(element: HTMLElement): void {
-    this.target = element;
-  }
-
   onReset(cb: () => void): void {
     this.resetCallback = cb;
   }
 
   async initialize(): Promise<void> {
     if (this.base && this.token) {
+      this.authStatus = 'linked';
       this.callback('ready'); // token-in config
       return;
     }
     const existing = await this.auth?.getSession();
     if (existing) {
       this.applySession(existing);
-      this.renderUnlink();
-      this.callback('ready');
-      return;
+      this.authStatus = 'linked';
+    } else {
+      this.authStatus = 'unlinked';
     }
-    this.renderLink();
+    this.notifyAuth();
     this.callback('ready');
   }
 
@@ -115,78 +116,90 @@ export class PlexProvider implements AudioProvider {
     this.token = s.token;
   }
 
-  private renderLink(): void {
-    if (!this.target) return;
-    this.target.replaceChildren();
-    const btn = this.target.ownerDocument.createElement('button');
-    btn.className = 'byom-plex-link';
-    btn.textContent = 'Link Plex';
-    btn.addEventListener('click', () => void this.handleLink(btn));
-    this.target.appendChild(btn);
+  // --- interactive auth (rendered declaratively by the host settings panel) ---
+
+  getAuthState(): AuthState {
+    if (this.authStatus === 'picker') {
+      return {
+        status: 'Choose a server',
+        actions: this.pendingServers.map((s) => ({ id: `server:${s.id}`, label: s.name })),
+        busy: this.busy,
+      };
+    }
+    if (this.authStatus === 'linked') {
+      return {
+        status: 'Linked',
+        actions: [{ id: 'unlink', label: 'Unlink Plex' }],
+        busy: this.busy,
+      };
+    }
+    return { status: 'Not linked', actions: [{ id: 'link', label: 'Link Plex' }], busy: this.busy };
   }
 
-  private async handleLink(btn: HTMLButtonElement): Promise<void> {
+  onAuthChange(cb: () => void): void {
+    this.authCallback = cb;
+  }
+
+  async runAuthAction(id: string): Promise<void> {
+    if (id === 'link') return this.link();
+    if (id === 'unlink') return this.unlink();
+    if (id.startsWith('server:')) return this.pickServer(id.slice('server:'.length));
+  }
+
+  private async link(): Promise<void> {
     if (!this.auth) return;
-    btn.disabled = true;
+    this.busy = true;
+    this.notifyAuth();
     try {
       const result = await this.auth.link();
       if ('servers' in result) {
-        this.renderPicker(result.servers);
-        return;
+        this.pendingServers = result.servers;
+        this.authStatus = 'picker';
+      } else {
+        this.applySession(result);
+        this.authStatus = 'linked';
+        this.resetCallback(); // re-scan availability against the new session
       }
-      this.applySession(result);
-      this.renderUnlink();
-      this.resetCallback(); // re-scan availability against the new session
     } catch (err) {
       this.log('link failed', err);
-      btn.disabled = false;
       this.callback('error');
+    } finally {
+      this.busy = false;
+      this.notifyAuth();
     }
   }
 
-  private renderPicker(servers: { id: string; name: string }[]): void {
-    if (!this.target) return;
-    this.target.replaceChildren();
-    for (const s of servers) {
-      const b = this.target.ownerDocument.createElement('button');
-      b.className = 'byom-plex-server';
-      b.textContent = s.name;
-      b.addEventListener('click', () => void this.handlePick(s.id));
-      this.target.appendChild(b);
-    }
-  }
-
-  private async handlePick(id: string): Promise<void> {
+  private async pickServer(id: string): Promise<void> {
     if (!this.auth?.selectServer) return;
+    this.busy = true;
+    this.notifyAuth();
     try {
       this.applySession(await this.auth.selectServer(id));
-      this.renderUnlink();
+      this.authStatus = 'linked';
       this.resetCallback(); // re-scan availability against the picked server
     } catch (err) {
       this.log('server select failed', err);
       this.callback('error');
+    } finally {
+      this.busy = false;
+      this.notifyAuth();
     }
   }
 
-  private renderUnlink(): void {
-    if (!this.target) return;
-    this.target.replaceChildren();
-    const btn = this.target.ownerDocument.createElement('button');
-    btn.className = 'byom-plex-unlink';
-    btn.textContent = 'Unlink Plex';
-    btn.addEventListener('click', () => void this.handleUnlink());
-    this.target.appendChild(btn);
-  }
-
-  private handleUnlink(): void {
+  private unlink(): void {
     this.auth?.logout();
     this.base = '';
     this.token = '';
     this.audio.pause();
     this.audio.removeAttribute('src');
-    this.renderLink();
+    this.authStatus = 'unlinked';
+    this.notifyAuth();
     this.resetCallback(); // clear stale availability marks in the host
     this.callback('ready');
+  }
+
+  private notifyAuth(): void {
+    this.authCallback();
   }
 
   async load(track: Track): Promise<void> {

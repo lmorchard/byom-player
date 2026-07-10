@@ -39,8 +39,30 @@ export interface AudioProvider {
   // Optional: render a visible surface (e.g. a video) into the host element.
   // Called before initialize(). Providers without one simply omit it.
   attach?(element: HTMLElement): void;
+  // --- Interactive auth (declarative; the host renders it in the settings panel) ---
+  // Providers with interactive sign-in (Spotify Connect, Plex Link) expose their
+  // current auth state; the host renders the status + buttons and calls
+  // runAuthAction() on click, then re-reads getAuthState() when onAuthChange fires.
+  // Providers whose credentials are plain config fields (Subsonic, Jellyfin) omit
+  // these entirely.
+  getAuthState?(): AuthState;
+  runAuthAction?(id: string): Promise<void>;
+  onAuthChange?(cb: () => void): void;
   // Optional: register a callback fired when the provider's session is reset
   // (e.g. the user unlinks/disconnects), so the host can clear cached
   // availability marks that no longer apply.
   onReset?(cb: () => void): void;
+}
+
+// A button the settings panel renders for an interactive-auth provider.
+export interface AuthAction {
+  id: string;
+  label: string;
+}
+
+// A snapshot of a provider's interactive-auth state for the settings panel.
+export interface AuthState {
+  status?: string; // optional human-readable line, e.g. "Not connected"
+  actions: AuthAction[]; // buttons to render (empty = nothing actionable)
+  busy?: boolean; // an action is in flight — disable buttons
 }

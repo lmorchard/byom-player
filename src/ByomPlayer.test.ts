@@ -81,6 +81,7 @@ async function settle(el: ByomPlayer): Promise<void> {
 
 describe('<byom-player>', () => {
   beforeEach(() => {
+    localStorage.clear();
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       json: async () => jspf,
     } as Response);
@@ -247,6 +248,321 @@ describe('<byom-player>', () => {
     const { el, provider } = await mount();
     el.remove();
     expect(provider.disposed).toBe(true);
+  });
+
+  it('ignores a late onAuthChange from a replaced (disposed) provider', async () => {
+    let n = 0;
+    let firstAuthCb: (() => void) | null = null;
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = () => {
+      const p = new ControllableProvider() as AudioProvider & ControllableProvider;
+      if (n++ === 0) {
+        // First provider has interactive auth and captures its change callback.
+        p.getAuthState = () => ({
+          status: 'Not connected',
+          actions: [{ id: 'connect', label: 'Connect' }],
+        });
+        p.onAuthChange = (cb: () => void) => (firstAuthCb = cb);
+      }
+      // Later providers have no interactive auth.
+      return p;
+    };
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.auth-actions .auth-btn')).toBeTruthy();
+
+    // Re-init with a provider that has no auth — the Connection section goes away.
+    await el['initProvider']();
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.auth-actions')).toBeNull();
+
+    // A late fire from the disposed first provider must not resurrect its auth UI.
+    firstAuthCb!();
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.auth-actions')).toBeNull();
+  });
+
+  it('switches away cleanly when the new provider fails to construct (no stale auth)', async () => {
+    let n = 0;
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = () => {
+      // First provider has interactive auth; the second throws at construction
+      // (like Subsonic with no baseUrl).
+      if (n++ === 0) {
+        const p = new ControllableProvider() as AudioProvider & ControllableProvider;
+        p.getAuthState = () => ({
+          status: 'Connected',
+          actions: [{ id: 'disconnect', label: 'Disconnect' }],
+        });
+        return p;
+      }
+      throw new Error('bad config');
+    };
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.auth-actions')).toBeTruthy();
+
+    // Second provider fails to construct — the old provider must not stay active
+    // and its auth UI must be gone.
+    await el['initProvider']();
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.auth-actions')).toBeNull();
+    expect(el['activeProvider']).toBeNull();
+  });
+
+  it('refresh availability clears the resolution cache and re-inits', async () => {
+    localStorage.setItem('byom-player:resolv:v1', '{"some":"cache"}');
+    const providers: ControllableProvider[] = [];
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = () => {
+      const p = new ControllableProvider();
+      providers.push(p);
+      return p;
+    };
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    (el.shadowRoot!.querySelector('.gear') as HTMLButtonElement).click();
+    await el.updateComplete;
+    (el.shadowRoot!.querySelector('.refresh') as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(localStorage.getItem('byom-player:resolv:v1')).toBeNull();
+    expect(providers.length).toBeGreaterThan(1);
+  });
+
+  it('debug toggle auto-commits: persisted + flows into the effective config', async () => {
+    const configs: Record<string, unknown>[] = [];
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = (_name, config) => {
+      configs.push(config);
+      return new ControllableProvider();
+    };
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    (el.shadowRoot!.querySelector('.gear') as HTMLButtonElement).click();
+    await el.updateComplete;
+    const dbg = el.shadowRoot!.querySelector('.debug-toggle') as HTMLInputElement;
+    dbg.checked = true;
+    dbg.dispatchEvent(new Event('change')); // toggling commits immediately (no Apply button)
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(configs.at(-1)!.debug).toBe(true);
+    const stored = JSON.parse(localStorage.getItem('byom-player:settings:v1')!);
+    expect(stored.debug).toBe(true);
+  });
+
+  it('renders a provider’s auth state in the panel and runs actions on click', async () => {
+    const ran: string[] = [];
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = () => {
+      const p = new ControllableProvider() as AudioProvider & ControllableProvider;
+      p.getAuthState = () => ({
+        status: 'Not connected',
+        actions: [{ id: 'connect', label: 'Connect Spotify' }],
+      });
+      p.runAuthAction = async (id: string) => {
+        ran.push(id);
+      };
+      return p;
+    };
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    (el.shadowRoot!.querySelector('.gear') as HTMLButtonElement).click();
+    await el.updateComplete;
+
+    expect(el.shadowRoot!.querySelector('.auth-status')!.textContent).toContain('Not connected');
+    const btn = el.shadowRoot!.querySelector('.auth-btn') as HTMLButtonElement;
+    expect(btn.textContent!.trim()).toBe('Connect Spotify');
+    btn.click();
+    await el.updateComplete;
+    expect(ran).toEqual(['connect']);
+  });
+
+  it('shows a provider’s connection UI immediately on selecting it (no Apply needed)', async () => {
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = (name) => {
+      const p = new ControllableProvider() as AudioProvider & ControllableProvider;
+      p.name = name;
+      if (name === 'plex') {
+        p.getAuthState = () => ({
+          status: 'Not linked',
+          actions: [{ id: 'link', label: 'Link Plex' }],
+        });
+      }
+      return p;
+    };
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el); // default provider 'mock' (no auth)
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    (el.shadowRoot!.querySelector('.gear') as HTMLButtonElement).click();
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.settings-connection')).toBeNull();
+
+    // Select plex — its Link button appears without clicking Apply, panel stays open.
+    const sel = el.shadowRoot!.querySelector('.provider-select') as HTMLSelectElement;
+    sel.value = 'plex';
+    sel.dispatchEvent(new Event('change'));
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.settings.open')).toBeTruthy();
+    const btn = el.shadowRoot!.querySelector('.auth-btn') as HTMLButtonElement;
+    expect(btn.textContent!.trim()).toBe('Link Plex');
+  });
+
+  it('shows the settings gear by default and hides it with no-settings', async () => {
+    const { el } = await mount();
+    expect(el.shadowRoot!.querySelector('.gear')).toBeTruthy();
+
+    const el2 = document.createElement('byom-player') as ByomPlayer;
+    el2.src = '/playlist.jspf.json';
+    el2.setAttribute('no-settings', '');
+    el2.providerFactory = () => new ControllableProvider();
+    el2.skipDelayMs = 0;
+    el2.prescanDelayMs = 0;
+    document.body.appendChild(el2);
+    await new Promise((r) => setTimeout(r, 0));
+    await el2.updateComplete;
+    expect(el2.shadowRoot!.querySelector('.gear')).toBeNull();
+  });
+
+  it('opens the settings view (inline swap) and closes back to the list', async () => {
+    const { el } = await mount();
+    expect(el.shadowRoot!.querySelector('.settings.open')).toBeNull();
+    (el.shadowRoot!.querySelector('.gear') as HTMLButtonElement).click();
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.settings.open')).toBeTruthy();
+    (el.shadowRoot!.querySelector('.settings-back') as HTMLButtonElement).click();
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.settings.open')).toBeNull();
+  });
+
+  it('auto-commits provider + credential edits (no Apply), re-inits, emits settingschange', async () => {
+    const providers: ControllableProvider[] = [];
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = (name) => {
+      const p = new ControllableProvider();
+      p.name = name;
+      providers.push(p);
+      return p;
+    };
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    el['commitDelayMs'] = 0; // fire the field-edit debounce on the next macrotask
+
+    let fired = false;
+    el.addEventListener('settingschange', () => (fired = true));
+
+    (el.shadowRoot!.querySelector('.gear') as HTMLButtonElement).click();
+    await el.updateComplete;
+    // Selecting a provider commits immediately.
+    const sel = el.shadowRoot!.querySelector('.provider-select') as HTMLSelectElement;
+    sel.value = 'subsonic';
+    sel.dispatchEvent(new Event('change'));
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(el.provider).toBe('subsonic');
+
+    // Typing a credential auto-commits after the (0ms) debounce — no Apply click.
+    const baseUrl = el.shadowRoot!.querySelector(
+      '.provider-fields input[name="baseUrl"]',
+    ) as HTMLInputElement;
+    baseUrl.value = 'https://nav.example.com';
+    baseUrl.dispatchEvent(new Event('input'));
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+
+    expect(fired).toBe(true);
+    expect(providers.at(-1)!.name).toBe('subsonic'); // re-init with new provider
+    const stored = JSON.parse(localStorage.getItem('byom-player:settings:v1')!);
+    expect(stored.provider).toBe('subsonic');
+    expect(stored.providers.subsonic.baseUrl).toBe('https://nav.example.com');
+  });
+
+  it('renders a top-level playlist picker from <byom-playlist> children and switches on change', async () => {
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.innerHTML =
+      '<byom-playlist title="One" src="/one.json"></byom-playlist>' +
+      '<byom-playlist title="Two" src="/two.json"></byom-playlist>';
+    el.providerFactory = () => new ControllableProvider();
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    const picker = el.shadowRoot!.querySelector('.playlist-picker') as HTMLSelectElement;
+    expect(picker).toBeTruthy();
+    expect([...picker.options].map((o) => o.textContent!.trim())).toEqual(['One', 'Two']);
+    expect(el.src).toBe('/one.json'); // first entry is the initial src
+
+    picker.value = '/two.json';
+    picker.dispatchEvent(new Event('change'));
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(el.src).toBe('/two.json');
+  });
+
+  it('does not render a playlist picker for a single playlist', async () => {
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/one.json';
+    el.providerFactory = () => new ControllableProvider();
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.playlist-picker')).toBeNull();
+  });
+
+  it('re-initializes the provider in place (dispose old, install new)', async () => {
+    const providers: ControllableProvider[] = [];
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = () => {
+      const p = new ControllableProvider();
+      providers.push(p);
+      return p;
+    };
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(providers).toHaveLength(1);
+
+    await el['initProvider']();
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(providers).toHaveLength(2);
+    expect(providers[0].disposed).toBe(true); // old provider torn down
   });
 
   it('toggles play/pause via the control button', async () => {

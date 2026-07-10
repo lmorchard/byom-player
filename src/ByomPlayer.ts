@@ -1,13 +1,57 @@
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { Playlist } from './types';
-import type { AudioProvider, AvailabilityStatus, ProviderState } from './providers/types';
+import type {
+  AudioProvider,
+  AvailabilityStatus,
+  ProviderState,
+  AuthState,
+} from './providers/types';
 import { loadManifest } from './manifest';
 import { PlaybackController } from './controller';
 import { createProvider } from './providers/registry';
 import { sweepAvailability } from './availability';
+import { loadSettings, saveSettings, effectiveProviderConfig, type UserSettings } from './settings';
+import {
+  parseProviderList,
+  parsePlaylistChildren,
+  buildDeploymentConfig,
+  type PlaylistEntry,
+} from './hostConfig';
 
 type ProviderFactory = (name: string, config: Record<string, unknown>) => AudioProvider;
+
+// Per-provider credential fields the settings panel renders + reads back.
+// `advanced` fields are tucked into a collapsible <details>. Providers absent
+// here (mock/youtube/spotify) need no user-entered credentials.
+interface ProviderField {
+  key: string;
+  label: string;
+  type?: string;
+  advanced?: boolean;
+}
+const PROVIDER_FIELDS: Record<string, ProviderField[]> = {
+  subsonic: [
+    { key: 'baseUrl', label: 'Base URL' },
+    { key: 'username', label: 'Username' },
+    { key: 'password', label: 'Password', type: 'password' },
+    { key: 'apiKey', label: 'API key', advanced: true },
+  ],
+  plex: [
+    { key: 'baseUrl', label: 'Base URL', advanced: true },
+    { key: 'token', label: 'X-Plex-Token', advanced: true },
+  ],
+  jellyfin: [
+    { key: 'baseUrl', label: 'Base URL' },
+    { key: 'username', label: 'Username' },
+    { key: 'password', label: 'Password', type: 'password' },
+    { key: 'token', label: 'API token', advanced: true },
+    { key: 'userId', label: 'User ID', advanced: true },
+  ],
+  youtube: [],
+  spotify: [],
+  mock: [],
+};
 
 @customElement('byom-player')
 export class ByomPlayer extends LitElement {
@@ -27,6 +71,18 @@ export class ByomPlayer extends LitElement {
   @property({ type: Boolean }) prescan = true;
   /** Delay (ms) between background availability checks. */
   @property({ type: Number }) prescanDelayMs = 300;
+  /** Comma-separated allowlist of selectable providers (defaults to all). */
+  @property() providers = '';
+  /** Hide the in-component settings gear/panel. */
+  @property({ type: Boolean, attribute: 'no-settings' }) noSettings = false;
+  /** Deployment default: Spotify client id (host-set, not user-editable). */
+  @property({ attribute: 'spotify-client-id' }) spotifyClientId = '';
+  /** Deployment default: Spotify redirect URI. */
+  @property({ attribute: 'spotify-redirect-uri' }) spotifyRedirectUri = '';
+  /** Deployment default: YouTube Data API key. */
+  @property({ attribute: 'youtube-api-key' }) youtubeApiKey = '';
+  /** Deployment default: YouTube search-proxy endpoint. */
+  @property({ attribute: 'youtube-search-endpoint' }) youtubeSearchEndpoint = '';
 
   @state() private playlist: Playlist | null = null;
   @state() private currentIndex = 0;
@@ -38,20 +94,136 @@ export class ByomPlayer extends LitElement {
   @state() private scanning = false;
   @state() private positionMs = 0;
   @state() private durationMs = 0;
-  @state() private hasVideo = false;
+  @state() private playlists: PlaylistEntry[] = [];
+  @state() private view: 'list' | 'settings' = 'list';
+  @state() private draft: UserSettings = { providers: {} };
+  @state() private authState: AuthState | null = null;
+  private settings: UserSettings = { providers: {} };
+  private deployment: Record<string, Record<string, unknown>> = {};
 
   private controller: PlaybackController | null = null;
   private activeProvider: AudioProvider | null = null;
   private sweepAbort: AbortController | null = null;
   private seeking = false; // user is dragging the progress bar
+  private commitTimer: ReturnType<typeof setTimeout> | null = null;
+  private commitDelayMs = 600; // debounce before auto-applying a field edit
 
   async connectedCallback(): Promise<void> {
     super.connectedCallback();
+    this.settings = loadSettings();
+    this.playlists = parsePlaylistChildren(this);
+    // Multiple playlists: the first is the initial src unless the host set one.
+    if (this.playlists.length && !this.src) this.src = this.playlists[0].src;
+    // Persisted user selection wins over the host's default `provider`.
+    if (this.settings.provider) this.provider = this.settings.provider;
+    this.deployment = buildDeploymentConfig(
+      {
+        spotifyClientId: this.spotifyClientId || undefined,
+        spotifyRedirectUri: this.spotifyRedirectUri || undefined,
+        youtubeApiKey: this.youtubeApiKey || undefined,
+        youtubeSearchEndpoint: this.youtubeSearchEndpoint || undefined,
+      },
+      this.providerConfig,
+      this.provider,
+    );
     await this.loadAndInit();
+  }
+
+  // The set of providers the user may select in the panel.
+  private get allowedProviders(): string[] {
+    return parseProviderList(this.providers || null);
+  }
+
+  private openSettings(): void {
+    // Deep-copy current settings into a draft the form mutates.
+    this.draft = {
+      provider: this.provider,
+      debug: this.debug,
+      providers: structuredClone(this.settings.providers),
+    };
+    this.view = 'settings';
+  }
+
+  private closeSettings(): void {
+    this.flushCommit(); // commit any pending debounced field edit before closing
+    this.view = 'list';
+  }
+
+  private async refreshAvailability(): Promise<void> {
+    try {
+      localStorage.removeItem('byom-player:resolv:v1');
+    } catch {
+      // ignore storage errors
+    }
+    await this.initProvider();
+  }
+
+  private onDraftDebug(e: Event): void {
+    this.draft = { ...this.draft, debug: (e.currentTarget as HTMLInputElement).checked };
+    void this.commitSettings(); // a toggle commits immediately
+  }
+
+  // Run an interactive-auth action on the active provider (Connect/Link/etc.).
+  // The provider fires onAuthChange, which refreshes this.authState → re-render.
+  private async runAuth(id: string): Promise<void> {
+    await this.activeProvider?.runAuthAction?.(id);
+  }
+
+  // Selecting a provider commits immediately so its connection UI (Spotify
+  // Connect, Plex Link) appears inline without waiting for a debounce.
+  private async onDraftProvider(e: Event): Promise<void> {
+    this.draft = { ...this.draft, provider: (e.currentTarget as HTMLSelectElement).value };
+    await this.commitSettings();
+  }
+
+  // Credential edits auto-commit after a short debounce — there is no Apply
+  // button; the settings apply live.
+  private onDraftField(provider: string, key: string, e: Event): void {
+    const value = (e.currentTarget as HTMLInputElement).value;
+    const providers = {
+      ...this.draft.providers,
+      [provider]: { ...this.draft.providers[provider], [key]: value },
+    };
+    this.draft = { ...this.draft, providers };
+    this.scheduleCommit();
+  }
+
+  private scheduleCommit(): void {
+    if (this.commitTimer) clearTimeout(this.commitTimer);
+    this.commitTimer = setTimeout(() => {
+      this.commitTimer = null;
+      void this.commitSettings();
+    }, this.commitDelayMs);
+  }
+
+  private flushCommit(): void {
+    if (!this.commitTimer) return;
+    clearTimeout(this.commitTimer);
+    this.commitTimer = null;
+    void this.commitSettings();
+  }
+
+  // Persist the draft as the active settings and re-initialize the provider in
+  // place. Does NOT close the panel — settings apply live.
+  private async commitSettings(): Promise<void> {
+    this.settings = {
+      provider: this.draft.provider,
+      debug: this.draft.debug,
+      providers: this.draft.providers,
+    };
+    saveSettings(this.settings);
+    this.debug = this.settings.debug ?? false;
+    if (this.draft.provider) this.provider = this.draft.provider;
+    this.dispatchEvent(
+      new CustomEvent('settingschange', { detail: this.settings, bubbles: true, composed: true }),
+    );
+    await this.initProvider();
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    if (this.commitTimer) clearTimeout(this.commitTimer);
+    this.commitTimer = null;
     this.sweepAbort?.abort();
     this.sweepAbort = null;
     this.controller?.dispose();
@@ -72,30 +244,94 @@ export class ByomPlayer extends LitElement {
 
   private async loadAndInit(): Promise<void> {
     if (!this.src) return;
+    if (!(await this.loadPlaylist())) return;
+    await this.initProvider();
+  }
+
+  // Fetch + parse the manifest at this.src. Returns false (and flags error) on
+  // failure. Split out so a playlist switch can reload without touching the
+  // provider, and a provider switch can re-init without refetching.
+  private async loadPlaylist(): Promise<boolean> {
     this.sweepAbort?.abort();
     this.availability = new Map();
-    this.hasVideo = false;
     try {
       const res = await fetch(this.src);
       this.playlist = loadManifest(await res.json());
+      return true;
     } catch {
+      this.playbackState = 'error';
+      return false;
+    }
+  }
+
+  // Effective provider config. Extended in later tasks to merge deployment
+  // defaults + user settings; for now preserves the pre-panel behavior.
+  private buildEffectiveConfig(): Record<string, unknown> {
+    const cfg = effectiveProviderConfig(this.provider, this.deployment, this.settings);
+    return this.debug ? { ...cfg, debug: true } : cfg;
+  }
+
+  // Build + initialize the active provider, wire the controller, start the
+  // sweep. Disposes any existing provider/controller first so this is safe to
+  // call on a settings change (no element remount).
+  private async initProvider(): Promise<void> {
+    if (!this.playlist) return;
+    this.sweepAbort?.abort();
+    this.controller?.dispose();
+    this.controller = null;
+    this.availability = new Map();
+    this.failed = new Set();
+
+    // Clear the shared video region so a previous provider's embed doesn't linger
+    // under the new one. (Auth is now rendered declaratively — no shared slot.)
+    await this.updateComplete;
+    this.renderRoot.querySelector('.video')?.replaceChildren();
+
+    // Switch away from the previous provider up front so a construction/init
+    // failure (e.g. Subsonic with no baseUrl yet) never leaves the old provider
+    // active or shows its stale auth UI.
+    this.activeProvider = null;
+    this.authState = null;
+
+    const factory = this.providerFactory ?? createProvider;
+    let prov: AudioProvider;
+    try {
+      prov = factory(this.provider, this.buildEffectiveConfig());
+    } catch (err) {
+      // Some providers validate required config in their constructor (Subsonic
+      // needs a baseUrl). Surface an error and stop; the user can fix config in
+      // the settings panel and re-apply.
+      if (this.debug) console.debug('[byom-player] provider construction failed', err);
       this.playbackState = 'error';
       return;
     }
-    const factory = this.providerFactory ?? createProvider;
-    const config = this.debug ? { ...this.providerConfig, debug: true } : this.providerConfig;
-    const prov = factory(this.provider, config);
+    // Reflect the new provider's auth state and react to changes. The
+    // active-provider guard means a disposed provider firing a late onAuthChange
+    // is ignored (no shared-slot races).
+    this.activeProvider = prov;
+    if (prov.getAuthState) {
+      prov.onAuthChange?.(() => {
+        if (this.activeProvider === prov) this.authState = prov.getAuthState?.() ?? null;
+      });
+      this.authState = prov.getAuthState();
+    } else {
+      this.authState = null;
+    }
     if (prov.attach) {
       // Ensure the .video region is rendered, then let the provider mount into it.
+      // The .stage flex + .video:empty handle showing/hiding it — no flag needed.
       await this.updateComplete;
       const host = this.renderRoot.querySelector('.video');
-      if (host) {
-        prov.attach(host as HTMLElement);
-        this.hasVideo = true; // reserve space + shorten the tracklist
-      }
+      if (host) prov.attach(host as HTMLElement);
     }
-    await prov.initialize();
-    this.activeProvider = prov;
+    try {
+      await prov.initialize();
+    } catch (err) {
+      if (this.debug) console.debug('[byom-player] provider initialize failed', err);
+      this.playbackState = 'error';
+    }
+    // Refresh the snapshot in case initialize() changed auth state without firing.
+    if (prov.getAuthState) this.authState = prov.getAuthState();
     this.controller = new PlaybackController(
       prov,
       this.playlist.tracks,
@@ -166,6 +402,13 @@ export class ByomPlayer extends LitElement {
     void this.controller?.start(index);
   }
 
+  private async onPlaylistChange(e: Event): Promise<void> {
+    const src = (e.currentTarget as HTMLSelectElement).value;
+    if (src === this.src) return;
+    this.src = src;
+    if (await this.loadPlaylist()) await this.initProvider();
+  }
+
   private togglePlay(): void {
     if (this.playbackState === 'playing') this.controller?.pause();
     else void this.controller?.play();
@@ -223,6 +466,24 @@ export class ByomPlayer extends LitElement {
         <h2 class="title">${pl.title}</h2>
         ${pl.creator ? html`<p class="creator">${pl.creator}</p>` : nothing}
       </header>
+      <div class="playlist-row">
+        ${
+          this.playlists.length > 1
+            ? html`<select
+                class="playlist-picker"
+                aria-label="Playlist"
+                @change=${this.onPlaylistChange}
+              >
+                ${this.playlists.map(
+                  (p) =>
+                    html`<option value=${p.src} ?selected=${p.src === this.src}>
+                      ${p.title}
+                    </option>`,
+                )}
+              </select>`
+            : nothing
+        }
+      </div>
       <div class="now-playing">
         ${
           current
@@ -261,6 +522,18 @@ export class ByomPlayer extends LitElement {
         >
           🔀 ${this.shuffle ? 'On' : 'Off'}
         </button>
+        ${
+          this.noSettings
+            ? nothing
+            : html`<button
+                class="gear"
+                @click=${this.openSettings}
+                aria-label="Settings"
+                title="Settings"
+              >
+                ⚙
+              </button>`
+        }
       </div>
       <div class="status">
         ${
@@ -271,18 +544,113 @@ export class ByomPlayer extends LitElement {
             : nothing
         }
       </div>
-      <ol class="tracklist ${this.hasVideo ? 'with-video' : ''}">
-        ${pl.tracks.map((t, i) => {
-          const orphaned = t.syncState?.spotifyPresent === false;
-          return html`
-            <li class=${this.trackClasses(i, orphaned)} @click=${() => this.selectTrack(i)}>
-              <span class="t-title">${t.title}</span>
-              <span class="t-artist">${t.artist}</span>
-            </li>
-          `;
-        })}
-      </ol>
-      <div class="video" part="video"></div>
+      <div class="stage">
+        <ol class="tracklist">
+          ${pl.tracks.map((t, i) => {
+            const orphaned = t.syncState?.spotifyPresent === false;
+            return html`
+              <li class=${this.trackClasses(i, orphaned)} @click=${() => this.selectTrack(i)}>
+                <span class="t-title">${t.title}</span>
+                <span class="t-artist">${t.artist}</span>
+              </li>
+            `;
+          })}
+        </ol>
+        <div class="video" part="video"></div>
+      </div>
+      <div class="settings-overlay" ?hidden=${this.view === 'list'} @click=${this.onOverlayClick}>
+        ${this.renderSettings()}
+      </div>
+    `;
+  }
+
+  // Close when the backdrop (not the settings card) is clicked.
+  private onOverlayClick(e: Event): void {
+    if ((e.target as HTMLElement).classList.contains('settings-overlay')) this.closeSettings();
+  }
+
+  private renderField(provider: string, f: ProviderField) {
+    return html`<label class="field">
+      <span>${f.label}</span>
+      <input
+        name=${f.key}
+        type=${f.type ?? 'text'}
+        autocomplete="off"
+        .value=${this.draft.providers[provider]?.[f.key] ?? ''}
+        @input=${(e: Event) => this.onDraftField(provider, f.key, e)}
+      />
+    </label>`;
+  }
+
+  private renderSettings() {
+    const provider = this.draft.provider ?? this.provider;
+    const fields = PROVIDER_FIELDS[provider] ?? [];
+    const primary = fields.filter((f) => !f.advanced);
+    const advanced = fields.filter((f) => f.advanced);
+    return html`
+      <div
+        class="settings ${this.view === 'settings' ? 'open' : ''}"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div class="settings-head">
+          <button class="settings-back" @click=${this.closeSettings} aria-label="Back">←</button>
+          <span class="settings-title">Settings</span>
+        </div>
+        <label class="field">
+          <span>Provider</span>
+          <select class="provider-select" .value=${provider} @change=${this.onDraftProvider}>
+            ${this.allowedProviders.map((p) => html`<option value=${p} ?selected=${p === provider}>${p}</option>`)}
+          </select>
+        </label>
+        ${
+          primary.length
+            ? html`<div class="provider-fields">
+                ${primary.map((f) => this.renderField(provider, f))}
+              </div>`
+            : nothing
+        }
+        ${
+          this.authState && this.authState.actions.length
+            ? html`<div class="settings-connection">
+                <span class="settings-label">Connection</span>
+                ${
+                  this.authState.status
+                    ? html`<span class="auth-status">${this.authState.status}</span>`
+                    : nothing
+                }
+                <div class="auth-actions">
+                  ${this.authState.actions.map(
+                    (a) =>
+                      html`<button
+                        class="auth-btn"
+                        ?disabled=${this.authState?.busy}
+                        @click=${() => this.runAuth(a.id)}
+                      >
+                        ${a.label}
+                      </button>`,
+                  )}
+                </div>
+              </div>`
+            : nothing
+        }
+        <div class="settings-actions">
+          <button class="refresh" @click=${this.refreshAvailability}>Refresh availability</button>
+        </div>
+        <details class="advanced">
+          <summary>Advanced</summary>
+          ${advanced.map((f) => this.renderField(provider, f))}
+          <label class="field debug-field">
+            <input
+              class="debug-toggle"
+              type="checkbox"
+              .checked=${this.draft.debug ?? false}
+              @change=${this.onDraftDebug}
+            />
+            <span>Debug diagnostics</span>
+          </label>
+        </details>
+      </div>
     `;
   }
 
@@ -300,6 +668,16 @@ export class ByomPlayer extends LitElement {
       font-family: var(--byom-font);
       border-radius: var(--byom-border-radius);
       padding: 1rem;
+      position: relative; /* anchor for the settings modal overlay */
+    }
+    .playlist-picker {
+      margin: 0.25rem 0 0.5rem;
+      background: var(--byom-bg);
+      color: var(--byom-text);
+      border: 1px solid var(--byom-accent);
+      border-radius: calc(var(--byom-border-radius) / 2);
+      padding: 0.25rem 0.4rem;
+      font: inherit;
     }
     .progress-row {
       display: flex;
@@ -316,9 +694,18 @@ export class ByomPlayer extends LitElement {
       font-size: 0.75rem;
       opacity: 0.7;
     }
-    .video {
-      aspect-ratio: 16 / 9;
+    /* Fixed-height stage: total height stays constant across providers; the
+       tracklist flexes to fill whatever space the embed leaves. */
+    .stage {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      height: 60vh;
       margin-top: 0.5rem;
+    }
+    .video {
+      flex: 0 0 auto;
+      aspect-ratio: 16 / 9;
       background: #000;
       border-radius: calc(var(--byom-border-radius) / 2);
       overflow: hidden;
@@ -363,11 +750,9 @@ export class ByomPlayer extends LitElement {
       list-style: none;
       margin: 0;
       padding: 0;
-      max-height: 60vh;
+      flex: 1 1 auto;
+      min-height: 0;
       overflow: auto;
-    }
-    .tracklist.with-video {
-      max-height: 30vh;
     }
     .tracklist li {
       cursor: pointer;
@@ -397,6 +782,152 @@ export class ByomPlayer extends LitElement {
     .status .halted {
       color: var(--byom-accent);
       font-size: 0.85rem;
+    }
+    .controls .gear {
+      margin-left: auto;
+      background: transparent;
+      border: none;
+      color: var(--byom-text);
+      font-size: 1.8rem;
+      line-height: 1;
+      padding: 0.1rem 0.3rem;
+      opacity: 0.75;
+      cursor: pointer;
+    }
+    .controls .gear:hover {
+      opacity: 1;
+    }
+    /* Modal overlay: covers the player + blocks interaction with it while open. */
+    .settings-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: var(--byom-border-radius);
+    }
+    .settings {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      width: 100%;
+      max-width: 22rem;
+      /* A consistent height (~60% of the component) so the modal doesn't resize
+         as providers with differing field counts change; content scrolls if it
+         exceeds this. */
+      height: 60%;
+      overflow: auto;
+      background: var(--byom-bg);
+      border: 1px solid var(--byom-accent);
+      border-radius: var(--byom-border-radius);
+      padding: 1rem;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    }
+    .settings-head {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .settings-back {
+      background: transparent;
+      border: none;
+      color: var(--byom-text);
+      cursor: pointer;
+      font-size: 1.1rem;
+    }
+    .settings .field {
+      display: grid;
+      gap: 0.15rem;
+      font-size: 0.8rem;
+      opacity: 0.9;
+    }
+    .settings .field input,
+    .settings .field select {
+      background: var(--byom-bg);
+      color: var(--byom-text);
+      border: 1px solid var(--byom-accent);
+      border-radius: calc(var(--byom-border-radius) / 2);
+      padding: 0.3rem;
+      font: inherit;
+    }
+    .settings .apply {
+      align-self: flex-start;
+      background: var(--byom-accent);
+      color: var(--byom-bg);
+      border: none;
+      border-radius: 999px;
+      padding: 0.4rem 1rem;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .advanced {
+      font-size: 0.8rem;
+    }
+    .advanced summary {
+      cursor: pointer;
+      opacity: 0.6;
+      padding: 0.2rem 0;
+    }
+    .advanced > .field {
+      margin-top: 0.4rem;
+    }
+    .settings-connection {
+      display: grid;
+      gap: 0.3rem;
+    }
+    .settings-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.6;
+    }
+    .auth-status {
+      font-size: 0.8rem;
+      opacity: 0.85;
+    }
+    .auth-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .auth-btn {
+      cursor: pointer;
+      background: var(--byom-accent);
+      color: var(--byom-bg);
+      border: none;
+      border-radius: 999px;
+      padding: 0.35rem 0.9rem;
+      font: inherit;
+    }
+    .auth-btn[disabled] {
+      opacity: 0.5;
+      cursor: default;
+    }
+    .settings-actions {
+      display: grid;
+      gap: 0.5rem;
+    }
+    .debug-field {
+      grid-auto-flow: column;
+      justify-content: start;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .refresh {
+      justify-self: start;
+      background: transparent;
+      color: var(--byom-text);
+      border: 1px solid var(--byom-accent);
+      border-radius: 999px;
+      padding: 0.3rem 0.9rem;
+      cursor: pointer;
+      font: inherit;
+    }
+    [hidden] {
+      display: none !important;
     }
   `;
 }

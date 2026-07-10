@@ -45,7 +45,20 @@ the downloadable release asset, or build it yourself (see Development):
 > (served as `application/octet-stream`). npm publishing is planned once the
 > component matures.
 
-Provider config (e.g. Subsonic credentials) is set as a JS property:
+### Configuring providers
+
+There are two layers of configuration:
+
+- **User settings** — which provider is active and its credentials — are entered
+  in the component's own **settings panel** (the ⚙ button) and persisted to this
+  browser's `localStorage`. This is the primary path; see [Settings panel](#settings-panel).
+- **Deployment defaults** — host-set values like the Spotify client ID or a
+  YouTube API key — are supplied as **HTML attributes** (attribute-first, so a
+  static-site generator can author them). See the [Properties / attributes](#properties--attributes) table.
+
+For programmatic hosts, the `providerConfig` JS property is still available as an
+escape hatch. It seeds the deployment defaults for the initial provider; user
+settings entered in the panel layer on top.
 
 ```js
 const player = document.querySelector('byom-player');
@@ -57,16 +70,60 @@ player.providerConfig = {
 };
 ```
 
-### Properties
+### Properties / attributes
 
-| Property         | Default  | Notes                                                      |
-| ---------------- | -------- | ---------------------------------------------------------- |
-| `src`            | `''`     | URL to the JSPF manifest                                   |
-| `provider`       | `'mock'` | `'mock'`, `'subsonic'`, `'youtube'`, `'spotify'`, `'plex'` |
-| `providerConfig` | `{}`     | provider-specific config (JS property)                     |
-| `prescan`        | `true`   | background availability check after load                   |
-| `skipDelayMs`    | `400`    | throttle between auto-skips                                |
-| `debug`          | `false`  | console diagnostics from provider + controller             |
+All host-side config is settable as an HTML **attribute** (the deployment path)
+unless noted as a JS property.
+
+| Attribute / property      | Default  | Notes                                                                   |
+| ------------------------- | -------- | ----------------------------------------------------------------------- |
+| `src`                     | `''`     | URL to the JSPF manifest (single playlist)                              |
+| `provider`                | `'mock'` | Initial selection; a user's panel choice (persisted) wins once set      |
+| `providers`               | (all)    | CSV allowlist of selectable providers, e.g. `"youtube,subsonic"`        |
+| `no-settings`             | `false`  | Boolean attribute; hides the settings gear/panel                        |
+| `spotify-client-id`       | `''`     | Deployment default: Spotify app client ID                               |
+| `spotify-redirect-uri`    | (origin) | Deployment default: Spotify OAuth redirect URI                          |
+| `youtube-api-key`         | `''`     | Deployment default: YouTube Data API key (private/dev installs)         |
+| `youtube-search-endpoint` | `''`     | Deployment default: server-side YouTube search proxy URL                |
+| `prescan`                 | `true`   | Background availability check after load                                |
+| `skip-delay-ms`           | `400`    | Throttle between auto-skips                                             |
+| `debug`                   | `false`  | Console diagnostics; also toggleable in the settings panel              |
+| `providerConfig`          | `{}`     | JS property only: deployment-defaults escape hatch (see above)          |
+| `providerFactory`         | —        | JS property only: custom provider construction (tests / host providers) |
+
+### Multiple playlists
+
+Offer a top-level playlist picker by authoring `<byom-playlist>` children instead
+of a single `src`. They're read on connect (invisible; the component renders in
+Shadow DOM); the first is the initial selection.
+
+```html
+<byom-player provider="youtube" providers="youtube,subsonic">
+  <byom-playlist title="Road Trip" src="/road-trip.jspf.json"></byom-playlist>
+  <byom-playlist title="Chill Evening" src="/chill.jspf.json"></byom-playlist>
+</byom-player>
+```
+
+### Settings panel
+
+The component ships with an in-player settings panel, opened from the ⚙ button in
+the controls (hide it with the `no-settings` attribute). From the panel a user can:
+
+- **Pick a provider** from the allowed set and enter its **credentials** (Subsonic
+  / Plex / Jellyfin). `mock` and `youtube` need no credentials.
+- **Connect / disconnect** interactive auth (Spotify Connect, Plex Link) — the
+  provider's auth controls render inside the panel.
+- **Refresh availability** (clears the resolved-id cache and re-scans) and toggle
+  **debug diagnostics**.
+
+Applying persists the settings to `localStorage` (key `byom-player:settings:v1`),
+re-initializes the active provider in place, and emits a `settingschange` event.
+
+> **Credential storage.** Credentials entered in the panel (including passwords)
+> are stored in this browser's origin-scoped `localStorage` in plaintext — the
+> same posture as a typical single-page app. For a locked-down or public embed
+> where users shouldn't enter credentials, set `no-settings` and supply any
+> needed config as deployment attributes.
 
 ### Theming
 

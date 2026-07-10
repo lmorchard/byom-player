@@ -234,7 +234,7 @@ describe('YouTubeProvider resolution', () => {
     expect(cache.sets).toHaveLength(0);
   });
 
-  it('checkAvailability: embedded/cache -> available; known-miss -> unavailable; unknown without search', async () => {
+  it('checkAvailability: embedded/cache -> available; known-miss + unresolvable-without-search -> unavailable', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch');
     const cache = new FakeCache();
     cache.set('youtube', 'q:a|cached', 'vid');
@@ -246,7 +246,9 @@ describe('YouTubeProvider resolution', () => {
     ).toBe('available');
     expect(await p.checkAvailability({ title: 'cached', artist: 'a' })).toBe('available');
     expect(await p.checkAvailability({ title: 'miss', artist: 'a' })).toBe('unavailable');
-    expect(await p.checkAvailability({ title: 'unknown', artist: 'a' })).toBe('unknown'); // no key
+    // No embedded/cached id and no search configured → a definite miss (matches
+    // what load() does), not a transient 'unknown'.
+    expect(await p.checkAvailability({ title: 'noid', artist: 'a' })).toBe('unavailable');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -333,6 +335,19 @@ describe('YouTubeProvider resolution', () => {
 describe('YouTubeProvider lifecycle', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
+
+  it('does not play the empty player when a track resolved to unavailable', async () => {
+    const engine = new FakeEngine();
+    // No search configured → the track can't resolve → load() emits unavailable
+    // and cues nothing. The controller still calls play(); it must no-op so the
+    // empty YouTube player never shows its "An error occurred" overlay.
+    const p = new YouTubeProvider({ engine });
+    await p.initialize();
+    await p.load({ title: 'T', artist: 'A' }); // no id, no search → unavailable
+    expect(engine.cued).toBeNull();
+    await p.play();
+    expect(engine.played).toBe(0);
+  });
 
   it('drives cue/play/seek/progress/state through the engine', async () => {
     const engine = new FakeEngine();
