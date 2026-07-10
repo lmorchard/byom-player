@@ -6,6 +6,13 @@ import { loadManifest } from './manifest';
 import { PlaybackController } from './controller';
 import { createProvider } from './providers/registry';
 import { sweepAvailability } from './availability';
+import { loadSettings, effectiveProviderConfig, type UserSettings } from './settings';
+import {
+  parsePlaylistChildren,
+  buildDeploymentConfig,
+  DEFAULT_SPOTIFY_CLIENT_ID,
+  type PlaylistEntry,
+} from './hostConfig';
 
 type ProviderFactory = (name: string, config: Record<string, unknown>) => AudioProvider;
 
@@ -27,6 +34,18 @@ export class ByomPlayer extends LitElement {
   @property({ type: Boolean }) prescan = true;
   /** Delay (ms) between background availability checks. */
   @property({ type: Number }) prescanDelayMs = 300;
+  /** Comma-separated allowlist of selectable providers (defaults to all). */
+  @property() providers = '';
+  /** Hide the in-component settings gear/panel. */
+  @property({ type: Boolean, attribute: 'no-settings' }) noSettings = false;
+  /** Deployment default: Spotify client id (host-set, not user-editable). */
+  @property({ attribute: 'spotify-client-id' }) spotifyClientId = '';
+  /** Deployment default: Spotify redirect URI. */
+  @property({ attribute: 'spotify-redirect-uri' }) spotifyRedirectUri = '';
+  /** Deployment default: YouTube Data API key. */
+  @property({ attribute: 'youtube-api-key' }) youtubeApiKey = '';
+  /** Deployment default: YouTube search-proxy endpoint. */
+  @property({ attribute: 'youtube-search-endpoint' }) youtubeSearchEndpoint = '';
 
   @state() private playlist: Playlist | null = null;
   @state() private currentIndex = 0;
@@ -39,6 +58,9 @@ export class ByomPlayer extends LitElement {
   @state() private positionMs = 0;
   @state() private durationMs = 0;
   @state() private hasVideo = false;
+  @state() private playlists: PlaylistEntry[] = [];
+  private settings: UserSettings = { providers: {} };
+  private deployment: Record<string, Record<string, unknown>> = {};
 
   private controller: PlaybackController | null = null;
   private activeProvider: AudioProvider | null = null;
@@ -47,6 +69,22 @@ export class ByomPlayer extends LitElement {
 
   async connectedCallback(): Promise<void> {
     super.connectedCallback();
+    this.settings = loadSettings();
+    this.playlists = parsePlaylistChildren(this);
+    // Multiple playlists: the first is the initial src unless the host set one.
+    if (this.playlists.length && !this.src) this.src = this.playlists[0].src;
+    // Persisted user selection wins over the host's default `provider`.
+    if (this.settings.provider) this.provider = this.settings.provider;
+    this.deployment = buildDeploymentConfig(
+      {
+        spotifyClientId: this.spotifyClientId || DEFAULT_SPOTIFY_CLIENT_ID || undefined,
+        spotifyRedirectUri: this.spotifyRedirectUri || undefined,
+        youtubeApiKey: this.youtubeApiKey || undefined,
+        youtubeSearchEndpoint: this.youtubeSearchEndpoint || undefined,
+      },
+      this.providerConfig,
+      this.provider,
+    );
     await this.loadAndInit();
   }
 
@@ -96,7 +134,7 @@ export class ByomPlayer extends LitElement {
   // Effective provider config. Extended in later tasks to merge deployment
   // defaults + user settings; for now preserves the pre-panel behavior.
   private buildEffectiveConfig(): Record<string, unknown> {
-    const cfg = { ...this.providerConfig };
+    const cfg = effectiveProviderConfig(this.provider, this.deployment, this.settings);
     return this.debug ? { ...cfg, debug: true } : cfg;
   }
 
@@ -195,6 +233,13 @@ export class ByomPlayer extends LitElement {
     void this.controller?.start(index);
   }
 
+  private async onPlaylistChange(e: Event): Promise<void> {
+    const src = (e.currentTarget as HTMLSelectElement).value;
+    if (src === this.src) return;
+    this.src = src;
+    if (await this.loadPlaylist()) await this.initProvider();
+  }
+
   private togglePlay(): void {
     if (this.playbackState === 'playing') this.controller?.pause();
     else void this.controller?.play();
@@ -252,6 +297,24 @@ export class ByomPlayer extends LitElement {
         <h2 class="title">${pl.title}</h2>
         ${pl.creator ? html`<p class="creator">${pl.creator}</p>` : nothing}
       </header>
+      <div class="playlist-row">
+        ${
+          this.playlists.length > 1
+            ? html`<select
+                class="playlist-picker"
+                aria-label="Playlist"
+                @change=${this.onPlaylistChange}
+              >
+                ${this.playlists.map(
+                  (p) =>
+                    html`<option value=${p.src} ?selected=${p.src === this.src}>
+                      ${p.title}
+                    </option>`,
+                )}
+              </select>`
+            : nothing
+        }
+      </div>
       <div class="now-playing">
         ${
           current
@@ -329,6 +392,15 @@ export class ByomPlayer extends LitElement {
       font-family: var(--byom-font);
       border-radius: var(--byom-border-radius);
       padding: 1rem;
+    }
+    .playlist-picker {
+      margin: 0.25rem 0 0.5rem;
+      background: var(--byom-bg);
+      color: var(--byom-text);
+      border: 1px solid var(--byom-accent);
+      border-radius: calc(var(--byom-border-radius) / 2);
+      padding: 0.25rem 0.4rem;
+      font: inherit;
     }
     .progress-row {
       display: flex;

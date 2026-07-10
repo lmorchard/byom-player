@@ -249,6 +249,41 @@ describe('<byom-player>', () => {
     expect(provider.disposed).toBe(true);
   });
 
+  it('renders a top-level playlist picker from <byom-playlist> children and switches on change', async () => {
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.innerHTML =
+      '<byom-playlist title="One" src="/one.json"></byom-playlist>' +
+      '<byom-playlist title="Two" src="/two.json"></byom-playlist>';
+    el.providerFactory = () => new ControllableProvider();
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    const picker = el.shadowRoot!.querySelector('.playlist-picker') as HTMLSelectElement;
+    expect(picker).toBeTruthy();
+    expect([...picker.options].map((o) => o.textContent!.trim())).toEqual(['One', 'Two']);
+    expect(el.src).toBe('/one.json'); // first entry is the initial src
+
+    picker.value = '/two.json';
+    picker.dispatchEvent(new Event('change'));
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(el.src).toBe('/two.json');
+  });
+
+  it('does not render a playlist picker for a single playlist', async () => {
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/one.json';
+    el.providerFactory = () => new ControllableProvider();
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.playlist-picker')).toBeNull();
+  });
+
   it('re-initializes the provider in place (dispose old, install new)', async () => {
     const providers: ControllableProvider[] = [];
     const el = document.createElement('byom-player') as ByomPlayer;
