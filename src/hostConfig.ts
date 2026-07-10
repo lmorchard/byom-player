@@ -11,10 +11,6 @@ export const ALL_PROVIDERS = [
   'jellyfin',
 ] as const;
 
-// No built-in default client id ships today; deployments set the real value via
-// the `spotify-client-id` attribute. Empty means "not configured".
-export const DEFAULT_SPOTIFY_CLIENT_ID = '';
-
 // parseProviderList turns the `providers` allowlist attribute into a filtered
 // list of known providers, defaulting to all when unset or when it names none.
 export function parseProviderList(csv: string | null): string[] {

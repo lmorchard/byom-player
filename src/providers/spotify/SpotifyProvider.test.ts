@@ -176,6 +176,22 @@ describe('SpotifyProvider engine selection', () => {
     expect(engines.sdk.loaded).toBeNull();
   });
 
+  it('runs embed-only with no Connect action when the client id is blank', async () => {
+    const engines = { sdk: new FakeEngine('sdk'), embed: new FakeEngine('embed') };
+    const p = new SpotifyProvider({
+      clientId: '',
+      redirectUri: 'https://x.test/callback.html',
+      auth: readyAuth,
+      engineFactory: (kind: EngineKind) => engines[kind],
+    });
+    p.attach(document.createElement('div'));
+    await p.initialize();
+    expect(p.getAuthState().actions).toEqual([]); // no Connect offered
+    await p.load({ title: 'T', artist: 'A', spotifyUrl: 'spotify:track:Z' });
+    expect(engines.embed.loaded).toBe('spotify:track:Z');
+    expect(engines.sdk.loaded).toBeNull();
+  });
+
   it('falls back to embed when the SDK reports NotPremiumError', async () => {
     const engines = { sdk: new FakeEngine('sdk'), embed: new FakeEngine('embed') };
     engines.sdk.readyImpl = async () => {

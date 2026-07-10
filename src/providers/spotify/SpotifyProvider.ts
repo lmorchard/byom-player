@@ -53,7 +53,9 @@ export class SpotifyProvider implements AudioProvider {
   // available (falling back to embed for non-Premium), or the embed while
   // disconnected (the panel shows a Connect button to upgrade to the SDK).
   async initialize(): Promise<void> {
-    if (this.cfg.forceEmbed) {
+    // Without a client id (or when forced), there's no OAuth/SDK path — run
+    // embed-only and offer no Connect option.
+    if (!this.canConnect) {
       await this.useEngine('embed');
       this.stateCallback('ready');
       return;
@@ -63,10 +65,17 @@ export class SpotifyProvider implements AudioProvider {
     else await this.enterDisconnected();
   }
 
+  // The SDK/OAuth tier needs a client id and mustn't be force-embedded.
+  private get canConnect(): boolean {
+    return !this.cfg.forceEmbed && !!this.cfg.clientId;
+  }
+
   // --- interactive auth (rendered declaratively by the host settings panel) ---
 
   getAuthState(): AuthState {
-    if (this.cfg.forceEmbed) return { status: 'Preview only', actions: [] };
+    // Embed-only (no client id / forced): nothing to connect — the host hides
+    // the connection section when there are no actions.
+    if (!this.canConnect) return { actions: [] };
     return this.connected
       ? {
           status: 'Connected',

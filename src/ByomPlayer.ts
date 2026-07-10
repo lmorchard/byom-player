@@ -16,7 +16,6 @@ import {
   parseProviderList,
   parsePlaylistChildren,
   buildDeploymentConfig,
-  DEFAULT_SPOTIFY_CLIENT_ID,
   type PlaylistEntry,
 } from './hostConfig';
 
@@ -119,7 +118,7 @@ export class ByomPlayer extends LitElement {
     if (this.settings.provider) this.provider = this.settings.provider;
     this.deployment = buildDeploymentConfig(
       {
-        spotifyClientId: this.spotifyClientId || DEFAULT_SPOTIFY_CLIENT_ID || undefined,
+        spotifyClientId: this.spotifyClientId || undefined,
         spotifyRedirectUri: this.spotifyRedirectUri || undefined,
         youtubeApiKey: this.youtubeApiKey || undefined,
         youtubeSearchEndpoint: this.youtubeSearchEndpoint || undefined,
@@ -612,7 +611,7 @@ export class ByomPlayer extends LitElement {
             : nothing
         }
         ${
-          this.authState
+          this.authState && this.authState.actions.length
             ? html`<div class="settings-connection">
                 <span class="settings-label">Connection</span>
                 ${
