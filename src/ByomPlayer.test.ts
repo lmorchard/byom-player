@@ -401,6 +401,40 @@ describe('<byom-player>', () => {
     expect(ran).toEqual(['connect']);
   });
 
+  it('shows a provider’s connection UI immediately on selecting it (no Apply needed)', async () => {
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = (name) => {
+      const p = new ControllableProvider() as AudioProvider & ControllableProvider;
+      p.name = name;
+      if (name === 'plex') {
+        p.getAuthState = () => ({
+          status: 'Not linked',
+          actions: [{ id: 'link', label: 'Link Plex' }],
+        });
+      }
+      return p;
+    };
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el); // default provider 'mock' (no auth)
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    (el.shadowRoot!.querySelector('.gear') as HTMLButtonElement).click();
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.settings-connection')).toBeNull();
+
+    // Select plex — its Link button appears without clicking Apply, panel stays open.
+    const sel = el.shadowRoot!.querySelector('.provider-select') as HTMLSelectElement;
+    sel.value = 'plex';
+    sel.dispatchEvent(new Event('change'));
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.settings.open')).toBeTruthy();
+    const btn = el.shadowRoot!.querySelector('.auth-btn') as HTMLButtonElement;
+    expect(btn.textContent!.trim()).toBe('Link Plex');
+  });
+
   it('shows the settings gear by default and hides it with no-settings', async () => {
     const { el } = await mount();
     expect(el.shadowRoot!.querySelector('.gear')).toBeTruthy();

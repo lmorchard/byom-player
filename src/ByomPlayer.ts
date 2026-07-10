@@ -160,8 +160,19 @@ export class ByomPlayer extends LitElement {
     await this.activeProvider?.runAuthAction?.(id);
   }
 
-  private onDraftProvider(e: Event): void {
-    this.draft = { ...this.draft, provider: (e.currentTarget as HTMLSelectElement).value };
+  // Switching provider applies immediately (persist + re-init) rather than
+  // waiting for Apply, so the new provider's connection UI (Spotify Connect,
+  // Plex Link) appears inline. Credential fields still commit via Apply.
+  private async onDraftProvider(e: Event): Promise<void> {
+    const provider = (e.currentTarget as HTMLSelectElement).value;
+    this.draft = { ...this.draft, provider };
+    this.provider = provider;
+    this.settings = { ...this.settings, provider };
+    saveSettings(this.settings);
+    this.dispatchEvent(
+      new CustomEvent('settingschange', { detail: this.settings, bubbles: true, composed: true }),
+    );
+    await this.initProvider();
   }
 
   private onDraftField(provider: string, key: string, e: Event): void {

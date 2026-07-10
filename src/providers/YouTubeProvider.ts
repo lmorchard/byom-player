@@ -235,7 +235,11 @@ export class YouTubeProvider implements AudioProvider {
     const cached = this.cachedId(track);
     if (cached) return 'available';
     if (cached === null) return 'unavailable';
-    if (!this.searchConfigured()) return 'unknown';
+    // No embedded/cached id and no way to resolve one: this is a definite miss
+    // in the current configuration (not a transient 'unknown'), so mark it
+    // unavailable — matching what load() will do — rather than showing it as
+    // playable and only failing on click.
+    if (!this.searchConfigured()) return 'unavailable';
     try {
       const id = await this.liveSearch(track);
       const key = trackKey(track);

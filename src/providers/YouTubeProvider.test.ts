@@ -234,7 +234,7 @@ describe('YouTubeProvider resolution', () => {
     expect(cache.sets).toHaveLength(0);
   });
 
-  it('checkAvailability: embedded/cache -> available; known-miss -> unavailable; unknown without search', async () => {
+  it('checkAvailability: embedded/cache -> available; known-miss + unresolvable-without-search -> unavailable', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch');
     const cache = new FakeCache();
     cache.set('youtube', 'q:a|cached', 'vid');
@@ -246,7 +246,9 @@ describe('YouTubeProvider resolution', () => {
     ).toBe('available');
     expect(await p.checkAvailability({ title: 'cached', artist: 'a' })).toBe('available');
     expect(await p.checkAvailability({ title: 'miss', artist: 'a' })).toBe('unavailable');
-    expect(await p.checkAvailability({ title: 'unknown', artist: 'a' })).toBe('unknown'); // no key
+    // No embedded/cached id and no search configured → a definite miss (matches
+    // what load() does), not a transient 'unknown'.
+    expect(await p.checkAvailability({ title: 'noid', artist: 'a' })).toBe('unavailable');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
