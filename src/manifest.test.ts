@@ -95,6 +95,27 @@ describe('loadManifest', () => {
     expect(tracks[3].resolvedIds).toBeUndefined();
   });
 
+  it('does not treat a resolved-only track as orphaned', () => {
+    // A present track carries a `resolved` id but no `spotify_present` key.
+    // byom-sync emits sync_state only for orphaned tracks, so its absence must
+    // read as "no sync signal" (undefined) — not spotifyPresent:false, which the
+    // UI renders as orphaned.
+    const withResolvedPresent = {
+      playlist: {
+        track: [
+          {
+            title: 'A',
+            creator: 'B',
+            extension: { [BYOM_EXT_NS]: [{ resolved: { youtube: 'vidX' } }] },
+          },
+        ],
+      },
+    };
+    const t = loadManifest(withResolvedPresent).tracks[0];
+    expect(t.resolvedIds).toEqual({ youtube: 'vidX' });
+    expect(t.syncState).toBeUndefined();
+  });
+
   it('unwraps an already-unwrapped playlist object', () => {
     const pl = loadManifest({ title: 'Flat', track: [] });
     expect(pl.title).toBe('Flat');

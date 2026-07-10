@@ -62,6 +62,10 @@ function parseIsrc(identifiers?: string[]): string | undefined {
 function readSyncState(extension?: Record<string, unknown[]>): SyncState | undefined {
   const body = extension?.[BYOM_EXT_NS]?.[0] as any;
   if (!body || typeof body !== 'object') return undefined;
+  // byom-sync emits sync_state only for orphaned tracks, so an element without a
+  // `spotify_present` key (e.g. a resolved-only present track) carries no sync
+  // signal. Distinguish that from an explicit `false`, which means orphaned.
+  if (!('spotify_present' in body)) return undefined;
   return {
     spotifyPresent: Boolean(body.spotify_present),
     dateOrphaned: body.date_orphaned || undefined,
