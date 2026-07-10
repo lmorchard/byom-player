@@ -816,7 +816,7 @@ export class ByomPlayer extends LitElement {
       margin: 0.25rem 0 0.5rem;
       background: var(--byom-bg);
       color: var(--byom-text);
-      border: 1px solid var(--byom-accent);
+      border: 1px solid var(--byom-border);
       border-radius: calc(var(--byom-border-radius) / 2);
       padding: 0.25rem 0.4rem;
       font: inherit;
@@ -834,7 +834,7 @@ export class ByomPlayer extends LitElement {
     .progress-row .time {
       font-variant-numeric: tabular-nums;
       font-size: 0.75rem;
-      opacity: 0.7;
+      color: var(--byom-text-muted);
     }
     /* Fixed-height stage: total height stays constant across providers; the
        tracklist flexes to fill whatever space the embed leaves. */
@@ -848,7 +848,7 @@ export class ByomPlayer extends LitElement {
     .video {
       flex: 0 0 auto;
       aspect-ratio: 16 / 9;
-      background: #000;
+      background: var(--byom-surface);
       border-radius: calc(var(--byom-border-radius) / 2);
       overflow: hidden;
     }
@@ -885,7 +885,7 @@ export class ByomPlayer extends LitElement {
     }
     .controls .shuffle.on {
       background: var(--byom-accent);
-      color: var(--byom-bg);
+      color: var(--byom-on-accent);
       opacity: 1;
     }
     .tracklist {
@@ -957,15 +957,16 @@ export class ByomPlayer extends LitElement {
       gap: 0.5rem;
       width: 100%;
       max-width: 22rem;
-      /* A consistent height (~60% of the component) so the modal doesn't resize
-         as providers with differing field counts change; content scrolls if it
-         exceeds this. */
-      height: 60%;
+      /* Height is decoupled from the (now content-driven) stage: a comfortable
+         min so it doesn't collapse for sparse providers, capped so it never
+         outgrows the component; content scrolls past the cap. */
+      min-height: 16rem;
+      max-height: min(80%, 32rem);
       overflow: auto;
-      background: var(--byom-bg);
-      border: 1px solid var(--byom-accent);
+      background: var(--byom-surface);
+      border: 1px solid var(--byom-border);
       border-radius: var(--byom-border-radius);
-      padding: 1rem;
+      padding: 1.25rem;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     }
     .settings-head {
@@ -990,15 +991,20 @@ export class ByomPlayer extends LitElement {
     .settings .field select {
       background: var(--byom-bg);
       color: var(--byom-text);
-      border: 1px solid var(--byom-accent);
+      border: 1px solid var(--byom-border);
       border-radius: calc(var(--byom-border-radius) / 2);
       padding: 0.3rem;
       font: inherit;
     }
+    .settings .field input:focus,
+    .settings .field select:focus {
+      border-color: var(--byom-accent);
+      outline: none;
+    }
     .settings .apply {
       align-self: flex-start;
       background: var(--byom-accent);
-      color: var(--byom-bg);
+      color: var(--byom-on-accent);
       border: none;
       border-radius: 999px;
       padding: 0.4rem 1rem;
@@ -1038,7 +1044,7 @@ export class ByomPlayer extends LitElement {
     .auth-btn {
       cursor: pointer;
       background: var(--byom-accent);
-      color: var(--byom-bg);
+      color: var(--byom-on-accent);
       border: none;
       border-radius: 999px;
       padding: 0.35rem 0.9rem;
