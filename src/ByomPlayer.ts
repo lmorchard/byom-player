@@ -836,13 +836,14 @@ export class ByomPlayer extends LitElement {
       font-size: 0.75rem;
       color: var(--byom-text-muted);
     }
-    /* Fixed-height stage: total height stays constant across providers; the
-       tracklist flexes to fill whatever space the embed leaves. */
+    /* Content-driven stage with a cap: short playlists stay compact (no void),
+       long ones scroll inside the tracklist, and a mounted 16:9 embed still
+       reserves its space while the tracklist flexes into the remainder. */
     .stage {
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
-      height: 60vh;
+      max-height: 60vh;
       margin-top: 0.5rem;
     }
     .video {
