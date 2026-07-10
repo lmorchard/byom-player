@@ -1,0 +1,26 @@
+/* Throwaway proof that an external skin can restyle <byom-player> using ONLY
+   ::part() + theme tokens — no component change. Load it in the harness to
+   sanity-check the skin contract; not shipped as part of the component. */
+
+byom-player {
+  /* Theme layer: override tokens from the host. */
+  --byom-accent: #00e5ff;
+  --byom-border-radius: 2px;
+}
+
+/* Skin layer: re-space and reshape parts. */
+byom-player::part(controls) {
+  justify-content: center;
+}
+
+byom-player::part(play) {
+  transform: scale(1.1);
+}
+
+byom-player::part(track) {
+  letter-spacing: 0.02em;
+}
+
+byom-player::part(track)[data-state='unavailable'] {
+  opacity: 0.5;
+}
