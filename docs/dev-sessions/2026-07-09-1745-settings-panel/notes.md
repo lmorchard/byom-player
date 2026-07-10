@@ -63,3 +63,49 @@ functional-but-plain, with a stable structure to tune later.
 - Manual browser verification of the harness was blocked by the dev server's
   self-signed cert (Playwright SSL_ERROR_UNKNOWN); verified via curl + syntax
   check + the component's unit tests instead. Worth a real click-through.
+
+## Addendum — what actually shipped (diverged from the plan)
+
+Post-plan review feedback (driving the real component) reshaped several decisions.
+The final PR (#28) differs from the spec/plan above:
+
+- **Auth is declarative, not a shared slot.** The `attachAuth`/`.auth-slot`
+  approach (plan Task 3/7) proved race-prone: providers rendered buttons into one
+  shared DOM node asynchronously, so switching providers mid-init left stale/
+  clobbered buttons. Replaced with a declarative interface — `getAuthState()` /
+  `runAuthAction(id)` / `onAuthChange(cb)`; the component renders each active
+  provider's auth in its config pane and reacts to changes. An active-provider
+  guard makes a disposed provider's late `onAuthChange` a no-op. This removed the
+  whole race class (no dispose-guards, no slot-clearing). Plex dropped `attach`
+  (it only needed it for auth), so it no longer reserves an empty `.video` box.
+
+- **No Apply button — auto-apply.** Credential edits commit after a ~600ms
+  debounce; provider selection and the debug toggle commit immediately; pending
+  edits flush on close.
+
+- **Modal overlay, not inline view-swap.** The settings panel is a modal that
+  covers the player and blocks interaction while open (sized to ~60% of the
+  component height, consistent across providers).
+
+- **Constant component height.** Tracklist + embed live in a fixed-height
+  `.stage`; the tracklist flexes to make room for the video so the component
+  doesn't jump when switching providers. `hasVideo` was removed.
+
+- **Advanced grouping.** Rarely-used fields (Subsonic API key; Plex base URL +
+  token; Jellyfin token + user ID) and the debug toggle live in a collapsible
+  `<details>`. The "No configuration needed" note was dropped.
+
+- **Robustness fixes found by driving it:** `initProvider` is resilient to a
+  provider that throws at construction/init (Subsonic with no baseUrl) — it
+  switches away cleanly instead of leaving the old provider + stale auth active.
+  YouTube marks unresolvable tracks (no id, no search) as `unavailable` (was a
+  misleading `unknown`), and `play()` no-ops on the empty player so it never shows
+  YouTube's "An error occurred" overlay.
+
+- **Spotify: no built-in client id.** Removed `DEFAULT_SPOTIFY_CLIENT_ID`. With no
+  `spotify-client-id`, Spotify runs embed-only and hides the Connect option
+  (OAuth/SDK is impossible without a client id).
+
+- **Verification:** unit tests (226) cover the logic; the full UI matrix was
+  driven in a real browser over plain HTTP (Playwright can't take the dev cert).
+  Les confirmed the live Spotify OAuth and Plex PIN-link flows work over HTTPS.
