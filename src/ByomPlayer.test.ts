@@ -250,6 +250,56 @@ describe('<byom-player>', () => {
     expect(provider.disposed).toBe(true);
   });
 
+  it('refresh availability clears the resolution cache and re-inits', async () => {
+    localStorage.setItem('byom-player:resolv:v1', '{"some":"cache"}');
+    const providers: ControllableProvider[] = [];
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = () => {
+      const p = new ControllableProvider();
+      providers.push(p);
+      return p;
+    };
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    (el.shadowRoot!.querySelector('.gear') as HTMLButtonElement).click();
+    await el.updateComplete;
+    (el.shadowRoot!.querySelector('.refresh') as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(localStorage.getItem('byom-player:resolv:v1')).toBeNull();
+    expect(providers.length).toBeGreaterThan(1);
+  });
+
+  it('debug toggle is persisted and flows into the effective config on apply', async () => {
+    const configs: Record<string, unknown>[] = [];
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = (_name, config) => {
+      configs.push(config);
+      return new ControllableProvider();
+    };
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    (el.shadowRoot!.querySelector('.gear') as HTMLButtonElement).click();
+    await el.updateComplete;
+    const dbg = el.shadowRoot!.querySelector('.debug-toggle') as HTMLInputElement;
+    dbg.checked = true;
+    dbg.dispatchEvent(new Event('change'));
+    (el.shadowRoot!.querySelector('.apply') as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(configs.at(-1)!.debug).toBe(true);
+    const stored = JSON.parse(localStorage.getItem('byom-player:settings:v1')!);
+    expect(stored.debug).toBe(true);
+  });
+
   it('passes the panel auth slot to a provider that supports attachAuth', async () => {
     let authEl: HTMLElement | null = null;
     const el = document.createElement('byom-player') as ByomPlayer;

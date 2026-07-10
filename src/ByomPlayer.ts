@@ -135,6 +135,19 @@ export class ByomPlayer extends LitElement {
     this.view = 'list';
   }
 
+  private async refreshAvailability(): Promise<void> {
+    try {
+      localStorage.removeItem('byom-player:resolv:v1');
+    } catch {
+      // ignore storage errors
+    }
+    await this.initProvider();
+  }
+
+  private onDraftDebug(e: Event): void {
+    this.draft = { ...this.draft, debug: (e.currentTarget as HTMLInputElement).checked };
+  }
+
   private onDraftProvider(e: Event): void {
     this.draft = { ...this.draft, provider: (e.currentTarget as HTMLSelectElement).value };
   }
@@ -155,6 +168,7 @@ export class ByomPlayer extends LitElement {
       providers: this.draft.providers,
     };
     saveSettings(this.settings);
+    this.debug = this.settings.debug ?? false;
     if (this.draft.provider) this.provider = this.draft.provider;
     this.dispatchEvent(
       new CustomEvent('settingschange', { detail: this.settings, bubbles: true, composed: true }),
@@ -516,6 +530,18 @@ export class ByomPlayer extends LitElement {
           <span class="settings-label">Connection</span>
           <div class="auth-slot" part="auth"></div>
         </div>
+        <div class="settings-actions">
+          <button class="refresh" @click=${this.refreshAvailability}>Refresh availability</button>
+          <label class="field debug-field">
+            <input
+              class="debug-toggle"
+              type="checkbox"
+              .checked=${this.draft.debug ?? false}
+              @change=${this.onDraftDebug}
+            />
+            <span>Debug diagnostics</span>
+          </label>
+        </div>
         <button class="apply" @click=${this.applySettings}>Apply</button>
       </div>
     `;
@@ -721,6 +747,26 @@ export class ByomPlayer extends LitElement {
       border: none;
       border-radius: 999px;
       padding: 0.35rem 0.9rem;
+      font: inherit;
+    }
+    .settings-actions {
+      display: grid;
+      gap: 0.5rem;
+    }
+    .debug-field {
+      grid-auto-flow: column;
+      justify-content: start;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .refresh {
+      justify-self: start;
+      background: transparent;
+      color: var(--byom-text);
+      border: 1px solid var(--byom-accent);
+      border-radius: 999px;
+      padding: 0.3rem 0.9rem;
+      cursor: pointer;
       font: inherit;
     }
     [hidden] {
