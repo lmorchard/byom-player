@@ -338,6 +338,31 @@ diagnostic. The dev server binds to `http://127.0.0.1:5173` (not `localhost`)
 because Spotify's dashboard only accepts `127.0.0.1` as a loopback redirect URI,
 so the Spotify PKCE login works out of the box.
 
+### Refreshing the demo playlists
+
+The JSPF files under `public/playlists/` are generated from the playlist "hub"
+YAML in the sibling [byom-sync](https://github.com/lmorchard/byom-sync) repo
+(`../byom-sync/playlists/`) via its `export jspf` command. Regenerate them (e.g.
+after enriching the source YAML with resolved YouTube IDs) like so:
+
+```sh
+cd ../byom-sync
+go build -o byom-sync .   # or: make build
+
+# Export each playlist to its exact target path. `export jspf` on a *directory*
+# names files "<base>.jspf", so export per-file to control the ".jspf.json" name.
+OUT=../byom-player/public/playlists
+for name in 20150907 bleep-bloop-bop-synthpop industrial-accident-industrial-ebm \
+            some-of-my-90s-dance-bullshit sometimes-i-miss-city-club 2014-top-songs; do
+  ./byom-sync export jspf --input "playlists/$name.yaml" --out "$OUT/$name.jspf.json"
+done
+```
+
+The exporter is deterministic, so unchanged source YAML produces byte-identical
+output — `git diff public/playlists/` shows only what actually changed. YouTube
+IDs land at `track.extension["…byom-sync"][0].resolved.youtube`, which the
+`youtube` provider reads to skip an on-demand lookup.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

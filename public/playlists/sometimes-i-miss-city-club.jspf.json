@@ -14,7 +14,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/4Ij4JkqaQOXTz43DZdllEE"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "DGhN2O6Eh6g"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Third Life (Front Line Assembly Remix)",
@@ -26,7 +35,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/2dnyow1fqjfbCa2wBxhqep"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "FAESlT48t5c"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Testure - 12\" Mix",
@@ -38,7 +56,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/7qL8Xv967yTdiTGmx8jgYA"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "YHZ3RY8WSFo"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Time Zero",
@@ -50,7 +77,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/47UEBiHdjBmsHSQuNP7myR"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "34jkfGsu1Wo"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Admire The Question",
@@ -62,7 +98,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/0blvg9V26Z5hkwYfQR9lAu"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "pBLU06BiPvU"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Lilies",
@@ -74,7 +119,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/1U4RLIXHCrtGZluB38xQOl"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "fpyRjBFwzVM"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Mother (Maternal Instinct)",
@@ -86,7 +140,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/0ZTdYV13A7Kib8JwiJ5bam"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "8JaGR0kIr88"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Every Day Is Halloween",
@@ -98,7 +161,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/443b23UhrdT4W7S2VXBknF"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "dTISF4ZwjMg"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Stigmata",
@@ -110,7 +182,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/2ZEipp2zP52hc0630gw2sW"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "qxaPj19VnRA"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Not Now.Not Here.",
@@ -122,7 +203,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/4IGDCmiKCjC6y2VcXl1Er4"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "MXts4Uvah5I"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "The Blade",
@@ -134,7 +224,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/15lgQGNF3f75w6bdEZQoZn"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "004P5FvV_XQ"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Bad Trash",
@@ -146,7 +245,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/4qdT3DFMbrphhJtXzZvoL7"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "0znBgtP-Ff0"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Dissolve",
@@ -158,7 +266,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/4EUxrqebJomQRuKkfmzLLc"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "uNaBDbfZodQ"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Supernaut",
@@ -170,7 +287,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/3zxY9E2Lq38ADIhwDXOWe2"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "Xjho-zVgDXo"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Dead Stars (Album Version)",
@@ -182,7 +308,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/2uXfGz59MrSx96qvHRveF0"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "E0dmGPdBGr0"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Happiness In Slavery",
@@ -194,7 +329,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/7yBAC2USmpFf3Enqgx0uo7"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "mQ2-SkLfldk"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Down In It",
@@ -206,7 +350,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/2P5ysrk3SjKtxTBZZMEziR"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "QrrEo3hZABU"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Get Down, Make Love",
@@ -218,7 +371,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/7vDqxEjm7uA3jUmN81Hcfl"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "soC_vV9uSbM"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "The Perfect Drug",
@@ -230,7 +392,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/4RM8nJNVD1Js0LdIARc04O"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "dn3j6-yQKWQ"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Starsign",
@@ -242,7 +413,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/5G9R76MuGpEtBU5euW5rsr"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "WrOkS1K_1-c"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Juke-Joint Jezebel",
@@ -254,7 +434,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/4zHRHotgEcUcQzheUld3n9"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "mlgdJjqFfjg"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Winter Born (This Sacrifice)",
@@ -266,7 +455,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/5tYYM8M1tL3v5jQYQFbJio"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "AoF02JPf7W0"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Join In The Chant",
@@ -278,7 +476,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/34vs8Nv1UbY63eWgMR1Tb2"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "AGHMS_zh0zM"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Stand Up",
@@ -290,7 +497,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/07nkSgDsKz5ZPjQhlsKPli"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "ls6ql-wXwjQ"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Night Riders",
@@ -302,7 +518,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/5wDtuLfx2lA7HUQbzUBLWD"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "pa4EAHoA4Gc"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Electronaut",
@@ -314,7 +539,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/1GdpvZb1JEiffhidj9jI62"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "Vx9Cgc6M3zg"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Epicentre",
@@ -326,7 +560,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/77JjV2Vfv6cRsiBzs1l5fI"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "OIMQegjZwRo"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Timekiller",
@@ -338,7 +581,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/3FfFy03jlcTgzeY7VwlPLd"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "rY9eSzB-KbU"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Da Ya Think I'm Sexy?",
@@ -350,7 +602,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/2pCEaJskwTTp7omAyUKvR0"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "IKlrsPbiBnQ"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Torture",
@@ -362,7 +623,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/36etYnPIUKBMpBBFRdEoyn"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "MfgxfIng7dI"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Circling Overland",
@@ -374,7 +644,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/6b7htxBPLuQfnEukE82XFJ"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "GQTys90jNkc"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Deep Red",
@@ -386,7 +665,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/7xJow2NgpvCJE5Aw0brXpF"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "ClpvtN_tMME"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Love Never Dies (Part 1 Edit)",
@@ -398,7 +686,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/0ptLSY2thWxWd2l9jT6G0Q"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "uMsoMhyfeqQ"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Electronic Warfare",
@@ -410,7 +707,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/4b479RHZuKOuLDvbrvEqjI"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "Bs0RsjwAZ2Y"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Kathy's Song (Come Lie Next To Me)",
@@ -422,7 +728,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/4cqz0h55G5hOrEbuMQHQsh"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "xzgJx1TRrms"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Document",
@@ -434,7 +749,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/4ss9VHL2nggdYyYfl92BFa"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "-_7C2S0Z7sc"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Once In A Lifetime",
@@ -446,7 +770,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/1gRxXmZlqM3NuW5JMaFV4Z"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "HasTM90O4Hg"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "The Sparrows And The Nightingales",
@@ -458,7 +791,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/1RUaT8C9y3GxgMqklbbp9s"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "aQUDGl7JR7Y"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Go! (Club Mix)",
@@ -470,7 +812,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/6jUtVy8AXICRmH85U3QjQU"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "fIW1JCBoHB0"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Cities In Dust",
@@ -482,7 +833,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/2xq9cLlOPyLoi8kLlR4miz"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "wsOHvP1XnRg"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Evil's Birth",
@@ -494,7 +854,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/5r43ftqfjPOnRJmSxSZTbf"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "ogW3sQ1zHgw"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Deutschmaschine",
@@ -506,7 +875,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/0HvZZPXHn6e4oenJS0C4zz"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "aoYto2F-Gbs"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Red Stars",
@@ -518,7 +896,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/25CRv7qnwyoa7kckF4HFb9"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "4iOPS0X3pbk"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Sick Asp Fuck (Full Gimball/No. 1 Club Mix)",
@@ -542,7 +929,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/2D35UNG23mlFcGtEZQrJ3r"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "jB73FWsCpUM"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Ich Bin Ein Auslander",
@@ -554,7 +950,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/0ALyLffxztZiTBOCZS6uzh"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "76wSk1j02_4"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Wreath of Barbs (Album Mix)",
@@ -566,7 +971,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/6I2lZcI1Dm8VeUYsOASNxz"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "wJJxGEKWLAI"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Destroy Everything You Touch",
@@ -578,7 +992,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/3q5YhSzJVmiOCuNJCWQ1w9"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "JTTwlAT_AwU"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Like A Prayer",
@@ -590,7 +1013,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/6mBf10fAEfSSS0rfWtq2Ap"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "pQOx8Qd4O4A"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Cuts You Up",
@@ -602,7 +1034,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/4ijNab1GM0JSZoe0I2KCOd"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "UrfFHzqGBZI"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "The Sweetest Drop",
@@ -614,7 +1055,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/0fByC8f43LkxemHtbJIeiP"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "-sZ-iEQljm8"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Annie, Would I Lie To You",
@@ -626,7 +1076,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/5c8B36e5GqSbqvwxmg856Z"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "0nqiMIu91Fo"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "N.W.O.",
@@ -638,7 +1097,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/2D9LxUcR9zWxQtxiHsMA0n"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "ydBNbuJyKzU"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "One Perfect Lie",
@@ -650,7 +1118,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/4IHbylDFU8KEPlIJms5TlD"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "kF3SwUCD4gE"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Steelrose (Apoptygma Berzerk Remix)",
@@ -662,7 +1139,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/6Ag664fxKR0oSSbT21lhbI"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "qckiv_rFAIA"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Du Hast",
@@ -674,7 +1160,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/7e5EPkc1TcBoFyTQHanK6G"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "W3q8Od5qJio"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "So What",
@@ -686,7 +1181,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/6Hh5u5c6eTWLYE7R9RgL7M"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "85cTaoohLtY"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Skulk",
@@ -698,7 +1202,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/1h7b7GhqjL7jPIeuLXPfaq"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "BU-4G_H9zf4"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Facer",
@@ -710,7 +1223,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/6lExNmpL5QXIcMPaHzqdFW"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "tBYVvKmLiOM"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Maximum Pace",
@@ -722,7 +1244,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/0qONu1t2cJ9ijwJeDSCotG"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "h4AvH1K7GkQ"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Divide",
@@ -734,7 +1265,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/7a8T7jsgWiiV6s7cdPlmXD"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "LWrwFN0D_zA"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Oh My Goth!",
@@ -746,7 +1286,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/3nk13XvDvcagr1fnJBa25h"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "MFYwzwLQDzc"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Lonely",
@@ -758,7 +1307,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/0gInQrkjGyp4kdUa4AJzZq"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "SGjHf9fhfDk"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Panzermensch - Live Steffi",
@@ -770,7 +1328,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/0V4uNUxFMnNY1aBbBsr2A1"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "k9o0QAP-SY0"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "The Bog",
@@ -782,7 +1349,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/6vfzTgsEdN30THva2kGqSV"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "BjTO0231nM0"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Exterminate Annihilate Destroy",
@@ -794,7 +1370,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/7nkE8IOqy4ZYFIjpd3CQMa"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "wA6jWmFvEUc"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Cake And Sodomy",
@@ -806,7 +1391,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/3otVEoYDhiwvSq7Bh3Eu1E"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "12Wp3VxVPtE"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Lunchbox",
@@ -818,7 +1412,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/1EYTOP6cIzADbgxCFG87ML"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "PRFJoUBP54o"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Get Your Gunn",
@@ -830,7 +1433,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/0zpP9vOzgux0tXtF3Q9Fl2"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "phjXoYqYE2U"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Personal Jesus",
@@ -842,7 +1454,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/4gZYw4chUdkjumdu0ODJ9t"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "Rl6fyhZ0G5E"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Down In The Park",
@@ -854,7 +1475,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/0YCyOP5nkAp2aiowFSTqkE"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "RTwp7HU_a_I"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "The Beautiful People",
@@ -866,7 +1496,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/3Kw4KEYQg6JaqUD8ZgAwz6"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "Ypkv0HeUvTc"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Control I'm Here",
@@ -878,7 +1517,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/0eBlkkenpIUKzDHQJihrRG"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "4w5CG4tFe4U"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "More",
@@ -890,7 +1538,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/38hrsxiPLBzgVgDnOKkQKd"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "BlVcdXowPvQ"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Lucretia My Reflection",
@@ -902,7 +1559,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/1FyfPd5AMMjrorTdu3wASG"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "aC-enyY6W8I"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Marian (Remastered)",
@@ -914,7 +1580,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/5Z5H7YZ0JBmlcNzBwLgROp"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "QC01kaKN0UU"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Sex Dwarf - Remastered 2008",
@@ -926,7 +1601,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/7bt41cmNUkjCP8CQekIwBO"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "X5-TRnZxIsk"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Lusty",
@@ -938,7 +1622,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/446vQ7sDZoi4wy7X8wXgZk"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "Y8ge6shvUJY"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "More Human Than Human",
@@ -950,7 +1643,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/1uEuVi8nSI6Y2VzJj6DoDd"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "E0E0ynyIUsg"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "I'm Your Boogieman",
@@ -962,7 +1664,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/1CS609rNM1yVn1E6y5eAcs"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "of141N-VRZ4"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "You Just Died",
@@ -974,7 +1685,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/7qq9ErmQ3T0AIF8ezVMnOy"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "7_KvSUuC_Ok"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Floorkiller",
@@ -986,7 +1706,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/5Rn7ZMiksU314IZhjatTca"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "oHjCL0Zyelo"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "When Worlds Collide",
@@ -998,7 +1727,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/6aF5JtQSrh7wNrkDE9B0My"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "lsV500W4BHU"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Butterfly Wings",
@@ -1010,7 +1748,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/7i4r4Va4nFf5sLfa2xcWoa"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "V8hfam9EyYk"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Burning Inside",
@@ -1022,7 +1769,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/6azWRPfhtMrYXWBSdblSkM"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "epDFHOVbhWk"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Cars",
@@ -1034,7 +1790,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/3CKLPDN1AIOYa7QPpy6oDH"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "Im3JzxlatUs"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Snap Your Fingers, Snap Your Neck",
@@ -1046,7 +1811,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/7hgtn706RqLE5q1mWe8aQx"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "23rnAs9BHkk"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Smothered Hope",
@@ -1058,7 +1832,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/1qEMuHKZTFPVmjqy1GtviI"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "jYUpRfgl_ug"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Smothered Hope",
@@ -1070,7 +1853,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/2JF09jZCTqbqLaIFtri5Jj"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "iyxmukYj0Ok"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Connected",
@@ -1082,7 +1874,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/2bQ3lk19XCgwuNMXSSXivI"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "aatK_l9Yuyk"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Starfuckers, Inc.",
@@ -1094,7 +1895,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/5RxKqRKJva5ZcVa0ltdxuX"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "omWQzYycyJk"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "I'm Afraid of Americans (Nine Inch Nails V1 MIx) - NIN V.1 Mix",
@@ -1106,7 +1916,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/57KFZMWY5Ee3TfLw1fuau9"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "LT3cERVRoQo"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Memory Flow",
@@ -1118,7 +1937,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/0yhzY2HcnQvfTHLsJk7Ncf"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "vkIICLvDtn4"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Sins of the Flesh",
@@ -1130,7 +1958,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/1sVdAZGlSHDGUfOqLnJpeS"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "XaXaM_UzZTo"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Shame",
@@ -1142,7 +1979,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/1CFRJ8223pGmAL82T1oZvi"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "CsxaoXHe9Xc"
+              }
+            }
+          ]
+        }
       },
       {
         "title": "Hallucination Generation",
@@ -1154,7 +2000,16 @@
         ],
         "location": [
           "https://open.spotify.com/track/65UHxEYkxhNW0HysV1c46I"
-        ]
+        ],
+        "extension": {
+          "https://github.com/lmorchard/byom-sync": [
+            {
+              "resolved": {
+                "youtube": "cDBnwV-wG4o"
+              }
+            }
+          ]
+        }
       }
     ]
   }
