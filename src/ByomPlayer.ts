@@ -943,42 +943,97 @@ export class ByomPlayer extends LitElement {
       --byom-on-accent: #282a36;
       --byom-border: #44475a;
     }
-    .playlist-picker {
-      margin: 0.25rem 0 0.5rem;
-      background: var(--byom-bg);
-      color: var(--byom-text);
+    /* Settings gear, pinned to the top-right corner of the card. */
+    .corner {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      z-index: 5;
+    }
+    /* Header block: cover art + text column (title/creator/meta/description). */
+    .head {
+      display: flex;
+      gap: 0.9rem;
+      align-items: flex-start;
+    }
+    .art {
+      width: 104px;
+      height: 104px;
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: var(--byom-surface);
       border: 1px solid var(--byom-border);
       border-radius: calc(var(--byom-border-radius) / 2);
-      padding: 0.25rem 0.4rem;
+      color: var(--byom-text-muted);
+      font-size: 2.6rem;
+    }
+    .meta {
+      min-width: 0;
+      flex: 1;
+    }
+    .title {
+      margin: 0;
+      font-size: 1.35rem;
+      line-height: 1.15;
+      font-weight: 700;
+      color: var(--byom-text);
+    }
+    /* A <select> styled to read as the title, with a caret affordance. */
+    .title-select {
+      appearance: none;
+      -webkit-appearance: none;
+      max-width: 100%;
+      margin: 0 0 0 -0.15rem;
+      padding: 0 1.4rem 0 0;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      color: var(--byom-text);
       font: inherit;
+      font-size: 1.35rem;
+      line-height: 1.15;
+      font-weight: 700;
+      cursor: pointer;
+      background-image:
+        linear-gradient(45deg, transparent 50%, var(--byom-text-muted) 50%),
+        linear-gradient(135deg, var(--byom-text-muted) 50%, transparent 50%);
+      background-position:
+        right 6px top 0.7rem,
+        right 1px top 0.7rem;
+      background-size:
+        6px 6px,
+        6px 6px;
+      background-repeat: no-repeat;
     }
-    .now-playing {
-      display: flex;
-      align-items: baseline;
-      gap: 0.5rem;
-      min-height: 1.4rem;
+    .title-select:hover {
+      color: var(--byom-accent);
     }
-    .now-playing .np-title {
-      font-weight: 600;
-    }
-    .now-playing .np-artist {
+    .creator {
+      margin: 0.15rem 0 0;
       color: var(--byom-text-muted);
       font-size: 0.9rem;
     }
-    .progress-row {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      margin: 0.5rem 0;
-    }
-    .progress-row .progress {
-      flex: 1;
-      accent-color: var(--byom-accent);
-    }
-    .progress-row .time {
-      font-variant-numeric: tabular-nums;
-      font-size: 0.75rem;
+    .meta-line {
+      margin: 0.3rem 0 0;
       color: var(--byom-text-muted);
+      font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .description {
+      margin: 0.5rem 0 0;
+      color: var(--byom-text-muted);
+      font-size: 0.82rem;
+      line-height: 1.4;
+    }
+    .description a {
+      color: var(--byom-accent);
+      text-decoration: none;
+    }
+    .description a:hover {
+      text-decoration: underline;
     }
     /* Content-driven stage with a cap: short playlists stay compact (no void),
        long ones scroll inside the tracklist, and a mounted 16:9 embed still
@@ -1006,13 +1061,20 @@ export class ByomPlayer extends LitElement {
       height: 100%;
       border: 0;
     }
-    .controls {
+    /* Transport footer: prev/play-pause/next + inline seek + shuffle. */
+    .transport {
       display: flex;
       align-items: center;
-      gap: 0.35rem;
-      margin: 0.25rem 0;
+      gap: 0.6rem;
+      margin-top: 0.9rem;
     }
-    .controls button {
+    .ctl-group {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      flex: 0 0 auto;
+    }
+    .transport button {
       cursor: pointer;
       font-size: 1.3rem;
       line-height: 1;
@@ -1026,31 +1088,48 @@ export class ByomPlayer extends LitElement {
       align-items: center;
       justify-content: center;
     }
-    .controls button:hover {
+    .transport button:hover {
       background: color-mix(in srgb, var(--byom-text) 10%, transparent);
     }
-    .controls .playpause {
-      font-size: 1.7rem;
+    .transport .playpause {
+      font-size: 1.6rem;
       color: var(--byom-on-accent);
       background: var(--byom-accent);
     }
-    .controls .playpause:hover {
+    .transport .playpause:hover {
       background: var(--byom-accent);
       filter: brightness(1.08);
     }
-    .controls .shuffle {
+    .transport .shuffle {
+      flex: 0 0 auto;
       border: 1px solid var(--byom-border);
-      border-radius: 999px;
-      background: transparent;
-      color: var(--byom-text);
-      padding: 0.3rem 0.9rem;
+      padding: 0.25rem 0.55rem;
       font-size: 1rem;
-      opacity: 0.8;
+      opacity: 0.75;
     }
-    .controls .shuffle.on {
+    .transport .shuffle.on {
       background: var(--byom-accent);
       color: var(--byom-on-accent);
+      border-color: var(--byom-accent);
       opacity: 1;
+    }
+    .seek {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-width: 0;
+    }
+    .seek .progress {
+      flex: 1;
+      min-width: 0;
+      accent-color: var(--byom-accent);
+    }
+    .seek .time {
+      flex: 0 0 auto;
+      font-variant-numeric: tabular-nums;
+      font-size: 0.72rem;
+      color: var(--byom-text-muted);
     }
     .filter-row {
       display: flex;
@@ -1098,68 +1177,127 @@ export class ByomPlayer extends LitElement {
       min-height: 0;
       overflow: auto;
     }
+    /* Spotify-style rows: number | title/artist | duration. */
     .tracklist li {
       cursor: pointer;
-      display: flex;
+      display: grid;
+      grid-template-columns: 1.6rem 1fr auto;
       align-items: center;
-      justify-content: space-between;
-      gap: 0.5rem;
-      padding: 0.3rem 0.5rem 0.3rem 0.75rem;
+      gap: 0.6rem;
+      padding: 0.3rem 0.5rem 0.3rem 0.4rem;
       border-left: 3px solid transparent; /* reserve the active bar's width */
       border-radius: calc(var(--byom-border-radius) / 2);
     }
     .tracklist li:hover {
       background: color-mix(in srgb, var(--byom-text) 8%, transparent);
     }
+    .num {
+      position: relative;
+      text-align: center;
+      color: var(--byom-text-muted);
+      font-size: 0.8rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .num .glyph {
+      display: none;
+      font-size: 0.85rem;
+    }
+    /* Hover a playable row → its number becomes a play glyph. */
+    .tracklist li:not(.active):not(.unavailable):not(.pending):hover .num .idx {
+      visibility: hidden;
+    }
+    .tracklist li:not(.active):not(.unavailable):not(.pending):hover .num .glyph {
+      display: block;
+      position: absolute;
+      inset: 0;
+      color: var(--byom-text);
+    }
+    .cell {
+      min-width: 0;
+    }
+    .t-title {
+      display: block;
+      color: var(--byom-text);
+      font-size: 0.9rem;
+      line-height: 1.25;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .t-artist {
+      display: block;
+      color: var(--byom-text-muted);
+      font-size: 0.76rem;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .dur {
+      color: var(--byom-text-muted);
+      font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
+    }
+    /* active: accent bar + tint, number becomes the pause/play glyph */
     .tracklist li.active {
-      color: var(--byom-accent);
-      font-weight: 600;
       border-left-color: var(--byom-accent);
       background: color-mix(in srgb, var(--byom-accent) 12%, transparent);
     }
-    .tracklist li.orphan {
+    .tracklist li.active .num {
+      color: var(--byom-accent);
+    }
+    .tracklist li.active .num .idx {
+      display: none;
+    }
+    .tracklist li.active .num .glyph {
+      display: block;
+      color: var(--byom-accent);
+    }
+    .tracklist li.active .t-title {
+      color: var(--byom-accent);
+      font-weight: 600;
+    }
+    .tracklist li.active .t-artist {
+      color: color-mix(in srgb, var(--byom-accent) 65%, var(--byom-text-muted));
+    }
+    /* orphan: muted + a detached marker after the title */
+    .tracklist li.orphan .t-title {
       color: var(--byom-text-muted);
     }
     .tracklist li.orphan .t-title::after {
       content: '↯';
-      margin-left: 0.4rem;
+      margin-left: 0.35rem;
       opacity: 0.8;
       font-size: 0.85em;
     }
-    .tracklist li.unavailable {
+    /* unavailable: struck title (the ✕ lives in the duration slot) */
+    .tracklist li.unavailable .t-title {
       color: var(--byom-text-muted);
       text-decoration: line-through;
     }
-    .tracklist li.unavailable .t-title::after {
-      content: '✕';
-      margin-left: 0.4rem;
-      text-decoration: none;
-      opacity: 0.7;
-    }
-    .tracklist li.pending {
-      color: var(--byom-text-muted);
-    }
-    .tracklist li.pending .t-title::before {
-      content: '⋯ ';
+    /* pending: muted, accent ⋯ shown in the number slot (rendered in markup) */
+    .tracklist li.pending .num {
       color: var(--byom-accent);
+    }
+    .tracklist li.pending .t-title,
+    .tracklist li.pending .t-artist {
+      color: var(--byom-text-muted);
     }
     .status .halted {
       color: var(--byom-accent);
       font-size: 0.85rem;
     }
-    .controls .gear {
-      margin-left: auto;
+    .gear {
       background: transparent;
       border: none;
-      color: var(--byom-text);
-      font-size: 1.8rem;
+      color: var(--byom-text-muted);
+      font-size: 1.4rem;
       line-height: 1;
-      padding: 0.1rem 0.3rem;
-      opacity: 0.75;
+      padding: 0.1rem 0.2rem;
       cursor: pointer;
     }
-    .controls .gear:hover {
-      opacity: 1;
+    .gear:hover {
+      color: var(--byom-text);
     }
     /* Modal overlay: covers the player + blocks interaction with it while open. */
     .settings-overlay {
