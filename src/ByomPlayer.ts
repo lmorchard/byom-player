@@ -1,6 +1,6 @@
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import type { Playlist } from './types';
+import type { Playlist, Track } from './types';
 import type {
   AudioProvider,
   AvailabilityStatus,
@@ -98,6 +98,7 @@ export class ByomPlayer extends LitElement {
   @state() private view: 'list' | 'settings' = 'list';
   @state() private draft: UserSettings = { providers: {} };
   @state() private authState: AuthState | null = null;
+  @state() private filterQuery = '';
   private settings: UserSettings = { providers: {} };
   private deployment: Record<string, Record<string, unknown>> = {};
 
@@ -110,6 +111,7 @@ export class ByomPlayer extends LitElement {
 
   async connectedCallback(): Promise<void> {
     super.connectedCallback();
+    document.addEventListener('keydown', this.onGlobalKeydown);
     this.settings = loadSettings();
     this.playlists = parsePlaylistChildren(this);
     // Multiple playlists: the first is the initial src unless the host set one.
@@ -222,6 +224,7 @@ export class ByomPlayer extends LitElement {
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    document.removeEventListener('keydown', this.onGlobalKeydown);
     if (this.commitTimer) clearTimeout(this.commitTimer);
     this.commitTimer = null;
     this.sweepAbort?.abort();
@@ -409,6 +412,60 @@ export class ByomPlayer extends LitElement {
     if (await this.loadPlaylist()) await this.initProvider();
   }
 
+  // Case-insensitive substring match against title, artist, and album. An empty
+  // query matches everything.
+  private matchesFilter(t: Track): boolean {
+    const q = this.filterQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      t.title.toLowerCase().includes(q) ||
+      t.artist.toLowerCase().includes(q) ||
+      (t.album?.toLowerCase().includes(q) ?? false)
+    );
+  }
+
+  private onFilterInput(e: Event): void {
+    this.filterQuery = (e.currentTarget as HTMLInputElement).value;
+  }
+
+  private clearFilter(): void {
+    this.filterQuery = '';
+    this.renderRoot.querySelector<HTMLInputElement>('.filter-input')?.focus();
+  }
+
+  private onFilterKeydown(e: KeyboardEvent): void {
+    if (e.key === 'Escape') {
+      this.filterQuery = '';
+      (e.currentTarget as HTMLInputElement).blur();
+    }
+  }
+
+  // The deepest focused element, piercing shadow roots — focus inside a shadow
+  // tree surfaces as the host element in document.activeElement.
+  private deepActiveElement(): Element | null {
+    let el: Element | null = document.activeElement;
+    while (el?.shadowRoot?.activeElement) el = el.shadowRoot.activeElement;
+    return el;
+  }
+
+  private isEditable(el: Element | null): boolean {
+    if (!el) return false;
+    const tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || (el as HTMLElement).isContentEditable;
+  }
+
+  // Global '/' focuses the filter, unless: it's part of a modifier combo, the
+  // settings modal is open (the filter is hidden behind the overlay), or the
+  // user is already typing in a field (including our own filter input — there
+  // '/' types normally).
+  private onGlobalKeydown = (e: KeyboardEvent): void => {
+    if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (this.view !== 'list') return;
+    if (this.isEditable(this.deepActiveElement())) return;
+    e.preventDefault();
+    this.renderRoot.querySelector<HTMLInputElement>('.filter-input')?.focus();
+  };
+
   private togglePlay(): void {
     if (this.playbackState === 'playing') this.controller?.pause();
     else void this.controller?.play();
@@ -461,6 +518,10 @@ export class ByomPlayer extends LitElement {
     const pl = this.playlist;
     if (!pl) return html`<div class="loading">Loading…</div>`;
     const current = pl.tracks[this.currentIndex];
+    // Derived, filtered view — never mutates pl.tracks or playback indices. Each
+    // row carries its real pl.tracks index so selection maps back correctly.
+    const q = this.filterQuery.trim();
+    const rows = pl.tracks.map((t, i) => ({ t, i })).filter(({ t }) => this.matchesFilter(t));
     return html`
       <header class="header">
         <h2 class="title">${pl.title}</h2>
@@ -544,9 +605,34 @@ export class ByomPlayer extends LitElement {
             : nothing
         }
       </div>
+      <div class="filter-row">
+        <input
+          class="filter-input"
+          type="text"
+          placeholder="Filter tracks…"
+          .value=${this.filterQuery}
+          aria-label="Filter tracks"
+          @input=${this.onFilterInput}
+          @keydown=${this.onFilterKeydown}
+        />
+        ${
+          this.filterQuery
+            ? html`<button
+                class="filter-clear"
+                @click=${this.clearFilter}
+                aria-label="Clear filter"
+              >
+                ×
+              </button>`
+            : nothing
+        }
+      </div>
       <div class="stage">
+        <div class="tracklist-empty">
+          ${rows.length === 0 && q ? html`<p class="no-matches">No tracks match "${q}"</p>` : nothing}
+        </div>
         <ol class="tracklist">
-          ${pl.tracks.map((t, i) => {
+          ${rows.map(({ t, i }) => {
             const orphaned = t.syncState?.spotifyPresent === false;
             return html`
               <li class=${this.trackClasses(i, orphaned)} @click=${() => this.selectTrack(i)}>
@@ -745,6 +831,45 @@ export class ByomPlayer extends LitElement {
       background: var(--byom-accent);
       color: var(--byom-bg);
       opacity: 1;
+    }
+    .filter-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0.5rem 0;
+    }
+    .filter-row .filter-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.07);
+      color: var(--byom-text);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 999px;
+      padding: 0.3rem 0.8rem;
+      font: inherit;
+      font-size: 0.9rem;
+    }
+    .filter-row .filter-input:focus {
+      outline: none;
+      border-color: var(--byom-accent);
+    }
+    .filter-row .filter-clear {
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      color: var(--byom-text);
+      opacity: 0.6;
+      font-size: 1.2rem;
+      line-height: 1;
+      padding: 0 0.3rem;
+    }
+    .filter-row .filter-clear:hover {
+      opacity: 1;
+    }
+    .no-matches {
+      opacity: 0.6;
+      font-size: 0.85rem;
+      padding: 0.5rem;
+      margin: 0;
     }
     .tracklist {
       list-style: none;
