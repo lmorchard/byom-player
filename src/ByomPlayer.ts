@@ -72,19 +72,48 @@ export class ByomPlayer extends LitElement {
 
   private async loadAndInit(): Promise<void> {
     if (!this.src) return;
+    if (!(await this.loadPlaylist())) return;
+    await this.initProvider();
+  }
+
+  // Fetch + parse the manifest at this.src. Returns false (and flags error) on
+  // failure. Split out so a playlist switch can reload without touching the
+  // provider, and a provider switch can re-init without refetching.
+  private async loadPlaylist(): Promise<boolean> {
     this.sweepAbort?.abort();
     this.availability = new Map();
     this.hasVideo = false;
     try {
       const res = await fetch(this.src);
       this.playlist = loadManifest(await res.json());
+      return true;
     } catch {
       this.playbackState = 'error';
-      return;
+      return false;
     }
+  }
+
+  // Effective provider config. Extended in later tasks to merge deployment
+  // defaults + user settings; for now preserves the pre-panel behavior.
+  private buildEffectiveConfig(): Record<string, unknown> {
+    const cfg = { ...this.providerConfig };
+    return this.debug ? { ...cfg, debug: true } : cfg;
+  }
+
+  // Build + initialize the active provider, wire the controller, start the
+  // sweep. Disposes any existing provider/controller first so this is safe to
+  // call on a settings change (no element remount).
+  private async initProvider(): Promise<void> {
+    if (!this.playlist) return;
+    this.sweepAbort?.abort();
+    this.controller?.dispose();
+    this.controller = null;
+    this.availability = new Map();
+    this.failed = new Set();
+    this.hasVideo = false; // reset; re-set below only if the new provider attaches
+
     const factory = this.providerFactory ?? createProvider;
-    const config = this.debug ? { ...this.providerConfig, debug: true } : this.providerConfig;
-    const prov = factory(this.provider, config);
+    const prov = factory(this.provider, this.buildEffectiveConfig());
     if (prov.attach) {
       // Ensure the .video region is rendered, then let the provider mount into it.
       await this.updateComplete;

@@ -249,6 +249,29 @@ describe('<byom-player>', () => {
     expect(provider.disposed).toBe(true);
   });
 
+  it('re-initializes the provider in place (dispose old, install new)', async () => {
+    const providers: ControllableProvider[] = [];
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = () => {
+      const p = new ControllableProvider();
+      providers.push(p);
+      return p;
+    };
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(providers).toHaveLength(1);
+
+    await el['initProvider']();
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(providers).toHaveLength(2);
+    expect(providers[0].disposed).toBe(true); // old provider torn down
+  });
+
   it('toggles play/pause via the control button', async () => {
     const { el } = await mount();
     await el['controller']!.start(0);
