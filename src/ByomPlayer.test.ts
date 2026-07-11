@@ -49,6 +49,7 @@ const jspf = {
     creator: 'Les',
     date: '2026-07-08T12:00:00Z',
     annotation: 'A **great** mix',
+    extension: { [BYOM_EXT_NS]: [{ date_updated: '2026-09-08T12:00:00Z' }] },
     track: [
       { title: 'A', creator: 'aa', duration: 60 },
       {
@@ -768,12 +769,12 @@ describe('<byom-player>', () => {
     expect(desc.innerHTML).toContain('<strong>great</strong>');
   });
 
-  it('renders a meta line with track count, total duration, and date', async () => {
+  it('renders a meta line with track count, total duration, and date range', async () => {
     const { el } = await mount();
     const meta = el.shadowRoot!.querySelector('.meta-line')!.textContent!;
     expect(meta).toContain('3 tracks');
     expect(meta).toContain('4 min'); // 60+120+60s = 4 min
-    expect(meta).toContain('Jul 2026');
+    expect(meta).toContain('Jul 2026 – Sep 2026'); // date (created) – date_updated
   });
 
   it('numbers rows by real playlist position, even while filtered', async () => {

@@ -3,7 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import type { Playlist, Track } from './types';
 import { renderMarkdownInline } from './markdown';
-import { sumDurationMs, formatTotalDuration, formatMonthYear } from './format';
+import { sumDurationMs, formatTotalDuration, formatDateRange } from './format';
 import type {
   AudioProvider,
   AvailabilityStatus,
@@ -439,12 +439,12 @@ export class ByomPlayer extends LitElement {
     else this.selectTrack(index);
   }
 
-  // "{n} tracks · {total duration} · {creation date}", each part conditional.
+  // "{n} tracks · {total duration} · {created – updated}", each part conditional.
   private renderMetaLine(pl: Playlist) {
     const parts: string[] = [`${pl.tracks.length} ${pl.tracks.length === 1 ? 'track' : 'tracks'}`];
     const total = sumDurationMs(pl.tracks);
     if (total != null) parts.push(formatTotalDuration(total));
-    const date = formatMonthYear(pl.dateCreated);
+    const date = formatDateRange(pl.dateCreated, pl.dateUpdated);
     if (date) parts.push(date);
     return html`<p class="meta-line" part="meta-line">${parts.join(' · ')}</p>`;
   }

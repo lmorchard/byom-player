@@ -34,3 +34,18 @@ export function formatMonthYear(iso: string | undefined): string | null {
   if (Number.isNaN(d.getTime())) return null;
   return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
+
+// "Feb 2023 – Jun 2026" from created/updated ISO strings, collapsing to a single
+// month when both fall in the same month-year, to the present side when only one
+// is given, and null when neither is parseable. Mirrors the site's date range.
+export function formatDateRange(
+  created: string | undefined,
+  updated: string | undefined,
+): string | null {
+  const c = formatMonthYear(created);
+  const u = formatMonthYear(updated);
+  if (!c && !u) return null;
+  if (!c) return u;
+  if (!u || c === u) return c;
+  return `${c} – ${u}`;
+}

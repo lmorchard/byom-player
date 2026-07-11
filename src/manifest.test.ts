@@ -34,6 +34,24 @@ describe('loadManifest', () => {
     expect(pl.tracks).toHaveLength(2);
   });
 
+  it('reads date_updated from the playlist-level byom-sync extension', () => {
+    const doc = {
+      playlist: {
+        title: 'P',
+        date: '2014-12-15T15:43:33Z',
+        extension: {
+          [BYOM_EXT_NS]: [
+            { date_updated: '2026-06-01T00:00:00Z', date_imported: '2026-07-08T00:00:00Z' },
+          ],
+        },
+        track: [],
+      },
+    };
+    const pl = loadManifest(doc);
+    expect(pl.dateCreated).toBe('2014-12-15T15:43:33Z');
+    expect(pl.dateUpdated).toBe('2026-06-01T00:00:00Z');
+  });
+
   it('maps JSPF track fields into the internal model', () => {
     const t = loadManifest(jspf).tracks[0];
     expect(t.title).toBe('Nightcall');
