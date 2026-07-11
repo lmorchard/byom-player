@@ -14,7 +14,7 @@ import type {
 import { loadManifest } from './manifest';
 import { PlaybackController } from './controller';
 import { createProvider } from './providers/registry';
-import { sweepAvailability } from './availability';
+import { AvailabilityQueue } from './availability';
 import { loadSettings, saveSettings, effectiveProviderConfig, type UserSettings } from './settings';
 import {
   parseProviderList,
@@ -127,7 +127,7 @@ export class ByomPlayer extends LitElement {
   @state() private halted = false;
   @state() private shuffle = false;
   @state() private availability = new Map<number, AvailabilityStatus>();
-  @state() private scanning = false;
+  @state() private checking = new Set<number>();
   @state() private positionMs = 0;
   @state() private durationMs = 0;
   @state() private playlists: PlaylistEntry[] = [];
@@ -140,10 +140,10 @@ export class ByomPlayer extends LitElement {
 
   private controller: PlaybackController | null = null;
   private activeProvider: AudioProvider | null = null;
-  private sweepAbort: AbortController | null = null;
+  private availQueue: AvailabilityQueue | null = null;
   private seeking = false; // user is dragging the progress bar
   // The virtualizer's most recently reported rendered index range (positions
-  // within the filtered rows). Recorded now; Task 4 uses it to drive checks.
+  // within the filtered rows). Used to seed checks when (re)arming the queue.
   private lastRange: { first: number; last: number } | null = null;
   private commitTimer: ReturnType<typeof setTimeout> | null = null;
   private commitDelayMs = 600; // debounce before auto-applying a field edit
@@ -276,8 +276,8 @@ export class ByomPlayer extends LitElement {
     document.removeEventListener('keydown', this.onGlobalKeydown);
     if (this.commitTimer) clearTimeout(this.commitTimer);
     this.commitTimer = null;
-    this.sweepAbort?.abort();
-    this.sweepAbort = null;
+    this.availQueue?.dispose();
+    this.availQueue = null;
     this.controller?.dispose();
     this.controller = null;
   }
@@ -291,7 +291,7 @@ export class ByomPlayer extends LitElement {
     }
     this.availability = new Map();
     this.failed = new Set();
-    this.startSweep(); // aborts any in-flight sweep, then re-scans
+    this.armAvailabilityQueue(); // disposes any existing queue, then re-arms
   }
 
   private async loadAndInit(): Promise<void> {
@@ -304,7 +304,6 @@ export class ByomPlayer extends LitElement {
   // failure. Split out so a playlist switch can reload without touching the
   // provider, and a provider switch can re-init without refetching.
   private async loadPlaylist(): Promise<boolean> {
-    this.sweepAbort?.abort();
     this.availability = new Map();
     try {
       const res = await fetch(this.src);
@@ -323,12 +322,11 @@ export class ByomPlayer extends LitElement {
     return this.debug ? { ...cfg, debug: true } : cfg;
   }
 
-  // Build + initialize the active provider, wire the controller, start the
-  // sweep. Disposes any existing provider/controller first so this is safe to
-  // call on a settings change (no element remount).
+  // Build + initialize the active provider, wire the controller, arm the
+  // availability queue. Disposes any existing provider/controller first so this
+  // is safe to call on a settings change (no element remount).
   private async initProvider(): Promise<void> {
     if (!this.playlist) return;
-    this.sweepAbort?.abort();
     this.controller?.dispose();
     this.controller = null;
     this.availability = new Map();
@@ -393,29 +391,64 @@ export class ByomPlayer extends LitElement {
     // When a provider's session changes (e.g. Plex link/unlink), its cached
     // availability knowledge is stale — clear the marks and re-scan.
     prov.onReset?.(() => this.handleProviderReset());
-    this.startSweep();
+    this.armAvailabilityQueue();
   }
 
-  // Run the background availability prescan against the active provider. Aborts
-  // any sweep already in flight first, so it's safe to call on a session change.
-  private startSweep(): void {
+  // (Re)create the availability queue for the active provider and seed it with
+  // the tracks worth checking right now: a lookahead window around the current
+  // track plus whatever the virtualizer last reported as visible. Safe to call
+  // on init and on a provider/session reset.
+  private armAvailabilityQueue(): void {
+    this.availQueue?.dispose();
+    this.availQueue = null;
+    this.checking = new Set();
     const prov = this.activeProvider;
     if (!prov?.checkAvailability || !this.prescan || !this.playlist) return;
-    this.sweepAbort?.abort();
-    this.sweepAbort = new AbortController();
-    this.scanning = true;
-    void sweepAvailability(
+    this.availQueue = new AvailabilityQueue(
       prov,
       this.playlist.tracks,
-      (i, status) => {
-        this.availability = new Map(this.availability).set(i, status);
-        // Let the queue skip known-missing tracks (shuffle + advance).
-        if (status === 'unavailable') this.controller?.markUnavailable(i, true);
-      },
-      { signal: this.sweepAbort.signal, delayMs: this.prescanDelayMs },
-    ).finally(() => {
-      this.scanning = false;
-    });
+      (i, status) => this.onAvailabilityResult(i, status),
+      { delayMs: this.prescanDelayMs },
+    );
+    this.requestAround(this.currentIndex);
+    if (this.lastRange) this.requestVisible(this.lastRange.first, this.lastRange.last);
+  }
+
+  private onAvailabilityResult(i: number, status: AvailabilityStatus): void {
+    this.availability = new Map(this.availability).set(i, status);
+    if (this.checking.has(i)) {
+      const next = new Set(this.checking);
+      next.delete(i);
+      this.checking = next;
+    }
+    // Let the queue skip known-missing tracks (shuffle + advance).
+    if (status === 'unavailable') this.controller?.markUnavailable(i, true);
+  }
+
+  // Enqueue real track indices and reflect the newly-accepted ones as in-flight.
+  private enqueueChecks(indices: number[]): void {
+    const accepted = this.availQueue?.request(indices) ?? [];
+    if (!accepted.length) return;
+    const next = new Set(this.checking);
+    for (const i of accepted) next.add(i);
+    this.checking = next;
+  }
+
+  // `first`/`last` are positions within the filtered rows; map them to real
+  // track indices before enqueuing.
+  private requestVisible(first: number, last: number): void {
+    const rows = this.filteredRows;
+    const idx: number[] = [];
+    for (let p = Math.max(0, first); p <= last && p < rows.length; p++) idx.push(rows[p].i);
+    this.enqueueChecks(idx);
+  }
+
+  // A small forward window from `index` (playback advances forward).
+  private requestAround(index: number): void {
+    const LOOKAHEAD = 10;
+    const idx: number[] = [];
+    for (let i = index; i < index + LOOKAHEAD; i++) idx.push(i);
+    this.enqueueChecks(idx);
   }
 
   private syncFromController(): void {
@@ -432,8 +465,11 @@ export class ByomPlayer extends LitElement {
 
   updated(changed: PropertyValues): void {
     // Keep the playing track centered in the (scrollable) tracklist as playback
-    // moves through the queue.
-    if (changed.has('currentIndex')) this.centerActiveTrack();
+    // moves through the queue, and extend the availability lookahead forward.
+    if (changed.has('currentIndex')) {
+      this.centerActiveTrack();
+      this.requestAround(this.currentIndex);
+    }
   }
 
   // Scroll the virtualized list so the active row is centered. The virtualizer
@@ -565,8 +601,8 @@ export class ByomPlayer extends LitElement {
 
   private trackClasses(index: number, orphaned: boolean): string {
     const unavailable = this.failed.has(index) || this.availability.get(index) === 'unavailable';
-    // Not yet reached by the background prescan.
-    const pending = this.scanning && !this.availability.has(index) && !this.failed.has(index);
+    // Currently being checked by the availability queue.
+    const pending = this.checking.has(index);
     return [
       index === this.currentIndex ? 'active' : '',
       orphaned ? 'orphan' : '',
@@ -582,7 +618,7 @@ export class ByomPlayer extends LitElement {
   // unavailable, orphan, pending — mirroring the visual precedence.
   private trackState(index: number, orphaned: boolean): string {
     const unavailable = this.failed.has(index) || this.availability.get(index) === 'unavailable';
-    const pending = this.scanning && !this.availability.has(index) && !this.failed.has(index);
+    const pending = this.checking.has(index);
     if (index === this.currentIndex) return 'active';
     if (unavailable) return 'unavailable';
     if (orphaned) return 'orphan';
@@ -629,14 +665,15 @@ export class ByomPlayer extends LitElement {
   }
 
   // The virtualizer reports its rendered index range (positions within the
-  // filtered rows). Recorded here; Task 4 uses it to drive availability checks.
-  // Payload matches @lit-labs/virtualizer's RangeChangedEvent (numeric
-  // first/last); read defensively so the handler is safe under happy-dom.
+  // filtered rows). Record it and enqueue availability checks for the newly
+  // visible window. Payload matches @lit-labs/virtualizer's RangeChangedEvent
+  // (numeric first/last); read defensively so the handler is safe under
+  // happy-dom (where the event never fires).
   private onRangeChanged = (e: Event): void => {
     const { first, last } = e as Event & { first?: number; last?: number };
     if (typeof first !== 'number' || typeof last !== 'number' || first < 0) return;
     this.lastRange = { first, last };
-    if (this.debug) console.debug('[byom-player] tracklist range', this.lastRange);
+    this.requestVisible(first, last);
   };
 
   render() {
