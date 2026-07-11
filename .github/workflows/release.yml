@@ -10,9 +10,12 @@ name: Release
 #   2. Tag the merge commit `v1.0.0` and push the tag.
 # The tag must match package.json's version, or this workflow fails fast.
 #
-# Requires an `NPM_TOKEN` repository secret (an npm automation token with
-# publish rights to the `@lmorchard/byom-player` package). The `@lmorchard`
-# scope must be your npm username or an org you own.
+# Publishing uses npm Trusted Publishing (OIDC) — no stored token. Configure the
+# trusted publisher once on npmjs.com: the `@lmorchard/byom-player` package →
+# Settings → Trusted Publishing → add a GitHub Actions publisher (repository
+# `lmorchard/byom-player`, workflow `release.yml`). The `id-token: write`
+# permission below lets Actions mint the short-lived OIDC token; npm generates
+# provenance automatically. No `NPM_TOKEN` secret required.
 
 on:
   push:
@@ -27,6 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # create the GitHub release
+      id-token: write # OIDC token for npm Trusted Publishing
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -35,8 +39,10 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: npm
           registry-url: https://registry.npmjs.org
+
+      - name: Upgrade npm (Trusted Publishing requires npm >= 11.5.1)
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: npm ci
@@ -55,10 +61,8 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Publish to npm
+      - name: Publish to npm (OIDC Trusted Publishing — no token)
         run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Generate checksums
         run: cd dist && sha256sum byom-player.js > checksums.txt
