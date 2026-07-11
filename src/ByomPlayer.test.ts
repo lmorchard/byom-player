@@ -784,8 +784,11 @@ describe('<byom-player>', () => {
 
   it('sets data-state on track rows', async () => {
     const { el } = await mount();
-    // Row 1 (index 1) is the orphaned track in the fixture.
-    expect(stateOf(el, 1, true)).toBe('orphan');
+    // Row 1 (index 1) is the orphaned track in the fixture — derive `orphaned`
+    // from the real track (as render() does via isOrphan) rather than hardcoding.
+    const rows = rowsOf(el);
+    expect(stateOf(el, 1, isOrphan(rows[1].t))).toBe('orphan');
+    expect(stateOf(el, 0, isOrphan(rows[0].t))).not.toBe('orphan');
   });
 
   it('data-state=active follows the playing row', async () => {
