@@ -2,7 +2,7 @@ name: Release
 
 # Cut an immutable, versioned release on a semver tag. Unlike the rolling `dist`
 # branch (mutable, jsDelivr-cache-prone), a published npm version is permanent,
-# so `https://cdn.jsdelivr.net/npm/byom-player@<version>/dist/byom-player.js`
+# so `https://cdn.jsdelivr.net/npm/@lmorchard/byom-player@<version>/dist/byom-player.js`
 # never goes stale. Consumers pin that URL instead of `@dist`.
 #
 # To release:
@@ -11,7 +11,8 @@ name: Release
 # The tag must match package.json's version, or this workflow fails fast.
 #
 # Requires an `NPM_TOKEN` repository secret (an npm automation token with
-# publish rights to the `byom-player` package).
+# publish rights to the `@lmorchard/byom-player` package). The `@lmorchard`
+# scope must be your npm username or an org you own.
 
 on:
   push:
@@ -76,7 +77,7 @@ jobs:
             CORS, never cache-stale because the version is permanent):
             ```html
             <script type="module"
-              src="https://cdn.jsdelivr.net/npm/byom-player@${{ steps.version.outputs.version }}/dist/byom-player.js"></script>
+              src="https://cdn.jsdelivr.net/npm/@lmorchard/byom-player@${{ steps.version.outputs.version }}/dist/byom-player.js"></script>
             <byom-player src="/playlist.jspf.json" provider="subsonic"></byom-player>
             ```
 
