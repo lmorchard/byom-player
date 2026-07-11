@@ -1,0 +1,14 @@
+{
+  "playlist": {
+    "title": "Cover Art Demo",
+    "creator": "Les",
+    "image": "https://i.scdn.co/image/ab67616d0000b2735aaec7d9b1c9a43292316229",
+    "track": [
+      { "title": "Threshold", "creator": "Perikkles", "album": "Threshold", "duration": 392, "image": "https://i.scdn.co/image/ab67616d0000b2735aaec7d9b1c9a43292316229" },
+      { "title": "Progress Is Dead", "creator": "Hyperfiction", "album": "Broken Mirror", "duration": 277, "image": "https://i.scdn.co/image/ab67616d0000b27329c164f1058b6ab03464b0a5" },
+      { "title": "Pardon Me", "creator": "Vexillary", "album": "Digital Suspiria", "duration": 315, "image": "https://i.scdn.co/image/ab67616d0000b273e068c97a270ff1a2e51d08cc" },
+      { "title": "Tragedy For You", "creator": "Darkness On Demand", "duration": 240 },
+      { "title": "Neurobashing", "creator": "Aesthetische", "duration": 300 }
+    ]
+  }
+}

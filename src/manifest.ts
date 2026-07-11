@@ -11,6 +11,7 @@ interface JspfTrack {
   duration?: number;
   identifier?: string[];
   location?: string[];
+  image?: string;
   extension?: Record<string, unknown[]>;
 }
 
@@ -26,6 +27,7 @@ export function loadManifest(json: unknown): Playlist {
     dateCreated: pl.date ?? pl.date_created,
     dateUpdated: readPlaylistDateUpdated(pl.extension),
     annotation: pl.annotation,
+    image: pl.image,
     tracks: tracks.map(mapTrack),
   };
 }
@@ -44,6 +46,7 @@ function mapTrack(t: JspfTrack): Track {
     album: t.album,
     isrc: parseIsrc(t.identifier),
     byomId: parseByomId(t.identifier),
+    image: t.image,
     durationMs: typeof t.duration === 'number' ? t.duration * 1000 : undefined,
     spotifyUrl: t.location?.[0],
     syncState: readSyncState(t.extension),

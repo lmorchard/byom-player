@@ -171,4 +171,21 @@ describe('loadManifest', () => {
   it('handles an empty/missing track list', () => {
     expect(loadManifest({ playlist: { title: 'Empty' } }).tracks).toEqual([]);
   });
+
+  it('reads track and playlist cover art from the JSPF image fields', () => {
+    const doc = {
+      playlist: {
+        title: 'Art',
+        image: 'https://img/playlist-cover.jpg',
+        track: [
+          { title: 'A', creator: 'X', image: 'https://img/track-a.jpg' },
+          { title: 'B', creator: 'Y' }, // no image
+        ],
+      },
+    };
+    const pl = loadManifest(doc);
+    expect(pl.image).toBe('https://img/playlist-cover.jpg');
+    expect(pl.tracks[0].image).toBe('https://img/track-a.jpg');
+    expect(pl.tracks[1].image).toBeUndefined();
+  });
 });
