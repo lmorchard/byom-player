@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sumDurationMs, formatTotalDuration, formatMonthYear } from './format';
+import { sumDurationMs, formatTotalDuration, formatMonthYear, formatDateRange } from './format';
 import type { Track } from './types';
 
 const t = (durationMs?: number): Track => ({ title: 't', artist: 'a', durationMs });
@@ -35,5 +35,24 @@ describe('formatMonthYear', () => {
   it('returns null for absent or unparseable input', () => {
     expect(formatMonthYear(undefined)).toBeNull();
     expect(formatMonthYear('not a date')).toBeNull();
+  });
+});
+
+describe('formatDateRange', () => {
+  it('shows a created–updated span', () => {
+    expect(formatDateRange('2023-02-15T12:00:00Z', '2026-06-15T12:00:00Z')).toBe(
+      'Feb 2023 – Jun 2026',
+    );
+  });
+  it('collapses to one month when both fall in the same month', () => {
+    expect(formatDateRange('2014-12-15T12:00:00Z', '2014-12-20T12:00:00Z')).toBe('Dec 2014');
+  });
+  it('shows the present side when only one is given', () => {
+    expect(formatDateRange('2023-02-15T12:00:00Z', undefined)).toBe('Feb 2023');
+    expect(formatDateRange(undefined, '2026-06-15T12:00:00Z')).toBe('Jun 2026');
+  });
+  it('returns null when neither is parseable', () => {
+    expect(formatDateRange(undefined, undefined)).toBeNull();
+    expect(formatDateRange('nope', 'nope')).toBeNull();
   });
 });

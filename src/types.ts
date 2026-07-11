@@ -27,6 +27,9 @@ export interface Playlist {
   title: string;
   creator?: string;
   dateCreated?: string;
+  // Latest track curation date, from the byom-sync playlist extension's
+  // `date_updated`; pairs with dateCreated for the meta-line range.
+  dateUpdated?: string;
   // Host-authored markdown blurb (the playlist's "story"), from JSPF `annotation`.
   annotation?: string;
   tracks: Track[];

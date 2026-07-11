@@ -24,9 +24,17 @@ export function loadManifest(json: unknown): Playlist {
     title: pl.title ?? '',
     creator: pl.creator,
     dateCreated: pl.date ?? pl.date_created,
+    dateUpdated: readPlaylistDateUpdated(pl.extension),
     annotation: pl.annotation,
     tracks: tracks.map(mapTrack),
   };
+}
+
+// readPlaylistDateUpdated pulls the playlist-level `date_updated` from the
+// byom-sync extension (JSPF's standard `date` carries date_created only).
+function readPlaylistDateUpdated(extension?: Record<string, unknown[]>): string | undefined {
+  const body = extension?.[BYOM_EXT_NS]?.[0] as any;
+  return typeof body?.date_updated === 'string' ? body.date_updated : undefined;
 }
 
 function mapTrack(t: JspfTrack): Track {
