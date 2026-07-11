@@ -526,7 +526,14 @@ export class ByomPlayer extends LitElement {
     const tryCenter = (behavior: ScrollBehavior): boolean => {
       const lr = this.lastRange;
       if (!lr || pos < lr.first || pos > lr.last) return false;
-      const el = scroller.querySelectorAll<HTMLElement>('li')[pos - lr.first];
+      const lis = scroller.querySelectorAll<HTMLElement>('li');
+      // lastRange is fed by the virtualizer's async rangeChanged, so just after a
+      // filter/playlist change it can momentarily describe the OLD rows while the
+      // DOM still holds them. When the rendered count doesn't match the range
+      // span, the two are out of sync — bail so the far-jump poll re-centers once
+      // the virtualizer catches up, rather than measuring a stale row.
+      if (lis.length !== lr.last - lr.first + 1) return false;
+      const el = lis[pos - lr.first];
       if (!el) return false;
       const rect = el.getBoundingClientRect();
       const rowTop = rect.top - scroller.getBoundingClientRect().top + scroller.scrollTop;

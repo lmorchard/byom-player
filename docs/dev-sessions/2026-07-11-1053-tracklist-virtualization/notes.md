@@ -101,9 +101,34 @@ Results (chromium, mock provider):
 
 No jank, no unbounded DOM growth, no host-page scroll. The feature holds at real scale.
 
+## Post-review refinements (centering evolved further)
+
+Live use surfaced more centering issues; the approach above was superseded:
+
+- **Full-width rows.** The virtualizer positions rows `absolute`, so they shrank to content
+  width and the duration no longer right-aligned. Fixed with `width:100%` on rows; also
+  widened the number column to fit 4-digit track numbers.
+- **Accumulating drift → measure, don't predict.** `pos * rowHeight` drifted (~169px at row
+  6000) because any row-height estimate differs from the virtualizer's true layout pitch by
+  a fraction of a pixel, times `pos`. Fixed by measuring the rendered row's real offset.
+- **"Every other track off-screen" → identify by position, not the `active` class.** The
+  virtualizer commits its row-content re-render (which row is `active`) on its own async
+  cycle, after our `updated()` hook, so centering read the previous active row. Fixed by
+  locating the target row by position (`querySelectorAll('li')[pos - lastRange.first]`,
+  DOM in position order), which is stable regardless of content-render timing; far jumps
+  approximate then center exactly once rendered.
+- **Rapid navigation guard.** A `centerToken` generation counter stops stale far-jump poll
+  loops from fighting a newer scroll.
+- **Stale-range guard.** The fast path bails when the rendered row count doesn't match the
+  reported range span (filter/playlist change racing an advance), deferring to the
+  self-healing poll.
+
+Final centering verified live at 0px offset across sequential advance, far/shuffle jumps,
+and rapid-fire bursts on the 8,319-track playlist.
+
 ## Verification
 
-- Unit: `npm test` → 291 passing (queue logic, pure helpers, row-state, availability +
+- Unit: `npm test` → 290 passing (queue logic, pure helpers, row-state, availability +
   viewport-mapping wiring, centering math).
 - `npx tsc --noEmit` clean; `npm run build` OK (`dist/byom-player.js` 172.66 kB / gzip 44.86 kB);
   `npm run lint` clean.
