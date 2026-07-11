@@ -17,6 +17,8 @@ export interface Track {
   byomId?: string;
   durationMs?: number;
   spotifyUrl?: string;
+  // Cover art URL (JSPF track `image`), rendered as a tracklist thumbnail.
+  image?: string;
   syncState?: SyncState;
   // Provider ids resolved ahead of time (by byom-sync) and carried in the
   // manifest extension, so the player can skip an on-demand lookup.
@@ -32,5 +34,7 @@ export interface Playlist {
   dateUpdated?: string;
   // Host-authored markdown blurb (the playlist's "story"), from JSPF `annotation`.
   annotation?: string;
+  // Playlist-level cover art URL (JSPF playlist `image`).
+  image?: string;
   tracks: Track[];
 }
