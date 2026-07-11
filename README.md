@@ -27,23 +27,26 @@ delegated to pluggable **Audio Provider** adapters.
 
 ## Usage
 
-Load the latest build via jsDelivr (rebuilt on every push to `main`), self-host
-the downloadable release asset, or build it yourself (see Development):
+Load a pinned release from npm via jsDelivr (recommended), self-host the
+downloadable release asset, or build it yourself (see Development):
 
 ```html
 <script
   type="module"
-  src="https://cdn.jsdelivr.net/gh/lmorchard/byom-player@dist/byom-player.js"
+  src="https://cdn.jsdelivr.net/npm/@lmorchard/byom-player@1.0.0/dist/byom-player.js"
 ></script>
 
 <byom-player src="/playlists/road-trip.jspf.json" provider="subsonic"></byom-player>
 ```
 
-> jsDelivr serves the module from the `dist` branch with the correct MIME type
-> and CORS headers. The GitHub release asset (`…/releases/download/latest/…`) is
-> a download for self-hosting — it can't be used directly in a `<script>` tag
-> (served as `application/octet-stream`). npm publishing is planned once the
-> component matures.
+> Pin an explicit version. jsDelivr serves it with the correct MIME type and CORS
+> headers, and because a published npm version is immutable it's never
+> cache-stale. For the bleeding edge instead, the `dist` branch is rebuilt on
+> every push to `main` (`…/gh/lmorchard/byom-player@dist/byom-player.js`) — but as
+> a mutable ref it can serve a stale cached build until the CDN refreshes. The
+> GitHub release asset (`…/releases/download/vX.Y.Z/…`) is a download for
+> self-hosting — it can't be used directly in a `<script>` tag (served as
+> `application/octet-stream`). See [Releasing](#releasing).
 
 ### Configuring providers
 
@@ -362,6 +365,47 @@ The exporter is deterministic, so unchanged source YAML produces byte-identical
 output — `git diff public/playlists/` shows only what actually changed. YouTube
 IDs land at `track.extension["…byom-sync"][0].resolved.youtube`, which the
 `youtube` provider reads to skip an on-demand lookup.
+
+## Releasing
+
+Tagged versions are published to npm as
+[`@lmorchard/byom-player`](https://www.npmjs.com/package/@lmorchard/byom-player)
+by `release.yml` using [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers)
+(OIDC — no stored token), with a provenance attestation. jsDelivr then serves
+each version immutably at `…/npm/@lmorchard/byom-player@<version>/dist/byom-player.js`.
+
+(`rolling-release.yml` still rebuilds the `dist` branch + `latest` prerelease on
+every push to `main` for bleeding-edge use; tagged npm versions are the stable
+channel.)
+
+To cut a release:
+
+```sh
+# 1. Bump the version (updates package.json + lockfile; no git tag yet)
+npm version <major|minor|patch> --no-git-tag-version
+
+# 2. Update the version in the README "Usage" <script> example to match.
+
+# 3. Commit, open a PR, merge to main.
+
+# 4. Tag the merged commit and push — this triggers release.yml:
+git tag vX.Y.Z origin/main
+git push origin vX.Y.Z
+```
+
+`release.yml` runs CI, verifies the tag matches `package.json`'s version (fails
+fast otherwise), builds, publishes to npm via OIDC, and cuts a GitHub release
+with `byom-player.js` + `checksums.txt` attached.
+
+Notes:
+
+- **Trusted publisher** is configured once on npmjs.com (package Settings →
+  Trusted Publishing → GitHub Actions: repo `lmorchard/byom-player`, workflow
+  `release.yml`). No `NPM_TOKEN` secret needed.
+- The package ships only `dist/*.js` (`files` in `package.json`) — the module
+  plus its code-split chunk, not the demo playlists or harness assets.
+- Provenance requires `package.json`'s `repository.url` to match this repo —
+  don't remove it, or publish fails with `E422`.
 
 ## License
 
