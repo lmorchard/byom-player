@@ -119,6 +119,7 @@ const clickRow = (el: ByomPlayer, i: number) =>
   (el as unknown as { onRowClick(i: number): void }).onRowClick(i);
 const availabilityOf = (el: ByomPlayer) =>
   (el as unknown as { availability: Map<number, string> }).availability;
+const checkingOf = (el: ByomPlayer) => (el as unknown as { checking: Set<number> }).checking;
 const fireRangeChanged = (el: ByomPlayer, first: number, last: number) =>
   (el as unknown as { onRangeChanged(e: { first: number; last: number }): void }).onRangeChanged({
     first,
@@ -530,6 +531,36 @@ describe('<byom-player>', () => {
     expect(availability.has(20)).toBe(true);
     expect(availability.has(25)).toBe(true);
     expect(availability.has(30)).toBe(true);
+  });
+
+  it('prunes queued checks that scroll out of view before they run', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ json: async () => bigJspf } as Response);
+    const provider = new ControllableProvider();
+    // Every check hangs, so requested-but-unchecked indices stay observable in
+    // `checking` (nothing drains past the first in-flight item).
+    (provider as AudioProvider).checkAvailability = () => new Promise<never>(() => {});
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/big.jspf.json';
+    el.providerFactory = () => provider;
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+
+    // Scroll to one window, then to a non-overlapping one before the first drains.
+    fireRangeChanged(el, 20, 25);
+    await el.updateComplete;
+    expect(checkingOf(el).has(22)).toBe(true); // queued from the first window
+
+    fireRangeChanged(el, 40, 45);
+    await el.updateComplete;
+    // The first window's queued-but-unstarted checks were pruned…
+    expect(checkingOf(el).has(22)).toBe(false);
+    expect(checkingOf(el).has(24)).toBe(false);
+    // …and the new window is queued instead.
+    expect(checkingOf(el).has(42)).toBe(true);
+    expect(checkingOf(el).has(44)).toBe(true);
   });
 
   it('renders progress from the provider and seeks on change', async () => {

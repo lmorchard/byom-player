@@ -113,4 +113,65 @@ describe('AvailabilityQueue', () => {
     expect(calls).toBeLessThanOrEqual(1); // at most the in-flight check
     expect(q.request([0, 1, 2])).toEqual([]); // ignores further requests
   });
+
+  // A provider whose first check hangs until released, so we can prune while an
+  // index is queued-but-unstarted (and one is mid-check).
+  function gatedProvider(): { provider: AudioProvider; release: () => void } {
+    let release = (): void => {};
+    const provider = providerWith((t) =>
+      t.title === 'a'
+        ? new Promise<AvailabilityStatus>((r) => {
+            release = () => r('available');
+          })
+        : Promise.resolve('available'),
+    );
+    return { provider, release: () => release() };
+  }
+
+  it('retain drops queued-but-unstarted indices and returns them', async () => {
+    const { provider, release } = gatedProvider();
+    const results: number[] = [];
+    const q = new AvailabilityQueue(provider, tracks, (i) => results.push(i), { delayMs: 0 });
+    q.request([0, 1, 2]); // 0 goes in-flight (hangs); 1 & 2 stay queued
+    await tick();
+    const dropped = q.retain(new Set([0])).sort();
+    expect(dropped).toEqual([1, 2]);
+    release(); // let the in-flight check for 0 finish
+    await tick();
+    expect(results).toEqual([0]); // only 0 was checked; 1 & 2 were pruned
+  });
+
+  it('lets the in-flight check finish even if pruned from the keep set', async () => {
+    const { provider, release } = gatedProvider();
+    const results: number[] = [];
+    const q = new AvailabilityQueue(provider, tracks, (i) => results.push(i), { delayMs: 0 });
+    q.request([0, 1, 2]);
+    await tick();
+    q.retain(new Set()); // keep nothing — 0 is mid-check, 1 & 2 dropped
+    release();
+    await tick();
+    expect(results).toEqual([0]); // the in-flight check completed
+  });
+
+  it('re-checks a dropped index when it is requested again', async () => {
+    const { provider, release } = gatedProvider();
+    const results: number[] = [];
+    const q = new AvailabilityQueue(provider, tracks, (i) => results.push(i), { delayMs: 0 });
+    q.request([0, 1, 2]);
+    await tick();
+    q.retain(new Set([0])); // drop 1 & 2 (never checked, not "done")
+    expect(q.request([1])).toEqual([1]); // eligible again — not in done/queued
+    release();
+    await tick();
+    expect(results.sort()).toEqual([0, 1]); // 1 got checked on re-request
+  });
+
+  it('never re-checks an already-checked index after retain', async () => {
+    const p = providerWith(async () => 'available');
+    const q = new AvailabilityQueue(p, tracks, () => {}, { delayMs: 0 });
+    q.request([0, 1, 2]);
+    await tick(); // all three become "done"
+    expect(q.retain(new Set())).toEqual([]); // nothing pending to drop
+    expect(q.request([0, 1, 2])).toEqual([]); // done indices stay done
+  });
 });
