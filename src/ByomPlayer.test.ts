@@ -184,6 +184,55 @@ describe('<byom-player>', () => {
     expect(provider.loadedIndex).toContain('C');
   });
 
+  it('shows the transport preview badge when the Spotify embed reports a 30s preview', async () => {
+    const provider = new ControllableProvider();
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.provider = 'spotify';
+    el.providerFactory = () => provider;
+    el.skipDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+
+    clickRow(el, 0); // play track A (manifest 60s)
+    await settle(el);
+    const badge = () => el.shadowRoot!.querySelector('.preview-badge');
+
+    // Full-length progress → no badge.
+    provider.emitProgress(1000, 60_000);
+    await el.updateComplete;
+    expect(badge()).toBeNull();
+
+    // 30s embed duration against a 60s manifest track → preview badge.
+    provider.emitProgress(1000, 30_000);
+    await el.updateComplete;
+    expect(badge()).not.toBeNull();
+
+    // Back to full (e.g. viewer clicked Spotify's own ▶) → badge clears.
+    provider.emitProgress(1000, 60_000);
+    await el.updateComplete;
+    expect(badge()).toBeNull();
+  });
+
+  it('never shows the preview badge for a non-Spotify provider', async () => {
+    const provider = new ControllableProvider();
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.provider = 'subsonic';
+    el.providerFactory = () => provider;
+    el.skipDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+
+    clickRow(el, 0);
+    await settle(el);
+    provider.emitProgress(1000, 30_000);
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.preview-badge')).toBeNull();
+  });
+
   it('filters the tracklist by title/artist (case-insensitive)', async () => {
     const { el } = await mount();
     await setFilter(el, 'bb');
