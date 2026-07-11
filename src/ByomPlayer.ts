@@ -472,17 +472,30 @@ export class ByomPlayer extends LitElement {
     }
   }
 
-  // Scroll the virtualized list so the active row is centered. The virtualizer
-  // owns scroll position, so we translate the real track index into its position
-  // within the filtered rows. No-op if the active track is filtered out, or in
-  // environments without layout (tests).
+  // Scroll the virtualized list so the active row is centered. We translate the
+  // real track index into its position within the filtered rows, then compute
+  // the scroll offset arithmetically from a measured row height. Rows are
+  // fixed-height, so this works for ANY index — including far, not-yet-rendered
+  // rows a shuffle jump lands on, where the virtualizer's own scrollToIndex
+  // (element(i)?.scrollIntoView) can't resolve an off-screen element. No-op if
+  // the active track is filtered out, the list is empty, or there's no layout
+  // engine (happy-dom in tests).
   private centerActiveTrack(): void {
     const pos = this.filteredRows.findIndex((r) => r.i === this.currentIndex);
     if (pos < 0) return;
-    // scrollToIndex is optional-chained so environments without a layout engine
-    // (happy-dom in tests) degrade gracefully rather than throw.
-    const v = this.renderRoot.querySelector('lit-virtualizer');
-    v?.scrollToIndex?.(pos, 'center');
+    const scroller = this.renderRoot.querySelector<HTMLElement>('.tracklist');
+    const row = scroller?.querySelector<HTMLElement>('li');
+    const rowH = row?.getBoundingClientRect().height ?? 0;
+    if (!scroller || rowH <= 0) return; // no layout (tests) → degrade gracefully
+    // Center the row's slot (top = pos * rowH in the reserved virtual space).
+    const target = pos * rowH - (scroller.clientHeight - rowH) / 2;
+    const max = scroller.scrollHeight - scroller.clientHeight;
+    const top = Math.max(0, Math.min(target, max));
+    // Smoothly nudge for a nearby row (the common next/prev case); jump instantly
+    // for a far target (e.g. a shuffle advance) — animating across thousands of
+    // rows would be slow and churn the virtualizer.
+    const far = Math.abs(top - scroller.scrollTop) > scroller.clientHeight * 3;
+    scroller.scrollTo?.({ top, behavior: far ? 'auto' : 'smooth' });
   }
 
   private selectTrack(index: number): void {
@@ -850,15 +863,15 @@ export class ByomPlayer extends LitElement {
         <div class="tracklist-empty">
           ${rows.length === 0 && q ? html`<p class="no-matches">No tracks match "${q}"</p>` : nothing}
         </div>
-        <lit-virtualizer
-          class="tracklist"
-          part="tracklist"
-          role="list"
-          .items=${rows}
-          .keyFunction=${(row: { i: number }) => row.i}
-          .renderItem=${(row: { t: Track; i: number }) => this.renderRow(row.t, row.i, playing)}
-          @rangeChanged=${this.onRangeChanged}
-        ></lit-virtualizer>
+        <div class="tracklist" part="tracklist">
+          <lit-virtualizer
+            role="list"
+            .items=${rows}
+            .keyFunction=${(row: { i: number }) => row.i}
+            .renderItem=${(row: { t: Track; i: number }) => this.renderRow(row.t, row.i, playing)}
+            @rangeChanged=${this.onRangeChanged}
+          ></lit-virtualizer>
+        </div>
         <div class="video" part="video"></div>
       </div>
       <div class="settings-overlay" ?hidden=${this.view === 'list'} @click=${this.onOverlayClick}>
