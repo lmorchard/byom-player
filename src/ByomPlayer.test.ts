@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import './ByomPlayer';
-import type { ByomPlayer } from './ByomPlayer';
+import { ByomPlayer, matchesFilter, isOrphan } from './ByomPlayer';
+import type { Track } from './types';
 import { BYOM_EXT_NS } from './manifest';
 import { loadSettings, saveSettings } from './settings';
 import type { AudioProvider, ProviderState } from './providers/types';
@@ -76,8 +77,6 @@ async function mount(): Promise<{ el: ByomPlayer; provider: ControllableProvider
   return { el, provider };
 }
 
-const lis = (el: ByomPlayer) => Array.from(el.shadowRoot!.querySelectorAll('.tracklist li'));
-
 // Flush pending microtasks/macrotasks (async provider load→play chain), then the render.
 async function settle(el: ByomPlayer): Promise<void> {
   await new Promise((r) => setTimeout(r, 0));
@@ -92,6 +91,39 @@ async function setFilter(el: ByomPlayer, value: string): Promise<void> {
   await el.updateComplete;
 }
 
+// Reach private state/helpers for assertions (no public API for these).
+const rowsOf = (el: ByomPlayer) =>
+  (el as unknown as { filteredRows: Array<{ t: Track; i: number }> }).filteredRows;
+const stateOf = (el: ByomPlayer, i: number, orphaned = false) =>
+  (el as unknown as { trackState(i: number, o: boolean): string }).trackState(i, orphaned);
+const indexOf = (el: ByomPlayer) => (el as unknown as { currentIndex: number }).currentIndex;
+const clickRow = (el: ByomPlayer, i: number) =>
+  (el as unknown as { onRowClick(i: number): void }).onRowClick(i);
+
+describe('matchesFilter', () => {
+  const t: Track = { title: 'Black Out Days', artist: 'Phantogram', album: 'Voices' };
+  it('matches everything on an empty query', () => {
+    expect(matchesFilter(t, '')).toBe(true);
+    expect(matchesFilter(t, '   ')).toBe(true);
+  });
+  it('matches title/artist/album case-insensitively', () => {
+    expect(matchesFilter(t, 'phantogram')).toBe(true);
+    expect(matchesFilter(t, 'VOICES')).toBe(true);
+    expect(matchesFilter(t, 'black out')).toBe(true);
+  });
+  it('does not match unrelated text', () => {
+    expect(matchesFilter(t, 'zzz')).toBe(false);
+  });
+});
+
+describe('isOrphan', () => {
+  it('is true only when spotifyPresent is explicitly false', () => {
+    expect(isOrphan({ title: 'a', artist: 'a', syncState: { spotifyPresent: false } })).toBe(true);
+    expect(isOrphan({ title: 'a', artist: 'a', syncState: { spotifyPresent: true } })).toBe(false);
+    expect(isOrphan({ title: 'a', artist: 'a' })).toBe(false);
+  });
+});
+
 describe('<byom-player>', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -104,66 +136,67 @@ describe('<byom-player>', () => {
     document.body.innerHTML = '';
   });
 
-  it('loads the manifest and renders title + one row per track', async () => {
+  it('loads the manifest and derives one row per track', async () => {
     const { el } = await mount();
     expect(el.shadowRoot!.querySelector('.title')!.textContent).toContain('Test PL');
-    expect(lis(el)).toHaveLength(3);
+    expect(rowsOf(el)).toHaveLength(3);
   });
 
   it('marks orphaned tracks (spotify_present === false)', async () => {
     const { el } = await mount();
-    expect(lis(el)[1].classList.contains('orphan')).toBe(true);
-    expect(lis(el)[0].classList.contains('orphan')).toBe(false);
+    const rows = rowsOf(el);
+    expect(isOrphan(rows[1].t)).toBe(true);
+    expect(isOrphan(rows[0].t)).toBe(false);
   });
 
-  it('clicking a track selects and plays it, moving .active', async () => {
+  it('selecting a track plays it and makes it active', async () => {
     const { el, provider } = await mount();
-    (lis(el)[2] as HTMLElement).click();
+    clickRow(el, 2);
     await settle(el);
-    expect(lis(el)[2].classList.contains('active')).toBe(true);
-    expect(lis(el)[0].classList.contains('active')).toBe(false);
+    expect(indexOf(el)).toBe(2);
+    expect(stateOf(el, 2)).toBe('active');
+    expect(stateOf(el, 0)).not.toBe('active');
     expect(provider.loadedIndex).toContain('C');
   });
 
   it('filters the tracklist by title/artist (case-insensitive)', async () => {
     const { el } = await mount();
     await setFilter(el, 'bb');
-    expect(lis(el)).toHaveLength(1);
-    expect(lis(el)[0].querySelector('.t-title')!.textContent).toBe('B');
+    expect(rowsOf(el).map((r) => r.t.title)).toEqual(['B']);
     await setFilter(el, 'BB');
-    expect(lis(el)).toHaveLength(1);
-    expect(lis(el)[0].querySelector('.t-title')!.textContent).toBe('B');
+    expect(rowsOf(el).map((r) => r.t.title)).toEqual(['B']);
   });
 
   it('filters the tracklist by album (even though album is not shown)', async () => {
     const { el } = await mount();
     await setFilter(el, 'greatest');
-    expect(lis(el)).toHaveLength(1);
-    expect(lis(el)[0].querySelector('.t-title')!.textContent).toBe('C');
+    expect(rowsOf(el).map((r) => r.t.title)).toEqual(['C']);
   });
 
   it('shows all tracks when the query is cleared', async () => {
     const { el } = await mount();
     await setFilter(el, 'zzz');
-    expect(lis(el)).toHaveLength(0);
+    expect(rowsOf(el)).toHaveLength(0);
     await setFilter(el, '');
-    expect(lis(el)).toHaveLength(3);
+    expect(rowsOf(el)).toHaveLength(3);
   });
 
-  it('clicking a filtered row plays the correct real track', async () => {
+  it('selecting a filtered row plays the correct real track', async () => {
     const { el, provider } = await mount();
     await setFilter(el, 'cc');
-    expect(lis(el)).toHaveLength(1);
-    (lis(el)[0] as HTMLElement).click();
+    const rows = rowsOf(el);
+    expect(rows).toHaveLength(1);
+    clickRow(el, rows[0].i);
     await settle(el);
     expect(provider.loadedIndex).toContain('C');
-    expect(lis(el)[0].classList.contains('active')).toBe(true);
+    expect(indexOf(el)).toBe(2); // real index of C, not the filtered position
+    expect(stateOf(el, rows[0].i)).toBe('active');
   });
 
   it('shows a no-matches message when nothing matches', async () => {
     const { el } = await mount();
     await setFilter(el, 'zzz');
-    expect(lis(el)).toHaveLength(0);
+    expect(rowsOf(el)).toHaveLength(0);
     const msg = el.shadowRoot!.querySelector('.no-matches');
     expect(msg).not.toBeNull();
     expect(msg!.textContent).toContain('zzz');
@@ -172,12 +205,12 @@ describe('<byom-player>', () => {
   it('clear button empties the query and restores all rows', async () => {
     const { el } = await mount();
     await setFilter(el, 'cc');
-    expect(lis(el)).toHaveLength(1);
+    expect(rowsOf(el)).toHaveLength(1);
     const clearBtn = el.shadowRoot!.querySelector<HTMLElement>('.filter-clear');
     expect(clearBtn).not.toBeNull();
     clearBtn!.click();
     await el.updateComplete;
-    expect(lis(el)).toHaveLength(3);
+    expect(rowsOf(el)).toHaveLength(3);
     const input = el.shadowRoot!.querySelector<HTMLInputElement>('.filter-input')!;
     expect(input.value).toBe('');
   });
@@ -230,11 +263,11 @@ describe('<byom-player>', () => {
   it('Escape clears the query and restores all rows', async () => {
     const { el } = await mount();
     await setFilter(el, 'cc');
-    expect(lis(el)).toHaveLength(1);
+    expect(rowsOf(el)).toHaveLength(1);
     const input = el.shadowRoot!.querySelector<HTMLInputElement>('.filter-input')!;
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     await el.updateComplete;
-    expect(lis(el)).toHaveLength(3);
+    expect(rowsOf(el)).toHaveLength(3);
     expect(input.value).toBe('');
   });
 
@@ -249,10 +282,10 @@ describe('<byom-player>', () => {
     const { el, provider } = await mount();
     await el['controller']!.start(0);
     await el.updateComplete;
-    expect(lis(el)[0].classList.contains('active')).toBe(true);
+    expect(stateOf(el, 0)).toBe('active');
     provider.emit('ended');
     await el.updateComplete;
-    expect(lis(el)[1].classList.contains('active')).toBe(true);
+    expect(stateOf(el, 1)).toBe('active');
   });
 
   it('flags a track unavailable and advances on error', async () => {
@@ -261,11 +294,11 @@ describe('<byom-player>', () => {
     await el.updateComplete;
     provider.emit('error');
     await el.updateComplete;
-    expect(lis(el)[0].classList.contains('unavailable')).toBe(true);
-    expect(lis(el)[1].classList.contains('active')).toBe(true);
+    expect(stateOf(el, 0)).toBe('unavailable');
+    expect(stateOf(el, 1)).toBe('active');
   });
 
-  it('marks tracks unavailable from the background availability sweep', async () => {
+  it('marks tracks unavailable from the background prescan', async () => {
     const provider = new ControllableProvider();
     (provider as AudioProvider).checkAvailability = async (t) =>
       t.title === 'B' ? 'unavailable' : 'available';
@@ -280,8 +313,8 @@ describe('<byom-player>', () => {
     // let the sweep finish
     await new Promise((r) => setTimeout(r, 0));
     await el.updateComplete;
-    expect(lis(el)[1].classList.contains('unavailable')).toBe(true);
-    expect(lis(el)[0].classList.contains('unavailable')).toBe(false);
+    expect(stateOf(el, 1)).toBe('unavailable');
+    expect(stateOf(el, 0)).not.toBe('unavailable');
   });
 
   it('re-scans availability when the provider fires onReset (session change)', async () => {
@@ -304,14 +337,14 @@ describe('<byom-player>', () => {
     await el.updateComplete;
     await new Promise((r) => setTimeout(r, 0));
     await el.updateComplete;
-    expect(lis(el)[1].classList.contains('unavailable')).toBe(true);
+    expect(stateOf(el, 1)).toBe('unavailable');
 
     sessionChanged = true; // session changed under us
     fireReset();
     await new Promise((r) => setTimeout(r, 0)); // let the re-scan run
     await el.updateComplete;
     // B was re-evaluated against the new session — no longer unavailable.
-    expect(lis(el)[1].classList.contains('unavailable')).toBe(false);
+    expect(stateOf(el, 1)).not.toBe('unavailable');
   });
 
   it('toggles shuffle via the control button', async () => {
@@ -324,7 +357,7 @@ describe('<byom-player>', () => {
     expect(btn.getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('shows a pending state for tracks the prescan has not reached yet', async () => {
+  it('shows a pending state for tracks not yet resolved', async () => {
     const provider = new ControllableProvider();
     // Track A resolves immediately; the rest hang, so the sweep stalls on track 1.
     (provider as AudioProvider).checkAvailability = (t) =>
@@ -339,9 +372,9 @@ describe('<byom-player>', () => {
     await el.updateComplete;
     await new Promise((r) => setTimeout(r, 0));
     await el.updateComplete;
-    expect(lis(el)[0].classList.contains('pending')).toBe(false); // checked (available)
-    expect(lis(el)[1].classList.contains('pending')).toBe(true); // not yet reached
-    expect(lis(el)[2].classList.contains('pending')).toBe(true);
+    expect(stateOf(el, 0)).not.toBe('pending'); // checked (available)
+    expect(stateOf(el, 1)).toBe('pending');
+    expect(stateOf(el, 2)).toBe('pending');
   });
 
   it('renders progress from the provider and seeks on change', async () => {
@@ -752,14 +785,14 @@ describe('<byom-player>', () => {
   it('sets data-state on track rows', async () => {
     const { el } = await mount();
     // Row 1 (index 1) is the orphaned track in the fixture.
-    expect(lis(el)[1].getAttribute('data-state')).toBe('orphan');
+    expect(stateOf(el, 1, true)).toBe('orphan');
   });
 
   it('data-state=active follows the playing row', async () => {
     const { el } = await mount();
-    (lis(el)[2] as HTMLElement).click();
+    clickRow(el, 2);
     await settle(el);
-    expect(lis(el)[2].getAttribute('data-state')).toBe('active');
+    expect(stateOf(el, 2)).toBe('active');
   });
 
   it('renders the playlist annotation as inline markdown', async () => {
@@ -780,23 +813,25 @@ describe('<byom-player>', () => {
   it('numbers rows by real playlist position, even while filtered', async () => {
     const { el } = await mount();
     await setFilter(el, 'cc'); // matches only track C (real index 2)
-    expect(lis(el)).toHaveLength(1);
-    expect(lis(el)[0].querySelector('.idx')!.textContent!.trim()).toBe('3');
+    const rows = rowsOf(el);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].i).toBe(2); // real playlist position, not the filtered position
   });
 
   it('shows each track duration in the row', async () => {
     const { el } = await mount();
-    expect(lis(el)[0].querySelector('.dur')!.textContent!.trim()).toBe('1:00'); // 60s
-    expect(lis(el)[1].querySelector('.dur')!.textContent!.trim()).toBe('2:00'); // 120s
+    const rowEls = el.shadowRoot!.querySelectorAll<HTMLElement>('.tracklist li');
+    expect(rowEls[0].querySelector('.dur')!.textContent!.trim()).toBe('1:00'); // 60s
+    expect(rowEls[1].querySelector('.dur')!.textContent!.trim()).toBe('2:00'); // 120s
   });
 
   it('clicking the active row toggles play/pause (does not restart)', async () => {
     const { el, provider } = await mount();
     await el['controller']!.start(0);
     await el.updateComplete;
-    expect(lis(el)[0].classList.contains('active')).toBe(true);
+    expect(stateOf(el, 0)).toBe('active');
     const loadsBefore = provider.loadedIndex.length;
-    (lis(el)[0] as HTMLElement).click(); // active row → toggle, not reload
+    clickRow(el, 0); // active row → toggle, not reload
     await settle(el);
     expect(provider.loadedIndex.length).toBe(loadsBefore); // no reload
     expect(el.shadowRoot!.querySelector('.playpause')!.textContent!.trim()).toBe('▶'); // paused

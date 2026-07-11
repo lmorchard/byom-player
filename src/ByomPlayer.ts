@@ -24,6 +24,24 @@ import {
 
 type ProviderFactory = (name: string, config: Record<string, unknown>) => AudioProvider;
 
+// Case-insensitive substring match against title, artist, and album. An empty
+// query matches everything.
+export function matchesFilter(track: Track, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return (
+    track.title.toLowerCase().includes(q) ||
+    track.artist.toLowerCase().includes(q) ||
+    (track.album?.toLowerCase().includes(q) ?? false)
+  );
+}
+
+// A track is "orphaned" when byom-sync recorded it as no longer present in its
+// Spotify source.
+export function isOrphan(track: Track): boolean {
+  return track.syncState?.spotifyPresent === false;
+}
+
 // Built-in themes offered in the Appearance picker. '' = Auto (follow OS).
 // Each named value matches a :host([theme='...']) palette block in `static styles`.
 const THEMES: Array<{ value: string; label: string }> = [
@@ -456,16 +474,14 @@ export class ByomPlayer extends LitElement {
     if (await this.loadPlaylist()) await this.initProvider();
   }
 
-  // Case-insensitive substring match against title, artist, and album. An empty
-  // query matches everything.
-  private matchesFilter(t: Track): boolean {
-    const q = this.filterQuery.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      t.title.toLowerCase().includes(q) ||
-      t.artist.toLowerCase().includes(q) ||
-      (t.album?.toLowerCase().includes(q) ?? false)
-    );
+  // Derived, filtered view — never mutates pl.tracks or playback indices. Each
+  // row carries its real pl.tracks index so selection maps back correctly.
+  private get filteredRows(): Array<{ t: Track; i: number }> {
+    const pl = this.playlist;
+    if (!pl) return [];
+    return pl.tracks
+      .map((t, i) => ({ t, i }))
+      .filter(({ t }) => matchesFilter(t, this.filterQuery));
   }
 
   private onFilterInput(e: Event): void {
@@ -574,10 +590,8 @@ export class ByomPlayer extends LitElement {
   render() {
     const pl = this.playlist;
     if (!pl) return html`<div class="loading">Loading…</div>`;
-    // Derived, filtered view — never mutates pl.tracks or playback indices. Each
-    // row carries its real pl.tracks index so selection maps back correctly.
     const q = this.filterQuery.trim();
-    const rows = pl.tracks.map((t, i) => ({ t, i })).filter(({ t }) => this.matchesFilter(t));
+    const rows = this.filteredRows;
     const playing = this.playbackState === 'playing';
     // The selector's visible label is the current playlist's title (from the
     // <byom-playlist> children), falling back to the loaded manifest title.
@@ -749,7 +763,7 @@ export class ByomPlayer extends LitElement {
         </div>
         <ol class="tracklist" part="tracklist">
           ${rows.map(({ t, i }) => {
-            const orphaned = t.syncState?.spotifyPresent === false;
+            const orphaned = isOrphan(t);
             const state = this.trackState(i, orphaned);
             // The active row's glyph mirrors playback; any other row offers play.
             const glyph = state === 'active' ? (playing ? '⏸' : '▶') : '▶';
