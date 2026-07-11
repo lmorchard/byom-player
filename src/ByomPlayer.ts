@@ -1,6 +1,7 @@
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
+import '@lit-labs/virtualizer';
 import type { Playlist, Track } from './types';
 import { renderMarkdownInline } from './markdown';
 import { sumDurationMs, formatTotalDuration, formatDateRange } from './format';
@@ -141,6 +142,9 @@ export class ByomPlayer extends LitElement {
   private activeProvider: AudioProvider | null = null;
   private sweepAbort: AbortController | null = null;
   private seeking = false; // user is dragging the progress bar
+  // The virtualizer's most recently reported rendered index range (positions
+  // within the filtered rows). Recorded now; Task 4 uses it to drive checks.
+  private lastRange: { first: number; last: number } | null = null;
   private commitTimer: ReturnType<typeof setTimeout> | null = null;
   private commitDelayMs = 600; // debounce before auto-applying a field edit
 
@@ -432,18 +436,17 @@ export class ByomPlayer extends LitElement {
     if (changed.has('currentIndex')) this.centerActiveTrack();
   }
 
-  // Scroll the tracklist so the active row sits as close to the vertical center
-  // as its scroll range allows. Only the list scrolls — never the host page.
+  // Scroll the virtualized list so the active row is centered. The virtualizer
+  // owns scroll position, so we translate the real track index into its position
+  // within the filtered rows. No-op if the active track is filtered out, or in
+  // environments without layout (tests).
   private centerActiveTrack(): void {
-    const list = this.renderRoot.querySelector<HTMLElement>('.tracklist');
-    const active = list?.querySelector<HTMLElement>('li.active');
-    if (!list || !active) return;
-    const listRect = list.getBoundingClientRect();
-    const activeRect = active.getBoundingClientRect();
-    const delta = activeRect.top - listRect.top - (list.clientHeight - active.clientHeight) / 2;
-    // Optional-chained: environments without layout (e.g. happy-dom in tests)
-    // don't implement scrollBy.
-    list.scrollBy?.({ top: delta, behavior: 'smooth' });
+    const pos = this.filteredRows.findIndex((r) => r.i === this.currentIndex);
+    if (pos < 0) return;
+    // scrollToIndex is optional-chained so environments without a layout engine
+    // (happy-dom in tests) degrade gracefully rather than throw.
+    const v = this.renderRoot.querySelector('lit-virtualizer');
+    v?.scrollToIndex?.(pos, 'center');
   }
 
   private selectTrack(index: number): void {
@@ -586,6 +589,55 @@ export class ByomPlayer extends LitElement {
     if (pending) return 'pending';
     return '';
   }
+
+  // The per-row template, rendered by the virtualizer for each visible item.
+  private renderRow(t: Track, i: number, playing: boolean) {
+    const orphaned = isOrphan(t);
+    const state = this.trackState(i, orphaned);
+    // The active row's glyph mirrors playback; any other row offers play.
+    const glyph = state === 'active' ? (playing ? '⏸' : '▶') : '▶';
+    return html`
+      <li
+        class=${this.trackClasses(i, orphaned)}
+        part="track"
+        role="listitem"
+        data-state=${state}
+        @click=${() => this.onRowClick(i)}
+      >
+        <span class="num" part="track-number">
+          <span class="idx">${state === 'pending' ? '⋯' : i + 1}</span>
+          <span class="glyph">${glyph}</span>
+        </span>
+        <span class="thumb" part="track-art">
+          ${
+            t.image
+              ? html`<img src=${t.image} alt="" loading="lazy" />`
+              : html`<span class="thumb-ph" aria-hidden="true">♪</span>`
+          }
+        </span>
+        <span class="cell">
+          <span class="t-title">${t.title}</span>
+          <span class="t-artist">${t.artist}</span>
+        </span>
+        <span class="dur"
+          >${
+            state === 'unavailable' ? '✕' : t.durationMs ? ByomPlayer.formatTime(t.durationMs) : ''
+          }</span
+        >
+      </li>
+    `;
+  }
+
+  // The virtualizer reports its rendered index range (positions within the
+  // filtered rows). Recorded here; Task 4 uses it to drive availability checks.
+  // Payload matches @lit-labs/virtualizer's RangeChangedEvent (numeric
+  // first/last); read defensively so the handler is safe under happy-dom.
+  private onRangeChanged = (e: Event): void => {
+    const { first, last } = e as Event & { first?: number; last?: number };
+    if (typeof first !== 'number' || typeof last !== 'number' || first < 0) return;
+    this.lastRange = { first, last };
+    if (this.debug) console.debug('[byom-player] tracklist range', this.lastRange);
+  };
 
   render() {
     const pl = this.playlist;
@@ -761,47 +813,15 @@ export class ByomPlayer extends LitElement {
         <div class="tracklist-empty">
           ${rows.length === 0 && q ? html`<p class="no-matches">No tracks match "${q}"</p>` : nothing}
         </div>
-        <ol class="tracklist" part="tracklist">
-          ${rows.map(({ t, i }) => {
-            const orphaned = isOrphan(t);
-            const state = this.trackState(i, orphaned);
-            // The active row's glyph mirrors playback; any other row offers play.
-            const glyph = state === 'active' ? (playing ? '⏸' : '▶') : '▶';
-            return html`
-              <li
-                class=${this.trackClasses(i, orphaned)}
-                part="track"
-                data-state=${state}
-                @click=${() => this.onRowClick(i)}
-              >
-                <span class="num" part="track-number">
-                  <span class="idx">${state === 'pending' ? '⋯' : i + 1}</span>
-                  <span class="glyph">${glyph}</span>
-                </span>
-                <span class="thumb" part="track-art">
-                  ${
-                    t.image
-                      ? html`<img src=${t.image} alt="" loading="lazy" />`
-                      : html`<span class="thumb-ph" aria-hidden="true">♪</span>`
-                  }
-                </span>
-                <span class="cell">
-                  <span class="t-title">${t.title}</span>
-                  <span class="t-artist">${t.artist}</span>
-                </span>
-                <span class="dur"
-                  >${
-                    state === 'unavailable'
-                      ? '✕'
-                      : t.durationMs
-                        ? ByomPlayer.formatTime(t.durationMs)
-                        : ''
-                  }</span
-                >
-              </li>
-            `;
-          })}
-        </ol>
+        <lit-virtualizer
+          class="tracklist"
+          part="tracklist"
+          role="list"
+          .items=${rows}
+          .keyFunction=${(row: { i: number }) => row.i}
+          .renderItem=${(row: { t: Track; i: number }) => this.renderRow(row.t, row.i, playing)}
+          @rangeChanged=${this.onRangeChanged}
+        ></lit-virtualizer>
         <div class="video" part="video"></div>
       </div>
       <div class="settings-overlay" ?hidden=${this.view === 'list'} @click=${this.onOverlayClick}>
@@ -1244,9 +1264,7 @@ export class ByomPlayer extends LitElement {
       margin: 0;
     }
     .tracklist {
-      list-style: none;
-      margin: 0;
-      padding: 0;
+      display: block;
       flex: 1 1 auto;
       min-height: 0;
       overflow: auto;

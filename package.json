@@ -20,6 +20,7 @@
     "format": "prettier --write \"**/*.{ts,js,json,md}\""
   },
   "dependencies": {
+    "@lit-labs/virtualizer": "^2.1.1",
     "lit": "^3.2.1"
   },
   "devDependencies": {
