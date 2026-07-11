@@ -171,6 +171,8 @@ export class ByomPlayer extends LitElement {
   private centerToken = 0;
   private commitTimer: ReturnType<typeof setTimeout> | null = null;
   private commitDelayMs = 600; // debounce before auto-applying a field edit
+  // How many tracks past the playing one the availability prescan looks ahead.
+  private static readonly AVAIL_LOOKAHEAD = 10;
 
   async connectedCallback(): Promise<void> {
     super.connectedCallback();
@@ -434,8 +436,7 @@ export class ByomPlayer extends LitElement {
       (i, status) => this.onAvailabilityResult(i, status),
       { delayMs: this.prescanDelayMs },
     );
-    this.requestAround(this.currentIndex);
-    if (this.lastRange) this.requestVisible(this.lastRange.first, this.lastRange.last);
+    this.syncAvailabilityChecks(); // seed with the current visible + playback window
   }
 
   private onAvailabilityResult(i: number, status: AvailabilityStatus): void {
@@ -458,21 +459,39 @@ export class ByomPlayer extends LitElement {
     this.checking = next;
   }
 
-  // `first`/`last` are positions within the filtered rows; map them to real
-  // track indices before enqueuing.
-  private requestVisible(first: number, last: number): void {
-    const rows = this.filteredRows;
-    const idx: number[] = [];
-    for (let p = Math.max(0, first); p <= last && p < rows.length; p++) idx.push(rows[p].i);
-    this.enqueueChecks(idx);
+  // The set of tracks worth checking right now: the visible range plus a small
+  // forward lookahead around the playing track (playback advances forward, even
+  // when scrolled away).
+  private relevantCheckWindow(): Set<number> {
+    const keep = new Set<number>();
+    if (this.lastRange) {
+      const rows = this.filteredRows;
+      const first = Math.max(0, this.lastRange.first);
+      for (let p = first; p <= this.lastRange.last && p < rows.length; p++) keep.add(rows[p].i);
+    }
+    for (let i = this.currentIndex; i < this.currentIndex + ByomPlayer.AVAIL_LOOKAHEAD; i++) {
+      if (i >= 0) keep.add(i);
+    }
+    return keep;
   }
 
-  // A small forward window from `index` (playback advances forward).
-  private requestAround(index: number): void {
-    const LOOKAHEAD = 10;
-    const idx: number[] = [];
-    for (let i = index; i < index + LOOKAHEAD; i++) idx.push(i);
-    this.enqueueChecks(idx);
+  // Focus the availability queue on the currently-relevant window: prune queued
+  // checks that have scrolled out of view (so a fast scroll through a
+  // search-backed playlist doesn't leave a long tail of live searches for rows
+  // you've left), then enqueue the window. Called on init, on range change, and
+  // on track change. Visible rows are added before the lookahead, so they're
+  // checked first.
+  private syncAvailabilityChecks(): void {
+    const q = this.availQueue;
+    if (!q) return;
+    const keep = this.relevantCheckWindow();
+    const dropped = q.retain(keep);
+    if (dropped.length) {
+      const next = new Set(this.checking);
+      for (const i of dropped) next.delete(i);
+      this.checking = next;
+    }
+    this.enqueueChecks([...keep]);
   }
 
   private syncFromController(): void {
@@ -497,7 +516,7 @@ export class ByomPlayer extends LitElement {
     // moves through the queue, and extend the availability lookahead forward.
     if (changed.has('currentIndex')) {
       this.centerActiveTrack();
-      this.requestAround(this.currentIndex);
+      this.syncAvailabilityChecks();
     }
   }
 
@@ -765,7 +784,7 @@ export class ByomPlayer extends LitElement {
     const { first, last } = e as Event & { first?: number; last?: number };
     if (typeof first !== 'number' || typeof last !== 'number' || first < 0) return;
     this.lastRange = { first, last };
-    this.requestVisible(first, last);
+    this.syncAvailabilityChecks();
   };
 
   render() {
