@@ -13,6 +13,7 @@ import type {
 import { loadManifest } from './manifest';
 import { PlaybackController } from './controller';
 import { createProvider } from './providers/registry';
+import { detectSpotifyPreview } from './providers/spotify/preview';
 import { sweepAvailability } from './availability';
 import { loadSettings, saveSettings, effectiveProviderConfig, type UserSettings } from './settings';
 import {
@@ -111,6 +112,9 @@ export class ByomPlayer extends LitElement {
   @state() private scanning = false;
   @state() private positionMs = 0;
   @state() private durationMs = 0;
+  // True when the Spotify embed is playing a 30s preview instead of the full
+  // track (see providers/spotify/preview). Drives the transport preview badge.
+  @state() private preview = false;
   @state() private playlists: PlaylistEntry[] = [];
   @state() private view: 'list' | 'settings' = 'list';
   @state() private draft: UserSettings = { providers: {} };
@@ -404,6 +408,11 @@ export class ByomPlayer extends LitElement {
     this.halted = this.controller.halted;
     this.shuffle = this.controller.shuffle;
     this.durationMs = this.controller.durationMs;
+    this.preview = detectSpotifyPreview(
+      this.provider,
+      this.durationMs,
+      this.playlist?.tracks[this.currentIndex]?.durationMs ?? 0,
+    );
     // Don't yank the thumb out from under an active drag.
     if (!this.seeking) this.positionMs = this.controller.positionMs;
   }
@@ -683,6 +692,16 @@ export class ByomPlayer extends LitElement {
           />
           <span class="time">${ByomPlayer.formatTime(this.durationMs)}</span>
         </div>
+        ${
+          this.preview
+            ? html`<span
+                class="preview-badge"
+                part="preview-badge"
+                title="If you're signed into Spotify Premium in this browser, press ▶ in the Spotify player below for the full track."
+                >Preview · 30s ⓘ</span
+              >`
+            : nothing
+        }
         <button
           class="shuffle ${this.shuffle ? 'on' : ''}"
           part="control shuffle"
@@ -914,6 +933,7 @@ export class ByomPlayer extends LitElement {
       --byom-accent: #3b5bdb;
       --byom-on-accent: #ffffff;
       --byom-border: #d9d9d6;
+      --byom-warn: #b06a00;
       --byom-font: system-ui, sans-serif;
       --byom-border-radius: 8px;
 
@@ -1152,6 +1172,24 @@ export class ByomPlayer extends LitElement {
       font-size: 1.6rem;
       color: var(--byom-on-accent);
       background: var(--byom-accent);
+    }
+    /* Heads-up pill shown when the Spotify embed is stuck on a 30s preview; the
+       tooltip explains the Premium-click path. Colors derive from --byom-warn so
+       it adapts across themes. */
+    .preview-badge {
+      flex: 0 0 auto;
+      align-self: center;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      cursor: help;
+      color: var(--byom-warn);
+      border: 1px solid color-mix(in srgb, var(--byom-warn) 45%, transparent);
+      background: color-mix(in srgb, var(--byom-warn) 12%, transparent);
+      border-radius: 999px;
+      padding: 0.12rem 0.5rem;
     }
     .transport .playpause:hover {
       background: var(--byom-accent);
