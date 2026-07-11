@@ -1343,9 +1343,15 @@ export class ByomPlayer extends LitElement {
     }
     /* Spotify-style rows: number | title/artist | duration. */
     .tracklist li {
+      /* The virtualizer positions each row absolutely, so it must be told to
+         span the full width — otherwise it shrinks to its content and the 1fr
+         title column has no slack to push the duration to the right edge. */
+      width: 100%;
+      box-sizing: border-box;
       cursor: pointer;
       display: grid;
-      grid-template-columns: 1.6rem var(--byom-track-art-size, 2rem) 1fr auto;
+      /* First column fits up to a 4-digit track number (8000+ track playlists). */
+      grid-template-columns: 2.2rem var(--byom-track-art-size, 2rem) 1fr auto;
       align-items: center;
       gap: 0.6rem;
       padding: 0.3rem 0.5rem 0.3rem 0.4rem;
@@ -1359,7 +1365,7 @@ export class ByomPlayer extends LitElement {
       position: relative;
       text-align: center;
       color: var(--byom-text-muted);
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       font-variant-numeric: tabular-nums;
     }
     .num .glyph {
