@@ -162,6 +162,9 @@ export class ByomPlayer extends LitElement {
   // The virtualizer's most recently reported rendered index range (positions
   // within the filtered rows). Used to seed checks when (re)arming the queue.
   private lastRange: { first: number; last: number } | null = null;
+  // Bumped on each centerActiveTrack call so a stale far-jump poll loop from a
+  // superseded call (rapid track changes) bails instead of yanking the scroll.
+  private centerToken = 0;
   private commitTimer: ReturnType<typeof setTimeout> | null = null;
   private commitDelayMs = 600; // debounce before auto-applying a field edit
 
@@ -510,6 +513,8 @@ export class ByomPlayer extends LitElement {
   // No-op if the active track is filtered out, the list is empty, or there's no
   // layout engine (happy-dom in tests → scrollHeight 0).
   private centerActiveTrack(): void {
+    // Supersede any far-jump poll still running from a prior call.
+    const token = ++this.centerToken;
     const count = this.filteredRows.length;
     const pos = this.filteredRows.findIndex((r) => r.i === this.currentIndex);
     if (pos < 0 || count === 0) return;
@@ -548,6 +553,8 @@ export class ByomPlayer extends LitElement {
     );
     let tries = 0;
     const tick = (): void => {
+      // A newer centerActiveTrack has taken over — stop, don't fight its scroll.
+      if (this.centerToken !== token) return;
       if (tryCenter('auto') || ++tries > 20) return;
       requestAnimationFrame(tick);
     };
