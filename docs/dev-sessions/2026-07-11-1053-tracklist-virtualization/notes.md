@@ -82,9 +82,29 @@ HTTPS and firefox rejects it) caught two runtime-only defects in the Task 3 inte
 - The 150px scroller-mode caveat and the deprecated `scrollToIndex` are documented here in
   case a future change reaches for them.
 
+## Torture test — real Big Sonic Heaven Spy (8,319 tracks)
+
+Ran the built JSPF from `byom-sync/tmp/site-preview/big-sonic-heaven-spy/playlist.jspf.json`
+(8,319 tracks, 5.1 MB, real Spotify cover-art image URLs — heavier than the synthetic
+fixture because every row carries a lazy thumbnail). Loaded via a temporary harness entry
+(reverted; the 5 MB playlist is not committed). Screenshot: `big-sonic-heaven-spy-torture.png`.
+
+Results (chromium, mock provider):
+- **Render after selecting the playlist: ~70 ms.** Only **35 `<li>` / 428 total shadow-DOM
+  nodes** for 8,319 tracks — windowing confirmed at real scale.
+- Virtual scroll height ~350k px; window shifts correctly on scroll (mid → "Human", end →
+  "Unanswered"); real Spotify CDN cover-art thumbnails load lazily as rows enter view.
+- **Filter "stereolab" across 8,319 tracks:** responsive (~sub-300 ms), narrows to Stereolab.
+- **Far-jump centering to index 6000** (shuffle-style): scrollTop 252,816 ≈ 6000/8319 of the
+  range — correctly centered, 60 rows rendered, active row highlighted ("locket from a
+  wreck").
+
+No jank, no unbounded DOM growth, no host-page scroll. The feature holds at real scale.
+
 ## Verification
 
-- Unit: `npm test` → 283 passing (queue logic, pure helpers, row-state, availability wiring).
+- Unit: `npm test` → 291 passing (queue logic, pure helpers, row-state, availability +
+  viewport-mapping wiring, centering math).
 - `npx tsc --noEmit` clean; `npm run build` OK (`dist/byom-player.js` 172.66 kB / gzip 44.86 kB);
   `npm run lint` clean.
 - Live (chromium): windowing, scroll, content-driven sizing (huge + short), and far/near
