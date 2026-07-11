@@ -25,26 +25,21 @@ import {
 
 type ProviderFactory = (name: string, config: Record<string, unknown>) => AudioProvider;
 
-// Pure arithmetic behind centerActiveTrack: given the active row's position
-// within the (fixed-height) virtual list and the scroller's current geometry,
-// compute the scrollTop that centers it (clamped to the scrollable range) and
-// whether the move should animate or jump. Extracted so the off-by-one-prone
-// math is unit-testable without a real layout engine.
+// Pure arithmetic behind centerActiveTrack: given the active row's ACTUAL top
+// offset within the scroller's scroll space and the scroller's geometry, return
+// the scrollTop that centers the row, clamped to the scrollable range. rowTop is
+// measured from the rendered element (not predicted from pos * rowHeight) so the
+// virtualizer's sub-pixel layout can't accumulate error. Extracted so the math
+// is unit-testable without a real layout engine.
 export function computeCenterOffset(
-  pos: number,
+  rowTop: number,
   rowH: number,
   clientH: number,
   scrollH: number,
-  scrollTop: number,
-): { top: number; behavior: ScrollBehavior } {
-  const target = pos * rowH - (clientH - rowH) / 2;
+): number {
+  const target = rowTop - (clientH - rowH) / 2;
   const max = scrollH - clientH;
-  const top = Math.max(0, Math.min(target, max));
-  // Smoothly nudge for a nearby row (the common next/prev case); jump instantly
-  // for a far target (e.g. a shuffle advance) — animating across thousands of
-  // rows would be slow and churn the virtualizer.
-  const far = Math.abs(top - scrollTop) > clientH * 3;
-  return { top, behavior: far ? 'auto' : 'smooth' };
+  return Math.max(0, Math.min(target, max));
 }
 
 // Case-insensitive substring match against title, artist, and album. An empty
@@ -494,30 +489,59 @@ export class ByomPlayer extends LitElement {
     }
   }
 
-  // Scroll the virtualized list so the active row is centered. We translate the
-  // real track index into its position within the filtered rows, then compute
-  // the scroll offset arithmetically from a measured row height. Rows are
-  // fixed-height, so this works for ANY index — including far, not-yet-rendered
-  // rows a shuffle jump lands on, where the virtualizer's own scrollToIndex
-  // (element(i)?.scrollIntoView) can't resolve an off-screen element. No-op if
-  // the active track is filtered out, the list is empty, or there's no layout
-  // engine (happy-dom in tests). The offset math itself lives in
-  // computeCenterOffset (pure, unit-tested).
+  // Scroll the virtualized list so the active row is centered.
+  //
+  // We center by MEASURING the real rendered row, never by predicting its
+  // position from pos * rowHeight: the virtualizer's true layout pitch differs
+  // from any height estimate by a fraction of a pixel, and pos * error
+  // accumulates — a shuffle jump deep in the list lands progressively further
+  // off-center. Measuring the element's actual offset has no such drift.
+  //
+  // For a nearby target (the common next/prev case) the row is already
+  // rendered, so we center it directly and smoothly. For a far jump (e.g. a
+  // shuffle advance) the target isn't rendered — the virtualizer's own
+  // scrollToIndex (element(i)?.scrollIntoView) can't resolve an off-screen
+  // element — so we first jump approximately (average pitch) to bring it into
+  // view, then, once the virtualizer has rendered it, center it exactly.
+  //
+  // No-op if the active track is filtered out, the list is empty, or there's no
+  // layout engine (happy-dom in tests → scrollHeight 0). computeCenterOffset
+  // (pure, unit-tested) holds the centering arithmetic.
   private centerActiveTrack(): void {
+    const count = this.filteredRows.length;
     const pos = this.filteredRows.findIndex((r) => r.i === this.currentIndex);
-    if (pos < 0) return;
+    if (pos < 0 || count === 0) return;
     const scroller = this.renderRoot.querySelector<HTMLElement>('.tracklist');
-    const row = scroller?.querySelector<HTMLElement>('li');
-    const rowH = row?.getBoundingClientRect().height ?? 0;
-    if (!scroller || rowH <= 0) return; // no layout (tests) → degrade gracefully
-    const { top, behavior } = computeCenterOffset(
-      pos,
-      rowH,
-      scroller.clientHeight,
-      scroller.scrollHeight,
-      scroller.scrollTop,
+    if (!scroller || scroller.scrollHeight <= 0) return; // no layout (tests)
+
+    // Center a rendered row by its measured position (exact — no pitch math).
+    const centerOn = (el: HTMLElement, behavior: ScrollBehavior): void => {
+      const rowTop =
+        el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+      const top = computeCenterOffset(
+        rowTop,
+        el.getBoundingClientRect().height,
+        scroller.clientHeight,
+        scroller.scrollHeight,
+      );
+      scroller.scrollTo?.({ top, behavior });
+    };
+
+    const rendered = scroller.querySelector<HTMLElement>('li.active');
+    if (rendered) {
+      centerOn(rendered, 'smooth');
+      return;
+    }
+    // Far jump: approximate with the average pitch to bring the target into
+    // view, then center the now-rendered row exactly on the next frame.
+    scroller.scrollTop = Math.max(
+      0,
+      (pos * scroller.scrollHeight) / count - scroller.clientHeight / 2,
     );
-    scroller.scrollTo?.({ top, behavior });
+    requestAnimationFrame(() => {
+      const el = scroller.querySelector<HTMLElement>('li.active');
+      if (el) centerOn(el, 'auto');
+    });
   }
 
   private selectTrack(index: number): void {

@@ -953,41 +953,31 @@ describe('<byom-player>', () => {
 });
 
 // Real-world-ish geometry from live verification: ~39px rows, a ~472px tall
-// scroller viewport.
+// scroller viewport. rowTop is the row's MEASURED top offset in scroll space.
 describe('computeCenterOffset', () => {
   const rowH = 39;
   const clientH = 472;
 
   it('centers a row in the middle of a long list', () => {
-    // target = 50*39 - (472-39)/2 = 1950 - 216.5 = 1733.5; well within [0, max].
-    const { top } = computeCenterOffset(50, rowH, clientH, 5000, 1733.5);
-    expect(top).toBe(1733.5);
+    // rowTop 1950 (row ~50) → target = 1950 - (472-39)/2 = 1733.5; within [0, max].
+    expect(computeCenterOffset(1950, rowH, clientH, 5000)).toBe(1733.5);
   });
 
   it('clamps to 0 near the top of the list', () => {
-    // target = 0*39 - 216.5 = -216.5 → clamped up to 0.
-    const { top } = computeCenterOffset(0, rowH, clientH, 5000, 0);
-    expect(top).toBe(0);
+    // rowTop 0 → target = 0 - 216.5 = -216.5 → clamped up to 0.
+    expect(computeCenterOffset(0, rowH, clientH, 5000)).toBe(0);
   });
 
   it('clamps to scrollHeight - clientHeight near the end of the list', () => {
-    // 200 rows: scrollHeight = 200*39 = 7800, max = 7800-472 = 7328.
-    // target = 199*39 - 216.5 = 7544.5, which exceeds max → clamped down to it.
-    const { top } = computeCenterOffset(199, rowH, clientH, 7800, 7328);
-    expect(top).toBe(7328);
+    // 200 rows: scrollHeight = 7800, max = 7328. Last row top = 199*39 = 7761;
+    // target = 7761 - 216.5 = 7544.5 > max → clamped down to max.
+    expect(computeCenterOffset(7761, rowH, clientH, 7800)).toBe(7328);
   });
 
-  it('uses smooth behavior for a small delta from the current scroll position', () => {
-    // target = 10*39 - 216.5 = 173.5; |173.5 - 200| = 26.5, well under clientH*3.
-    const { top, behavior } = computeCenterOffset(10, rowH, clientH, 5000, 200);
-    expect(top).toBe(173.5);
-    expect(behavior).toBe('smooth');
-  });
-
-  it('uses auto (jump) behavior for a delta greater than clientHeight * 3', () => {
-    // target = 1000*39 - 216.5 = 38783.5; |38783.5 - 0| = 38783.5 >> clientH*3 (1416).
-    const { top, behavior } = computeCenterOffset(1000, rowH, clientH, 50000, 0);
-    expect(top).toBe(38783.5);
-    expect(behavior).toBe('auto');
+  it('centers using the measured row top, not a predicted pos*rowH', () => {
+    // A row whose real top is 4001 (not necessarily a clean multiple of rowH)
+    // centers at 4001 - 216.5 = 3784.5 — the point of measuring is that the
+    // input need not equal pos*rowH.
+    expect(computeCenterOffset(4001, rowH, clientH, 50000)).toBe(3784.5);
   });
 });
