@@ -584,7 +584,13 @@ export class ByomPlayer extends LitElement {
     const currentTitle = this.playlists.find((p) => p.src === this.src)?.title ?? pl.title;
     return html`
       <div class="head" part="header">
-        <div class="art" part="art">🎵</div>
+        <div class="art" part="art">
+          ${
+            pl.image
+              ? html`<img class="art-img" src=${pl.image} alt="" />`
+              : html`<span class="art-ph" aria-hidden="true">🎵</span>`
+          }
+        </div>
         <div class="meta" part="meta">
           ${
             this.playlists.length > 1
@@ -757,6 +763,13 @@ export class ByomPlayer extends LitElement {
                 <span class="num" part="track-number">
                   <span class="idx">${state === 'pending' ? '⋯' : i + 1}</span>
                   <span class="glyph">${glyph}</span>
+                </span>
+                <span class="thumb" part="track-art">
+                  ${
+                    t.image
+                      ? html`<img src=${t.image} alt="" loading="lazy" />`
+                      : html`<span class="thumb-ph" aria-hidden="true">♪</span>`
+                  }
                 </span>
                 <span class="cell">
                   <span class="t-title">${t.title}</span>
@@ -1001,6 +1014,12 @@ export class ByomPlayer extends LitElement {
       color: var(--byom-text-muted);
       font-size: 2.6rem;
     }
+    .art-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
     .meta {
       min-width: 0;
       flex: 1;
@@ -1222,7 +1241,7 @@ export class ByomPlayer extends LitElement {
     .tracklist li {
       cursor: pointer;
       display: grid;
-      grid-template-columns: 1.6rem 1fr auto;
+      grid-template-columns: 1.6rem var(--byom-track-art-size, 2rem) 1fr auto;
       align-items: center;
       gap: 0.6rem;
       padding: 0.3rem 0.5rem 0.3rem 0.4rem;
@@ -1252,6 +1271,27 @@ export class ByomPlayer extends LitElement {
       position: absolute;
       inset: 0;
       color: var(--byom-text);
+    }
+    /* Per-row cover thumbnail (size tunable via --byom-track-art-size). */
+    .thumb {
+      width: var(--byom-track-art-size, 2rem);
+      height: var(--byom-track-art-size, 2rem);
+      border-radius: calc(var(--byom-border-radius) / 3);
+      overflow: hidden;
+      background: var(--byom-surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .thumb-ph {
+      color: var(--byom-text-muted);
+      font-size: 0.9rem;
     }
     .cell {
       min-width: 0;
