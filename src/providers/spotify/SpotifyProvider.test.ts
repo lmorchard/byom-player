@@ -120,7 +120,7 @@ describe('SpotifyProvider resolution', () => {
     const engines = { sdk: new FakeEngine('sdk'), embed: new FakeEngine('embed') };
     const p = makeProvider(engines);
     // Track-independent: a URL resolves to available, none to unavailable, and
-    // both answers are instant — so the sweep must skip its cooldown either way.
+    // both answers are instant — so the prescan must skip its cooldown either way.
     expect(p.isResolutionCached()).toBe(true);
   });
 });

@@ -230,7 +230,7 @@ export class SubsonicProvider implements AudioProvider {
   }
 
   // isResolutionCached reports whether resolve() would answer this track from
-  // cache (no search3). Lets the availability sweep skip its throttle on hits.
+  // cache (no search3). Lets the availability prescan skip its throttle on hits.
   isResolutionCached(track: Track): boolean {
     // A hit OR a known (unexpired) miss both answer without touching the server.
     return this.cache?.get(this.scope, trackKey(track)) !== undefined;

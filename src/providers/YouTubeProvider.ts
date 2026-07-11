@@ -265,7 +265,7 @@ export class YouTubeProvider implements AudioProvider {
 
   // isResolutionCached reports whether availability/resolution is answerable
   // without touching the network (embedded id or any cache entry), so the
-  // background sweep can skip its throttle for it.
+  // background prescan can skip its throttle for it.
   isResolutionCached(track: Track): boolean {
     return this.cachedId(track) !== undefined;
   }

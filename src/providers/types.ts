@@ -33,8 +33,8 @@ export interface AudioProvider {
   // playing it. Providers that can't (e.g. the mock) simply omit this.
   checkAvailability?(track: Track): Promise<AvailabilityStatus>;
   // Optional: report whether a track's resolution is already cached, so a
-  // checkAvailability call for it won't touch the source. The background sweep
-  // uses this to skip its inter-check throttle for cache hits.
+  // checkAvailability call for it won't touch the source. The background
+  // prescan uses this to skip its inter-check throttle for cache hits.
   isResolutionCached?(track: Track): boolean;
   // Optional: render a visible surface (e.g. a video) into the host element.
   // Called before initialize(). Providers without one simply omit it.

@@ -167,7 +167,7 @@ describe('PlexProvider resolution', () => {
     expect(p.isResolutionCached({ title: 'z', artist: 'z' })).toBe(false); // absent
 
     // Unlinked (no token): checkAvailability short-circuits to 'unknown' without
-    // touching the server, so the sweep needn't throttle — always "cached".
+    // touching the server, so the prescan needn't throttle — always "cached".
     const unauthed = new PlexProvider({
       baseUrl: 'https://plex.example:32400',
       resolutionCache: cache,

@@ -1,6 +1,7 @@
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
+import '@lit-labs/virtualizer';
 import type { Playlist, Track } from './types';
 import { renderMarkdownInline } from './markdown';
 import { sumDurationMs, formatTotalDuration, formatDateRange } from './format';
@@ -14,7 +15,7 @@ import { loadManifest } from './manifest';
 import { PlaybackController } from './controller';
 import { createProvider } from './providers/registry';
 import { detectSpotifyPreview } from './providers/spotify/preview';
-import { sweepAvailability } from './availability';
+import { AvailabilityQueue } from './availability';
 import { loadSettings, saveSettings, effectiveProviderConfig, type UserSettings } from './settings';
 import {
   parseProviderList,
@@ -24,6 +25,41 @@ import {
 } from './hostConfig';
 
 type ProviderFactory = (name: string, config: Record<string, unknown>) => AudioProvider;
+
+// Pure arithmetic behind centerActiveTrack: given the active row's ACTUAL top
+// offset within the scroller's scroll space and the scroller's geometry, return
+// the scrollTop that centers the row, clamped to the scrollable range. rowTop is
+// measured from the rendered element (not predicted from pos * rowHeight) so the
+// virtualizer's sub-pixel layout can't accumulate error. Extracted so the math
+// is unit-testable without a real layout engine.
+export function computeCenterOffset(
+  rowTop: number,
+  rowH: number,
+  clientH: number,
+  scrollH: number,
+): number {
+  const target = rowTop - (clientH - rowH) / 2;
+  const max = scrollH - clientH;
+  return Math.max(0, Math.min(target, max));
+}
+
+// Case-insensitive substring match against title, artist, and album. An empty
+// query matches everything.
+export function matchesFilter(track: Track, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return (
+    track.title.toLowerCase().includes(q) ||
+    track.artist.toLowerCase().includes(q) ||
+    (track.album?.toLowerCase().includes(q) ?? false)
+  );
+}
+
+// A track is "orphaned" when byom-sync recorded it as no longer present in its
+// Spotify source.
+export function isOrphan(track: Track): boolean {
+  return track.syncState?.spotifyPresent === false;
+}
 
 // Built-in themes offered in the Appearance picker. '' = Auto (follow OS).
 // Each named value matches a :host([theme='...']) palette block in `static styles`.
@@ -109,7 +145,7 @@ export class ByomPlayer extends LitElement {
   @state() private halted = false;
   @state() private shuffle = false;
   @state() private availability = new Map<number, AvailabilityStatus>();
-  @state() private scanning = false;
+  @state() private checking = new Set<number>();
   @state() private positionMs = 0;
   @state() private durationMs = 0;
   // True when the Spotify embed is playing a 30s preview instead of the full
@@ -125,8 +161,14 @@ export class ByomPlayer extends LitElement {
 
   private controller: PlaybackController | null = null;
   private activeProvider: AudioProvider | null = null;
-  private sweepAbort: AbortController | null = null;
+  private availQueue: AvailabilityQueue | null = null;
   private seeking = false; // user is dragging the progress bar
+  // The virtualizer's most recently reported rendered index range (positions
+  // within the filtered rows). Used to seed checks when (re)arming the queue.
+  private lastRange: { first: number; last: number } | null = null;
+  // Bumped on each centerActiveTrack call so a stale far-jump poll loop from a
+  // superseded call (rapid track changes) bails instead of yanking the scroll.
+  private centerToken = 0;
   private commitTimer: ReturnType<typeof setTimeout> | null = null;
   private commitDelayMs = 600; // debounce before auto-applying a field edit
 
@@ -258,8 +300,8 @@ export class ByomPlayer extends LitElement {
     document.removeEventListener('keydown', this.onGlobalKeydown);
     if (this.commitTimer) clearTimeout(this.commitTimer);
     this.commitTimer = null;
-    this.sweepAbort?.abort();
-    this.sweepAbort = null;
+    this.availQueue?.dispose();
+    this.availQueue = null;
     this.controller?.dispose();
     this.controller = null;
   }
@@ -273,7 +315,7 @@ export class ByomPlayer extends LitElement {
     }
     this.availability = new Map();
     this.failed = new Set();
-    this.startSweep(); // aborts any in-flight sweep, then re-scans
+    this.armAvailabilityQueue(); // disposes any existing queue, then re-arms
   }
 
   private async loadAndInit(): Promise<void> {
@@ -286,7 +328,6 @@ export class ByomPlayer extends LitElement {
   // failure. Split out so a playlist switch can reload without touching the
   // provider, and a provider switch can re-init without refetching.
   private async loadPlaylist(): Promise<boolean> {
-    this.sweepAbort?.abort();
     this.availability = new Map();
     try {
       const res = await fetch(this.src);
@@ -305,12 +346,11 @@ export class ByomPlayer extends LitElement {
     return this.debug ? { ...cfg, debug: true } : cfg;
   }
 
-  // Build + initialize the active provider, wire the controller, start the
-  // sweep. Disposes any existing provider/controller first so this is safe to
-  // call on a settings change (no element remount).
+  // Build + initialize the active provider, wire the controller, arm the
+  // availability queue. Disposes any existing provider/controller first so this
+  // is safe to call on a settings change (no element remount).
   private async initProvider(): Promise<void> {
     if (!this.playlist) return;
-    this.sweepAbort?.abort();
     this.controller?.dispose();
     this.controller = null;
     this.availability = new Map();
@@ -375,29 +415,64 @@ export class ByomPlayer extends LitElement {
     // When a provider's session changes (e.g. Plex link/unlink), its cached
     // availability knowledge is stale — clear the marks and re-scan.
     prov.onReset?.(() => this.handleProviderReset());
-    this.startSweep();
+    this.armAvailabilityQueue();
   }
 
-  // Run the background availability prescan against the active provider. Aborts
-  // any sweep already in flight first, so it's safe to call on a session change.
-  private startSweep(): void {
+  // (Re)create the availability queue for the active provider and seed it with
+  // the tracks worth checking right now: a lookahead window around the current
+  // track plus whatever the virtualizer last reported as visible. Safe to call
+  // on init and on a provider/session reset.
+  private armAvailabilityQueue(): void {
+    this.availQueue?.dispose();
+    this.availQueue = null;
+    this.checking = new Set();
     const prov = this.activeProvider;
     if (!prov?.checkAvailability || !this.prescan || !this.playlist) return;
-    this.sweepAbort?.abort();
-    this.sweepAbort = new AbortController();
-    this.scanning = true;
-    void sweepAvailability(
+    this.availQueue = new AvailabilityQueue(
       prov,
       this.playlist.tracks,
-      (i, status) => {
-        this.availability = new Map(this.availability).set(i, status);
-        // Let the queue skip known-missing tracks (shuffle + advance).
-        if (status === 'unavailable') this.controller?.markUnavailable(i, true);
-      },
-      { signal: this.sweepAbort.signal, delayMs: this.prescanDelayMs },
-    ).finally(() => {
-      this.scanning = false;
-    });
+      (i, status) => this.onAvailabilityResult(i, status),
+      { delayMs: this.prescanDelayMs },
+    );
+    this.requestAround(this.currentIndex);
+    if (this.lastRange) this.requestVisible(this.lastRange.first, this.lastRange.last);
+  }
+
+  private onAvailabilityResult(i: number, status: AvailabilityStatus): void {
+    this.availability = new Map(this.availability).set(i, status);
+    if (this.checking.has(i)) {
+      const next = new Set(this.checking);
+      next.delete(i);
+      this.checking = next;
+    }
+    // Let the queue skip known-missing tracks (shuffle + advance).
+    if (status === 'unavailable') this.controller?.markUnavailable(i, true);
+  }
+
+  // Enqueue real track indices and reflect the newly-accepted ones as in-flight.
+  private enqueueChecks(indices: number[]): void {
+    const accepted = this.availQueue?.request(indices) ?? [];
+    if (!accepted.length) return;
+    const next = new Set(this.checking);
+    for (const i of accepted) next.add(i);
+    this.checking = next;
+  }
+
+  // `first`/`last` are positions within the filtered rows; map them to real
+  // track indices before enqueuing.
+  private requestVisible(first: number, last: number): void {
+    const rows = this.filteredRows;
+    const idx: number[] = [];
+    for (let p = Math.max(0, first); p <= last && p < rows.length; p++) idx.push(rows[p].i);
+    this.enqueueChecks(idx);
+  }
+
+  // A small forward window from `index` (playback advances forward).
+  private requestAround(index: number): void {
+    const LOOKAHEAD = 10;
+    const idx: number[] = [];
+    for (let i = index; i < index + LOOKAHEAD; i++) idx.push(i);
+    this.enqueueChecks(idx);
   }
 
   private syncFromController(): void {
@@ -419,22 +494,87 @@ export class ByomPlayer extends LitElement {
 
   updated(changed: PropertyValues): void {
     // Keep the playing track centered in the (scrollable) tracklist as playback
-    // moves through the queue.
-    if (changed.has('currentIndex')) this.centerActiveTrack();
+    // moves through the queue, and extend the availability lookahead forward.
+    if (changed.has('currentIndex')) {
+      this.centerActiveTrack();
+      this.requestAround(this.currentIndex);
+    }
   }
 
-  // Scroll the tracklist so the active row sits as close to the vertical center
-  // as its scroll range allows. Only the list scrolls — never the host page.
+  // Scroll the virtualized list so the active row is centered.
+  //
+  // We identify the target row by its POSITION in the filtered list, not by the
+  // rendered `active` class. The <lit-virtualizer> re-renders row content (which
+  // row carries `active`) on its own async cycle, so at the moment this runs the
+  // `active` class is often still on the previous row — reading it would center
+  // one row behind on every advance. Row *positions*, however, don't change when
+  // currentIndex changes, and the virtualizer reports its rendered range via
+  // rangeChanged (captured as `lastRange`), with DOM rows in position order. So
+  // the rendered <li> for position `pos` is querySelectorAll('li')[pos - first]
+  // — the correct element regardless of the content re-render timing.
+  //
+  // We then MEASURE that row's real offset and center it (computeCenterOffset,
+  // pure/unit-tested) — never predict pos * rowHeight, whose sub-pixel error
+  // accumulates the deeper you jump. For a far jump whose target isn't rendered
+  // yet, approximate the scroll to bring it into the window, then center it
+  // exactly once the virtualizer has rendered it (polled over a few frames).
+  //
+  // No-op if the active track is filtered out, the list is empty, or there's no
+  // layout engine (happy-dom in tests → scrollHeight 0).
   private centerActiveTrack(): void {
-    const list = this.renderRoot.querySelector<HTMLElement>('.tracklist');
-    const active = list?.querySelector<HTMLElement>('li.active');
-    if (!list || !active) return;
-    const listRect = list.getBoundingClientRect();
-    const activeRect = active.getBoundingClientRect();
-    const delta = activeRect.top - listRect.top - (list.clientHeight - active.clientHeight) / 2;
-    // Optional-chained: environments without layout (e.g. happy-dom in tests)
-    // don't implement scrollBy.
-    list.scrollBy?.({ top: delta, behavior: 'smooth' });
+    // Supersede any far-jump poll still running from a prior call.
+    const token = ++this.centerToken;
+    const count = this.filteredRows.length;
+    const pos = this.filteredRows.findIndex((r) => r.i === this.currentIndex);
+    if (pos < 0 || count === 0) return;
+    const scroller = this.renderRoot.querySelector<HTMLElement>('.tracklist');
+    if (!scroller || scroller.scrollHeight <= 0) return; // no layout (tests)
+
+    // Center the rendered row for `pos` by its measured offset, if it's in the
+    // virtualizer's current range. Returns false if `pos` isn't rendered yet.
+    const tryCenter = (behavior: ScrollBehavior): boolean => {
+      const lr = this.lastRange;
+      if (!lr || pos < lr.first || pos > lr.last) return false;
+      const lis = scroller.querySelectorAll<HTMLElement>('li');
+      // lastRange is fed by the virtualizer's async rangeChanged, so just after a
+      // filter/playlist change it can momentarily describe the OLD rows while the
+      // DOM still holds them. When the rendered count doesn't match the range
+      // span, the two are out of sync — bail so the far-jump poll re-centers once
+      // the virtualizer catches up, rather than measuring a stale row.
+      if (lis.length !== lr.last - lr.first + 1) return false;
+      const el = lis[pos - lr.first];
+      if (!el) return false;
+      const rect = el.getBoundingClientRect();
+      const rowTop = rect.top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+      const top = computeCenterOffset(
+        rowTop,
+        rect.height,
+        scroller.clientHeight,
+        scroller.scrollHeight,
+      );
+      scroller.scrollTo?.({ top, behavior });
+      return true;
+    };
+
+    // Fast path: target already rendered (the common next/prev case) → smooth.
+    if (tryCenter('smooth')) return;
+
+    // Far jump (e.g. a shuffle advance): approximate with the average pitch to
+    // bring the target into the rendered window, then center it exactly once the
+    // virtualizer reports it in range. Poll a few frames; if it never lands
+    // (extreme drift), the approximate scroll already left it roughly centered.
+    scroller.scrollTop = Math.max(
+      0,
+      (pos * scroller.scrollHeight) / count - scroller.clientHeight / 2,
+    );
+    let tries = 0;
+    const tick = (): void => {
+      // A newer centerActiveTrack has taken over — stop, don't fight its scroll.
+      if (this.centerToken !== token) return;
+      if (tryCenter('auto') || ++tries > 20) return;
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
   }
 
   private selectTrack(index: number): void {
@@ -465,16 +605,14 @@ export class ByomPlayer extends LitElement {
     if (await this.loadPlaylist()) await this.initProvider();
   }
 
-  // Case-insensitive substring match against title, artist, and album. An empty
-  // query matches everything.
-  private matchesFilter(t: Track): boolean {
-    const q = this.filterQuery.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      t.title.toLowerCase().includes(q) ||
-      t.artist.toLowerCase().includes(q) ||
-      (t.album?.toLowerCase().includes(q) ?? false)
-    );
+  // Derived, filtered view — never mutates pl.tracks or playback indices. Each
+  // row carries its real pl.tracks index so selection maps back correctly.
+  private get filteredRows(): Array<{ t: Track; i: number }> {
+    const pl = this.playlist;
+    if (!pl) return [];
+    return pl.tracks
+      .map((t, i) => ({ t, i }))
+      .filter(({ t }) => matchesFilter(t, this.filterQuery));
   }
 
   private onFilterInput(e: Event): void {
@@ -555,8 +693,8 @@ export class ByomPlayer extends LitElement {
 
   private trackClasses(index: number, orphaned: boolean): string {
     const unavailable = this.failed.has(index) || this.availability.get(index) === 'unavailable';
-    // Not yet reached by the background prescan.
-    const pending = this.scanning && !this.availability.has(index) && !this.failed.has(index);
+    // Currently being checked by the availability queue.
+    const pending = this.checking.has(index);
     return [
       index === this.currentIndex ? 'active' : '',
       orphaned ? 'orphan' : '',
@@ -572,7 +710,7 @@ export class ByomPlayer extends LitElement {
   // unavailable, orphan, pending — mirroring the visual precedence.
   private trackState(index: number, orphaned: boolean): string {
     const unavailable = this.failed.has(index) || this.availability.get(index) === 'unavailable';
-    const pending = this.scanning && !this.availability.has(index) && !this.failed.has(index);
+    const pending = this.checking.has(index);
     if (index === this.currentIndex) return 'active';
     if (unavailable) return 'unavailable';
     if (orphaned) return 'orphan';
@@ -580,13 +718,61 @@ export class ByomPlayer extends LitElement {
     return '';
   }
 
+  // The per-row template, rendered by the virtualizer for each visible item.
+  private renderRow(t: Track, i: number, playing: boolean) {
+    const orphaned = isOrphan(t);
+    const state = this.trackState(i, orphaned);
+    // The active row's glyph mirrors playback; any other row offers play.
+    const glyph = state === 'active' ? (playing ? '⏸' : '▶') : '▶';
+    return html`
+      <li
+        class=${this.trackClasses(i, orphaned)}
+        part="track"
+        role="listitem"
+        data-state=${state}
+        @click=${() => this.onRowClick(i)}
+      >
+        <span class="num" part="track-number">
+          <span class="idx">${state === 'pending' ? '⋯' : i + 1}</span>
+          <span class="glyph">${glyph}</span>
+        </span>
+        <span class="thumb" part="track-art">
+          ${
+            t.image
+              ? html`<img src=${t.image} alt="" loading="lazy" />`
+              : html`<span class="thumb-ph" aria-hidden="true">♪</span>`
+          }
+        </span>
+        <span class="cell">
+          <span class="t-title">${t.title}</span>
+          <span class="t-artist">${t.artist}</span>
+        </span>
+        <span class="dur"
+          >${
+            state === 'unavailable' ? '✕' : t.durationMs ? ByomPlayer.formatTime(t.durationMs) : ''
+          }</span
+        >
+      </li>
+    `;
+  }
+
+  // The virtualizer reports its rendered index range (positions within the
+  // filtered rows). Record it and enqueue availability checks for the newly
+  // visible window. Payload matches @lit-labs/virtualizer's RangeChangedEvent
+  // (numeric first/last); read defensively so the handler is safe under
+  // happy-dom (where the event never fires).
+  private onRangeChanged = (e: Event): void => {
+    const { first, last } = e as Event & { first?: number; last?: number };
+    if (typeof first !== 'number' || typeof last !== 'number' || first < 0) return;
+    this.lastRange = { first, last };
+    this.requestVisible(first, last);
+  };
+
   render() {
     const pl = this.playlist;
     if (!pl) return html`<div class="loading">Loading…</div>`;
-    // Derived, filtered view — never mutates pl.tracks or playback indices. Each
-    // row carries its real pl.tracks index so selection maps back correctly.
     const q = this.filterQuery.trim();
-    const rows = pl.tracks.map((t, i) => ({ t, i })).filter(({ t }) => this.matchesFilter(t));
+    const rows = this.filteredRows;
     const playing = this.playbackState === 'playing';
     // The selector's visible label is the current playlist's title (from the
     // <byom-playlist> children), falling back to the loaded manifest title.
@@ -766,47 +952,15 @@ export class ByomPlayer extends LitElement {
         <div class="tracklist-empty">
           ${rows.length === 0 && q ? html`<p class="no-matches">No tracks match "${q}"</p>` : nothing}
         </div>
-        <ol class="tracklist" part="tracklist">
-          ${rows.map(({ t, i }) => {
-            const orphaned = t.syncState?.spotifyPresent === false;
-            const state = this.trackState(i, orphaned);
-            // The active row's glyph mirrors playback; any other row offers play.
-            const glyph = state === 'active' ? (playing ? '⏸' : '▶') : '▶';
-            return html`
-              <li
-                class=${this.trackClasses(i, orphaned)}
-                part="track"
-                data-state=${state}
-                @click=${() => this.onRowClick(i)}
-              >
-                <span class="num" part="track-number">
-                  <span class="idx">${state === 'pending' ? '⋯' : i + 1}</span>
-                  <span class="glyph">${glyph}</span>
-                </span>
-                <span class="thumb" part="track-art">
-                  ${
-                    t.image
-                      ? html`<img src=${t.image} alt="" loading="lazy" />`
-                      : html`<span class="thumb-ph" aria-hidden="true">♪</span>`
-                  }
-                </span>
-                <span class="cell">
-                  <span class="t-title">${t.title}</span>
-                  <span class="t-artist">${t.artist}</span>
-                </span>
-                <span class="dur"
-                  >${
-                    state === 'unavailable'
-                      ? '✕'
-                      : t.durationMs
-                        ? ByomPlayer.formatTime(t.durationMs)
-                        : ''
-                  }</span
-                >
-              </li>
-            `;
-          })}
-        </ol>
+        <div class="tracklist" part="tracklist">
+          <lit-virtualizer
+            role="list"
+            .items=${rows}
+            .keyFunction=${(row: { i: number }) => row.i}
+            .renderItem=${(row: { t: Track; i: number }) => this.renderRow(row.t, row.i, playing)}
+            @rangeChanged=${this.onRangeChanged}
+          ></lit-virtualizer>
+        </div>
         <div class="video" part="video"></div>
       </div>
       <div class="settings-overlay" ?hidden=${this.view === 'list'} @click=${this.onOverlayClick}>
@@ -1268,18 +1422,22 @@ export class ByomPlayer extends LitElement {
       margin: 0;
     }
     .tracklist {
-      list-style: none;
-      margin: 0;
-      padding: 0;
+      display: block;
       flex: 1 1 auto;
       min-height: 0;
       overflow: auto;
     }
     /* Spotify-style rows: number | title/artist | duration. */
     .tracklist li {
+      /* The virtualizer positions each row absolutely, so it must be told to
+         span the full width — otherwise it shrinks to its content and the 1fr
+         title column has no slack to push the duration to the right edge. */
+      width: 100%;
+      box-sizing: border-box;
       cursor: pointer;
       display: grid;
-      grid-template-columns: 1.6rem var(--byom-track-art-size, 2rem) 1fr auto;
+      /* First column fits up to a 4-digit track number (8000+ track playlists). */
+      grid-template-columns: 2.2rem var(--byom-track-art-size, 2rem) 1fr auto;
       align-items: center;
       gap: 0.6rem;
       padding: 0.3rem 0.5rem 0.3rem 0.4rem;
@@ -1293,7 +1451,7 @@ export class ByomPlayer extends LitElement {
       position: relative;
       text-align: center;
       color: var(--byom-text-muted);
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       font-variant-numeric: tabular-nums;
     }
     .num .glyph {

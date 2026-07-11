@@ -275,7 +275,7 @@ export class PlexProvider implements AudioProvider {
     }
   }
 
-  // Lets the availability sweep skip its cooldown when a check won't hit the
+  // Lets the availability prescan skip its cooldown when a check won't hit the
   // server: unlinked (checkAvailability short-circuits to 'unknown'), or a cached
   // hit / known miss.
   isResolutionCached(track: Track): boolean {
