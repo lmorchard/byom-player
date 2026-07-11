@@ -1,8 +1,14 @@
 {
   "name": "@lmorchard/byom-player",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A framework-agnostic Lit web component that plays JSPF playlists through swappable audio providers.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lmorchard/byom-player.git"
+  },
+  "homepage": "https://github.com/lmorchard/byom-player#readme",
+  "bugs": "https://github.com/lmorchard/byom-player/issues",
   "type": "module",
   "main": "./dist/byom-player.js",
   "module": "./dist/byom-player.js",
