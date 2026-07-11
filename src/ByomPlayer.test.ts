@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import './ByomPlayer';
-import { ByomPlayer, matchesFilter, isOrphan } from './ByomPlayer';
+import { ByomPlayer, matchesFilter, isOrphan, computeCenterOffset } from './ByomPlayer';
 import type { Track } from './types';
 import { BYOM_EXT_NS } from './manifest';
 import { loadSettings, saveSettings } from './settings';
@@ -64,6 +64,24 @@ const jspf = {
   },
 };
 
+// A larger manifest for the viewport-driven prescan mapping tests — more
+// tracks than the 10-track lookahead so a far index (e.g. 40) is provably
+// outside it. Real indices 20/25/30 carry a distinct artist so a filter can
+// select exactly them, at positions (0/1/2) that differ from their real index
+// — this is what makes the position→real-index mapping test unambiguous.
+const BIG_TRACK_COUNT = 50;
+const FILTER_MATCH_INDICES = [20, 25, 30];
+const bigJspf = {
+  playlist: {
+    title: 'Big PL',
+    track: Array.from({ length: BIG_TRACK_COUNT }, (_, i) => ({
+      title: `Track ${i}`,
+      creator: FILTER_MATCH_INDICES.includes(i) ? 'Special Artist' : `Artist ${i}`,
+      duration: 60,
+    })),
+  },
+};
+
 async function mount(): Promise<{ el: ByomPlayer; provider: ControllableProvider }> {
   const provider = new ControllableProvider();
   const el = document.createElement('byom-player') as ByomPlayer;
@@ -99,6 +117,13 @@ const stateOf = (el: ByomPlayer, i: number, orphaned = false) =>
 const indexOf = (el: ByomPlayer) => (el as unknown as { currentIndex: number }).currentIndex;
 const clickRow = (el: ByomPlayer, i: number) =>
   (el as unknown as { onRowClick(i: number): void }).onRowClick(i);
+const availabilityOf = (el: ByomPlayer) =>
+  (el as unknown as { availability: Map<number, string> }).availability;
+const fireRangeChanged = (el: ByomPlayer, first: number, last: number) =>
+  (el as unknown as { onRangeChanged(e: { first: number; last: number }): void }).onRangeChanged({
+    first,
+    last,
+  });
 
 describe('matchesFilter', () => {
   const t: Track = { title: 'Black Out Days', artist: 'Phantogram', album: 'Voices' };
@@ -310,7 +335,7 @@ describe('<byom-player>', () => {
     document.body.appendChild(el);
     await new Promise((r) => setTimeout(r, 0));
     await el.updateComplete;
-    // let the sweep finish
+    // let the prescan finish
     await new Promise((r) => setTimeout(r, 0));
     await el.updateComplete;
     expect(stateOf(el, 1)).toBe('unavailable');
@@ -359,7 +384,7 @@ describe('<byom-player>', () => {
 
   it('shows a pending state for tracks not yet resolved', async () => {
     const provider = new ControllableProvider();
-    // Track A resolves immediately; the rest hang, so the sweep stalls on track 1.
+    // Track A resolves immediately; the rest hang, so the prescan stalls on track 1.
     (provider as AudioProvider).checkAvailability = (t) =>
       t.title === 'A' ? Promise.resolve('available') : new Promise(() => {});
     const el = document.createElement('byom-player') as ByomPlayer;
@@ -375,6 +400,87 @@ describe('<byom-player>', () => {
     expect(stateOf(el, 0)).not.toBe('pending'); // checked (available)
     expect(stateOf(el, 1)).toBe('pending');
     expect(stateOf(el, 2)).toBe('pending');
+  });
+
+  it('prescans only the initial lookahead window on mount, not the whole list', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ json: async () => bigJspf } as Response);
+    const provider = new ControllableProvider();
+    (provider as AudioProvider).checkAvailability = async () => 'available';
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/big.jspf.json';
+    el.providerFactory = () => provider;
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    const availability = availabilityOf(el);
+    for (let i = 0; i < 10; i++) expect(availability.has(i)).toBe(true); // the 0..9 lookahead
+    expect(availability.has(40)).toBe(false); // far outside the lookahead, untouched
+  });
+
+  it('maps a virtualizer rangeChanged window (positions) to real track indices, inclusive of last', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ json: async () => bigJspf } as Response);
+    const provider = new ControllableProvider();
+    (provider as AudioProvider).checkAvailability = async () => 'available';
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/big.jspf.json';
+    el.providerFactory = () => provider;
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+
+    // No filter active, so filtered position === real index: rangeChanged(30, 35)
+    // should check exactly real indices 30..35 (last is inclusive), and nothing
+    // past it.
+    fireRangeChanged(el, 30, 35);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    const availability = availabilityOf(el);
+    for (let i = 30; i <= 35; i++) expect(availability.has(i)).toBe(true);
+    expect(availability.has(36)).toBe(false);
+  });
+
+  it('maps rangeChanged positions through an active filter to the correct real indices', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ json: async () => bigJspf } as Response);
+    const provider = new ControllableProvider();
+    (provider as AudioProvider).checkAvailability = async () => 'available';
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/big.jspf.json';
+    el.providerFactory = () => provider;
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+
+    // Filter down to the 3 "Special Artist" tracks (real indices 20/25/30) — all
+    // outside the mount-time 0..9 lookahead, so any checks on them can only come
+    // from the rangeChanged mapping below, not from the initial prescan.
+    await setFilter(el, 'special artist');
+    const rows = rowsOf(el);
+    expect(rows.map((r) => r.i)).toEqual([20, 25, 30]); // filtered positions 0,1,2
+
+    fireRangeChanged(el, 0, 2); // positions within the FILTERED rows, not raw indices
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    const availability = availabilityOf(el);
+    // The real indices behind filtered positions 0/1/2 got checked. If
+    // requestVisible instead mapped positions as raw indices, this would fail:
+    // raw indices 0/1/2 were already consumed (deduped) by the mount-time
+    // lookahead, so a buggy raw mapping would request nothing new here and
+    // 20/25/30 would never appear.
+    expect(availability.has(20)).toBe(true);
+    expect(availability.has(25)).toBe(true);
+    expect(availability.has(30)).toBe(true);
   });
 
   it('renders progress from the provider and seeks on change', async () => {
@@ -843,5 +949,45 @@ describe('<byom-player>', () => {
     await settle(el);
     expect(provider.loadedIndex.length).toBe(loadsBefore); // no reload
     expect(el.shadowRoot!.querySelector('.playpause')!.textContent!.trim()).toBe('▶'); // paused
+  });
+});
+
+// Real-world-ish geometry from live verification: ~39px rows, a ~472px tall
+// scroller viewport.
+describe('computeCenterOffset', () => {
+  const rowH = 39;
+  const clientH = 472;
+
+  it('centers a row in the middle of a long list', () => {
+    // target = 50*39 - (472-39)/2 = 1950 - 216.5 = 1733.5; well within [0, max].
+    const { top } = computeCenterOffset(50, rowH, clientH, 5000, 1733.5);
+    expect(top).toBe(1733.5);
+  });
+
+  it('clamps to 0 near the top of the list', () => {
+    // target = 0*39 - 216.5 = -216.5 → clamped up to 0.
+    const { top } = computeCenterOffset(0, rowH, clientH, 5000, 0);
+    expect(top).toBe(0);
+  });
+
+  it('clamps to scrollHeight - clientHeight near the end of the list', () => {
+    // 200 rows: scrollHeight = 200*39 = 7800, max = 7800-472 = 7328.
+    // target = 199*39 - 216.5 = 7544.5, which exceeds max → clamped down to it.
+    const { top } = computeCenterOffset(199, rowH, clientH, 7800, 7328);
+    expect(top).toBe(7328);
+  });
+
+  it('uses smooth behavior for a small delta from the current scroll position', () => {
+    // target = 10*39 - 216.5 = 173.5; |173.5 - 200| = 26.5, well under clientH*3.
+    const { top, behavior } = computeCenterOffset(10, rowH, clientH, 5000, 200);
+    expect(top).toBe(173.5);
+    expect(behavior).toBe('smooth');
+  });
+
+  it('uses auto (jump) behavior for a delta greater than clientHeight * 3', () => {
+    // target = 1000*39 - 216.5 = 38783.5; |38783.5 - 0| = 38783.5 >> clientH*3 (1416).
+    const { top, behavior } = computeCenterOffset(1000, rowH, clientH, 50000, 0);
+    expect(top).toBe(38783.5);
+    expect(behavior).toBe('auto');
   });
 });

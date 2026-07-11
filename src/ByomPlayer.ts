@@ -25,6 +25,28 @@ import {
 
 type ProviderFactory = (name: string, config: Record<string, unknown>) => AudioProvider;
 
+// Pure arithmetic behind centerActiveTrack: given the active row's position
+// within the (fixed-height) virtual list and the scroller's current geometry,
+// compute the scrollTop that centers it (clamped to the scrollable range) and
+// whether the move should animate or jump. Extracted so the off-by-one-prone
+// math is unit-testable without a real layout engine.
+export function computeCenterOffset(
+  pos: number,
+  rowH: number,
+  clientH: number,
+  scrollH: number,
+  scrollTop: number,
+): { top: number; behavior: ScrollBehavior } {
+  const target = pos * rowH - (clientH - rowH) / 2;
+  const max = scrollH - clientH;
+  const top = Math.max(0, Math.min(target, max));
+  // Smoothly nudge for a nearby row (the common next/prev case); jump instantly
+  // for a far target (e.g. a shuffle advance) — animating across thousands of
+  // rows would be slow and churn the virtualizer.
+  const far = Math.abs(top - scrollTop) > clientH * 3;
+  return { top, behavior: far ? 'auto' : 'smooth' };
+}
+
 // Case-insensitive substring match against title, artist, and album. An empty
 // query matches everything.
 export function matchesFilter(track: Track, query: string): boolean {
@@ -479,7 +501,8 @@ export class ByomPlayer extends LitElement {
   // rows a shuffle jump lands on, where the virtualizer's own scrollToIndex
   // (element(i)?.scrollIntoView) can't resolve an off-screen element. No-op if
   // the active track is filtered out, the list is empty, or there's no layout
-  // engine (happy-dom in tests).
+  // engine (happy-dom in tests). The offset math itself lives in
+  // computeCenterOffset (pure, unit-tested).
   private centerActiveTrack(): void {
     const pos = this.filteredRows.findIndex((r) => r.i === this.currentIndex);
     if (pos < 0) return;
@@ -487,15 +510,14 @@ export class ByomPlayer extends LitElement {
     const row = scroller?.querySelector<HTMLElement>('li');
     const rowH = row?.getBoundingClientRect().height ?? 0;
     if (!scroller || rowH <= 0) return; // no layout (tests) → degrade gracefully
-    // Center the row's slot (top = pos * rowH in the reserved virtual space).
-    const target = pos * rowH - (scroller.clientHeight - rowH) / 2;
-    const max = scroller.scrollHeight - scroller.clientHeight;
-    const top = Math.max(0, Math.min(target, max));
-    // Smoothly nudge for a nearby row (the common next/prev case); jump instantly
-    // for a far target (e.g. a shuffle advance) — animating across thousands of
-    // rows would be slow and churn the virtualizer.
-    const far = Math.abs(top - scroller.scrollTop) > scroller.clientHeight * 3;
-    scroller.scrollTo?.({ top, behavior: far ? 'auto' : 'smooth' });
+    const { top, behavior } = computeCenterOffset(
+      pos,
+      rowH,
+      scroller.clientHeight,
+      scroller.scrollHeight,
+      scroller.scrollTop,
+    );
+    scroller.scrollTo?.({ top, behavior });
   }
 
   private selectTrack(index: number): void {

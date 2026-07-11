@@ -258,7 +258,7 @@ export class JellyfinProvider implements AudioProvider {
     }
   }
 
-  // Lets the availability sweep skip its cooldown when a check won't hit the
+  // Lets the availability prescan skip its cooldown when a check won't hit the
   // server: unauthed (checkAvailability short-circuits to 'unknown'), or a
   // cached hit / known miss.
   isResolutionCached(track: Track): boolean {

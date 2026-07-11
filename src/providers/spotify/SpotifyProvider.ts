@@ -177,7 +177,7 @@ export class SpotifyProvider implements AudioProvider {
   }
 
   // checkAvailability is a network-less parse of the track's Spotify URL in every
-  // case (URL → available, none → unavailable), so the sweep never needs to
+  // case (URL → available, none → unavailable), so the prescan never needs to
   // throttle — there's no server to be gentle with, whatever the answer.
   isResolutionCached(): boolean {
     return true;
