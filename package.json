@@ -7,7 +7,7 @@
   "main": "./dist/byom-player.js",
   "module": "./dist/byom-player.js",
   "files": [
-    "dist"
+    "dist/*.js"
   ],
   "scripts": {
     "dev": "vite",
