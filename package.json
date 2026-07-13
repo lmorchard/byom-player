@@ -1,6 +1,6 @@
 {
   "name": "@lmorchard/byom-player",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A framework-agnostic Lit web component that plays JSPF playlists through swappable audio providers.",
   "license": "MIT",
   "repository": {
