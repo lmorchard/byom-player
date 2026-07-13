@@ -797,38 +797,40 @@ export class ByomPlayer extends LitElement {
     // <byom-playlist> children), falling back to the loaded manifest title.
     const currentTitle = this.playlists.find((p) => p.src === this.src)?.title ?? pl.title;
     return html`
-      <div class="head" part="header">
-        <div class="art" part="art">
-          ${
-            pl.image
-              ? html`<img class="art-img" src=${pl.image} alt="" />`
-              : html`<span class="art-ph" aria-hidden="true">🎵</span>`
-          }
-        </div>
-        <div class="meta" part="meta">
-          ${
-            this.playlists.length > 1
-              ? html`<div class="title-wrap" part="title">
-                  <h2 class="title title--switch">
-                    ${currentTitle}<span class="caret" aria-hidden="true">▾</span>
-                  </h2>
-                  <select
-                    class="title-select"
-                    aria-label="Playlist"
-                    @change=${this.onPlaylistChange}
-                  >
-                    ${this.playlists.map(
-                      (p) =>
-                        html`<option value=${p.src} ?selected=${p.src === this.src}>
-                          ${p.title}
-                        </option>`,
-                    )}
-                  </select>
-                </div>`
-              : html`<h2 class="title" part="title">${pl.title}</h2>`
-          }
-          ${pl.creator ? html`<p class="creator" part="creator">${pl.creator}</p>` : nothing}
-          ${this.renderMetaLine(pl)}
+      <div class="root" part="root">
+        <div class="head" part="header">
+          <div class="art" part="art">
+            ${
+              pl.image
+                ? html`<img class="art-img" src=${pl.image} alt="" />`
+                : html`<span class="art-ph" aria-hidden="true">🎵</span>`
+            }
+          </div>
+          <div class="meta" part="meta">
+            ${
+              this.playlists.length > 1
+                ? html`<div class="title-wrap" part="title">
+                    <h2 class="title title--switch">
+                      ${currentTitle}<span class="caret" aria-hidden="true">▾</span>
+                    </h2>
+                    <select
+                      class="title-select"
+                      aria-label="Playlist"
+                      @change=${this.onPlaylistChange}
+                    >
+                      ${this.playlists.map(
+                        (p) =>
+                          html`<option value=${p.src} ?selected=${p.src === this.src}>
+                            ${p.title}
+                          </option>`,
+                      )}
+                    </select>
+                  </div>`
+                : html`<h2 class="title" part="title">${pl.title}</h2>`
+            }
+            ${pl.creator ? html`<p class="creator" part="creator">${pl.creator}</p>` : nothing}
+            ${this.renderMetaLine(pl)}
+          </div>
           ${
             pl.annotation
               ? html`<div class="description" part="description">
@@ -836,151 +838,153 @@ export class ByomPlayer extends LitElement {
                 </div>`
               : nothing
           }
-        </div>
-        ${
-          this.noSettings
-            ? nothing
-            : html`<button
-                class="gear"
-                part="control gear"
-                @click=${this.openSettings}
-                aria-label="Settings"
-                title="Settings"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="24"
-                  height="24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
+          ${
+            this.noSettings
+              ? nothing
+              : html`<button
+                  class="gear"
+                  part="control gear"
+                  @click=${this.openSettings}
+                  aria-label="Settings"
+                  title="Settings"
                 >
-                  <circle cx="12" cy="12" r="3"></circle>
-                  <path
-                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
-                  ></path>
-                </svg>
-              </button>`
-        }
-      </div>
-      <div class="transport" part="transport">
-        <div class="ctl-group">
-          <button class="prev" part="control prev" @click=${this.prev} aria-label="Previous">
-            ⏮
-          </button>
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="24"
+                    height="24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path
+                      d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+                    ></path>
+                  </svg>
+                </button>`
+          }
+        </div>
+        <div class="transport" part="transport">
+          <div class="ctl-group">
+            <button class="prev" part="control prev" @click=${this.prev} aria-label="Previous">
+              ⏮
+            </button>
+            <button
+              class="playpause"
+              part="control play"
+              @click=${this.togglePlay}
+              aria-label="Play/Pause"
+            >
+              ${playing ? '⏸' : '▶'}
+            </button>
+            <button class="next" part="control next" @click=${this.next} aria-label="Next">
+              ⏭
+            </button>
+          </div>
+          <div class="seek" part="progress">
+            <span class="time">${ByomPlayer.formatTime(this.positionMs)}</span>
+            <input
+              class="progress"
+              part="seek"
+              type="range"
+              min="0"
+              max=${this.durationMs || 0}
+              .value=${String(this.positionMs)}
+              ?disabled=${!this.durationMs}
+              aria-label="Seek"
+              @input=${this.onSeekInput}
+              @change=${this.onSeekChange}
+            />
+            <span class="time">${ByomPlayer.formatTime(this.durationMs)}</span>
+          </div>
+          ${
+            this.preview
+              ? html`<span
+                  class="preview-badge"
+                  part="preview-badge"
+                  title="If you're signed into Spotify Premium in this browser, press ▶ in the Spotify player below for the full track."
+                  >Preview · 30s ⓘ</span
+                >`
+              : nothing
+          }
           <button
-            class="playpause"
-            part="control play"
-            @click=${this.togglePlay}
-            aria-label="Play/Pause"
+            class="shuffle ${this.shuffle ? 'on' : ''}"
+            part="control shuffle"
+            @click=${this.toggleShuffle}
+            aria-label="Shuffle"
+            aria-pressed=${this.shuffle ? 'true' : 'false'}
+            title=${this.shuffle ? 'Shuffle: on' : 'Shuffle: off'}
           >
-            ${playing ? '⏸' : '▶'}
+            <svg
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <polyline points="16 3 21 3 21 8"></polyline>
+              <line x1="4" y1="20" x2="21" y2="3"></line>
+              <polyline points="21 16 21 21 16 21"></polyline>
+              <line x1="15" y1="15" x2="21" y2="21"></line>
+              <line x1="4" y1="4" x2="9" y2="9"></line>
+            </svg>
           </button>
-          <button class="next" part="control next" @click=${this.next} aria-label="Next">⏭</button>
         </div>
-        <div class="seek" part="progress">
-          <span class="time">${ByomPlayer.formatTime(this.positionMs)}</span>
+        <div class="status">
+          ${
+            this.halted
+              ? html`<span class="halted"
+                  >Playback stopped after repeated errors — pick a track to retry.</span
+                >`
+              : nothing
+          }
+        </div>
+        <div class="filter-row" part="filter">
           <input
-            class="progress"
-            part="seek"
-            type="range"
-            min="0"
-            max=${this.durationMs || 0}
-            .value=${String(this.positionMs)}
-            ?disabled=${!this.durationMs}
-            aria-label="Seek"
-            @input=${this.onSeekInput}
-            @change=${this.onSeekChange}
+            class="filter-input"
+            part="filter-input"
+            type="text"
+            placeholder="Filter tracks…"
+            .value=${this.filterQuery}
+            aria-label="Filter tracks"
+            @input=${this.onFilterInput}
+            @keydown=${this.onFilterKeydown}
           />
-          <span class="time">${ByomPlayer.formatTime(this.durationMs)}</span>
+          ${
+            this.filterQuery
+              ? html`<button
+                  class="filter-clear"
+                  part="filter-clear"
+                  @click=${this.clearFilter}
+                  aria-label="Clear filter"
+                >
+                  ×
+                </button>`
+              : nothing
+          }
         </div>
-        ${
-          this.preview
-            ? html`<span
-                class="preview-badge"
-                part="preview-badge"
-                title="If you're signed into Spotify Premium in this browser, press ▶ in the Spotify player below for the full track."
-                >Preview · 30s ⓘ</span
-              >`
-            : nothing
-        }
-        <button
-          class="shuffle ${this.shuffle ? 'on' : ''}"
-          part="control shuffle"
-          @click=${this.toggleShuffle}
-          aria-label="Shuffle"
-          aria-pressed=${this.shuffle ? 'true' : 'false'}
-          title=${this.shuffle ? 'Shuffle: on' : 'Shuffle: off'}
-        >
-          <svg
-            viewBox="0 0 24 24"
-            width="20"
-            height="20"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <polyline points="16 3 21 3 21 8"></polyline>
-            <line x1="4" y1="20" x2="21" y2="3"></line>
-            <polyline points="21 16 21 21 16 21"></polyline>
-            <line x1="15" y1="15" x2="21" y2="21"></line>
-            <line x1="4" y1="4" x2="9" y2="9"></line>
-          </svg>
-        </button>
-      </div>
-      <div class="status">
-        ${
-          this.halted
-            ? html`<span class="halted"
-                >Playback stopped after repeated errors — pick a track to retry.</span
-              >`
-            : nothing
-        }
-      </div>
-      <div class="filter-row" part="filter">
-        <input
-          class="filter-input"
-          part="filter-input"
-          type="text"
-          placeholder="Filter tracks…"
-          .value=${this.filterQuery}
-          aria-label="Filter tracks"
-          @input=${this.onFilterInput}
-          @keydown=${this.onFilterKeydown}
-        />
-        ${
-          this.filterQuery
-            ? html`<button
-                class="filter-clear"
-                part="filter-clear"
-                @click=${this.clearFilter}
-                aria-label="Clear filter"
-              >
-                ×
-              </button>`
-            : nothing
-        }
-      </div>
-      <div class="stage" part="stage">
-        <div class="tracklist-empty">
-          ${rows.length === 0 && q ? html`<p class="no-matches">No tracks match "${q}"</p>` : nothing}
+        <div class="stage" part="stage">
+          <div class="tracklist-empty">
+            ${rows.length === 0 && q ? html`<p class="no-matches">No tracks match "${q}"</p>` : nothing}
+          </div>
+          <div class="tracklist" part="tracklist">
+            <lit-virtualizer
+              role="list"
+              .items=${rows}
+              .keyFunction=${(row: { i: number }) => row.i}
+              .renderItem=${(row: { t: Track; i: number }) => this.renderRow(row.t, row.i, playing)}
+              @rangeChanged=${this.onRangeChanged}
+            ></lit-virtualizer>
+          </div>
+          <div class="video" part="video"></div>
         </div>
-        <div class="tracklist" part="tracklist">
-          <lit-virtualizer
-            role="list"
-            .items=${rows}
-            .keyFunction=${(row: { i: number }) => row.i}
-            .renderItem=${(row: { t: Track; i: number }) => this.renderRow(row.t, row.i, playing)}
-            @rangeChanged=${this.onRangeChanged}
-          ></lit-virtualizer>
-        </div>
-        <div class="video" part="video"></div>
       </div>
       <div class="settings-overlay" ?hidden=${this.view === 'list'} @click=${this.onOverlayClick}>
         ${this.renderSettings()}
@@ -1118,6 +1122,20 @@ export class ByomPlayer extends LitElement {
       padding: 1rem;
       position: relative; /* anchor for the settings modal overlay */
     }
+    /* App-shell wrapper. A flex column that fills the host's height when the host
+       is given one (e.g. a viewport-fitted page shell): the stage flexes into the
+       remaining space and the tracklist is the single scroll region. An internal
+       wrapper (not :host) so a consumer overriding the host's display can't
+       defeat it. container-type drives width-based @container queries for the
+       responsive head below. When the host is unconstrained, height:100% resolves
+       to auto and the player is content-sized. */
+    .root {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      height: 100%;
+      container-type: inline-size;
+    }
     /* Auto dark default = Midnight */
     @media (prefers-color-scheme: dark) {
       :host {
@@ -1185,15 +1203,23 @@ export class ByomPlayer extends LitElement {
       --byom-on-accent: #282a36;
       --byom-border: #44475a;
     }
-    /* Header block: cover art + text column (title/creator/meta/description) +
-       the settings gear, which sits as the last flex item so it top-aligns with
-       the art/title and the gap reserves space between it and the text column. */
+    /* Header grid: cover art (left, spanning both rows) + text column
+       (title/creator/meta on row 1, description on row 2) + settings gear (right,
+       spanning both rows). At narrow container width the head restacks: the cover
+       shrinks and the description drops to its own full-width row (see @container
+       below). */
     .head {
-      display: flex;
-      gap: 0.9rem;
-      align-items: flex-start;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-template-areas:
+        'art meta gear'
+        'art desc gear';
+      column-gap: 0.9rem;
+      row-gap: 0.25rem;
+      align-items: start;
     }
     .art {
+      grid-area: art;
       width: 104px;
       height: 104px;
       flex: 0 0 auto;
@@ -1214,8 +1240,8 @@ export class ByomPlayer extends LitElement {
       display: block;
     }
     .meta {
+      grid-area: meta;
       min-width: 0;
-      flex: 1;
     }
     .title {
       margin: 0;
@@ -1273,10 +1299,25 @@ export class ByomPlayer extends LitElement {
       font-variant-numeric: tabular-nums;
     }
     .description {
-      margin: 0.5rem 0 0;
+      grid-area: desc;
+      margin: 0.35rem 0 0;
       color: var(--byom-text-muted);
       font-size: 0.82rem;
       line-height: 1.4;
+    }
+    /* Narrow container: cover shrinks and the description takes its own
+       full-width row beneath the cover + title/meta. */
+    @container (max-width: 30rem) {
+      .head {
+        grid-template-areas:
+          'art meta gear'
+          'desc desc desc';
+      }
+      .art {
+        width: 52px;
+        height: 52px;
+        font-size: 1.4rem;
+      }
     }
     .description a {
       color: var(--byom-accent);
@@ -1285,19 +1326,23 @@ export class ByomPlayer extends LitElement {
     .description a:hover {
       text-decoration: underline;
     }
-    /* Content-driven stage with a cap: short playlists stay compact (no void),
-       long ones scroll inside the tracklist, and a mounted 16:9 embed still
-       reserves its space while the tracklist flexes into the remainder. */
+    /* Stage fills the app-shell's remaining height: the tracklist (the single
+       scroll region) flexes into it, and a mounted 16:9 embed reserves capped
+       space above. No fixed viewport cap — the host bounds the height. */
     .stage {
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
-      max-height: 60vh;
+      flex: 1 1 auto;
+      min-height: 0;
       margin-top: 0.5rem;
     }
     .video {
       flex: 0 0 auto;
       aspect-ratio: 16 / 9;
+      /* Cap so a short shell still leaves room for the tracklist; the 16:9 box
+         letterboxes within when capped. */
+      max-height: 30vh;
       background: var(--byom-surface);
       border-radius: calc(var(--byom-border-radius) / 2);
       overflow: hidden;
@@ -1584,6 +1629,7 @@ export class ByomPlayer extends LitElement {
       font-size: 0.85rem;
     }
     .gear {
+      grid-area: gear;
       flex: 0 0 auto;
       display: block;
       background: transparent;
