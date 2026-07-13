@@ -78,6 +78,9 @@
       }
       byom-player {
         max-width: 32rem;
+        /* Fill-by-default: give the host a height so it runs as an app shell
+           (unconstrained hosts are content-sized and would sprawl on long lists). */
+        height: calc(100dvh - 4rem);
       }
     </style>
   </head>
