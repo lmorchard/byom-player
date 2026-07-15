@@ -1133,6 +1133,7 @@ export class ByomPlayer extends LitElement {
       --byom-warn: #b06a00;
       --byom-font: system-ui, sans-serif;
       --byom-border-radius: 8px;
+      --byom-video-scale: 0.35;
 
       display: block;
       background: var(--byom-bg);
@@ -1356,6 +1357,7 @@ export class ByomPlayer extends LitElement {
       flex: 1 1 auto;
       min-height: 0;
       margin-top: 0.5rem;
+      position: relative;
     }
     .video {
       flex: 0 0 auto;
@@ -1389,6 +1391,91 @@ export class ByomPlayer extends LitElement {
     /* Toggle only appears on narrow players (see the @container block). */
     .video-toggle {
       display: none;
+    }
+    /* Narrow players: the embed collapses to a small floating "preview" pinned
+       to the lower-right of the stage. It's rendered at a full 320x180 and
+       scaled down via transform (not a natively-tiny iframe) so YouTube and
+       Spotify both stay faithful. Tapping the preview expands it to full width;
+       tapping again collapses it. --byom-video-scale is the single size knob. */
+    @container (max-width: 30rem) {
+      /* --- Collapsed (default): floating mini in the corner --- */
+      .stage:not(.video-expanded) .video-wrap {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        z-index: 2;
+        width: calc(320px * var(--byom-video-scale));
+        height: calc(180px * var(--byom-video-scale));
+        max-height: none;
+        overflow: hidden;
+        border: 1px solid var(--byom-border);
+        border-radius: calc(var(--byom-border-radius) / 2);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+      }
+      .stage:not(.video-expanded) .video {
+        width: 320px;
+        height: 180px;
+        max-height: none;
+        aspect-ratio: auto;
+        transform: scale(var(--byom-video-scale));
+        transform-origin: top left;
+      }
+      /* Reserve room so the last rows can scroll clear of the floating mini,
+         but only when an embed is actually mounted. */
+      .stage:not(.video-expanded):has(.video:not(:empty)) .tracklist {
+        padding-bottom: calc(180px * var(--byom-video-scale) + 0.75rem);
+      }
+      /* Transparent full-cover tap target → expand. Also stops accidental taps
+         on the embed's own controls while it's tiny. A small scrimmed glyph in
+         the corner hints that it's tappable. */
+      .stage:not(.video-expanded) .video-toggle {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: flex-end;
+        justify-content: flex-end;
+        padding: 2px 4px;
+        font-size: 0.8rem;
+        line-height: 1;
+        color: var(--byom-text);
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+        z-index: 3;
+      }
+      .stage:not(.video-expanded) .video-toggle::before {
+        content: '';
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        width: 1.4rem;
+        height: 1.4rem;
+        background: color-mix(in srgb, var(--byom-bg) 70%, transparent);
+        border-top-left-radius: calc(var(--byom-border-radius) / 2);
+        z-index: -1;
+      }
+
+      /* --- Expanded: full-width embed (today's layout) + a corner collapse
+             button. .video-wrap/.video fall back to their base rules; only the
+             toggle needs positioning. --- */
+      .stage.video-expanded .video-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        min-width: 1.6rem;
+        min-height: 1.6rem;
+        font-size: 1rem;
+        line-height: 1;
+        color: var(--byom-text);
+        background: color-mix(in srgb, var(--byom-bg) 70%, transparent);
+        border: 1px solid var(--byom-border);
+        border-radius: 999px;
+        cursor: pointer;
+        z-index: 3;
+      }
     }
     /* Transport footer: prev/play-pause/next + inline seek + shuffle. */
     .transport {
