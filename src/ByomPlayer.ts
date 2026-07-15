@@ -749,7 +749,9 @@ export class ByomPlayer extends LitElement {
     const orphaned = isOrphan(t);
     const state = this.trackState(i, orphaned);
     // The active row's glyph mirrors playback; any other row offers play.
-    const glyph = state === 'active' ? (playing ? '⏸' : '▶') : '▶';
+    // VS15 (︎) forces monochrome text presentation so the glyph inherits
+    // the theme color instead of rendering as a colored emoji.
+    const glyph = state === 'active' ? (playing ? '⏸︎' : '▶︎') : '▶︎';
     return html`
       <li
         class=${this.trackClasses(i, orphaned)}
@@ -877,7 +879,7 @@ export class ByomPlayer extends LitElement {
         <div class="transport" part="transport">
           <div class="ctl-group">
             <button class="prev" part="control prev" @click=${this.prev} aria-label="Previous">
-              ⏮
+              ${'⏮︎'}
             </button>
             <button
               class="playpause"
@@ -885,10 +887,10 @@ export class ByomPlayer extends LitElement {
               @click=${this.togglePlay}
               aria-label="Play/Pause"
             >
-              ${playing ? '⏸' : '▶'}
+              ${playing ? '⏸︎' : '▶︎'}
             </button>
             <button class="next" part="control next" @click=${this.next} aria-label="Next">
-              ⏭
+              ${'⏭︎'}
             </button>
           </div>
           <div class="seek" part="progress">

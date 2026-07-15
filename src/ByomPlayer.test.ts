@@ -923,10 +923,20 @@ describe('<byom-player>', () => {
     await el['controller']!.start(0);
     await el.updateComplete;
     const btn = el.shadowRoot!.querySelector('.playpause') as HTMLButtonElement;
-    expect(btn.textContent!.trim()).toBe('⏸'); // playing
+    expect(btn.textContent!.trim()).toBe('⏸︎'); // playing
     btn.click();
     await el.updateComplete;
-    expect(btn.textContent!.trim()).toBe('▶'); // paused
+    expect(btn.textContent!.trim()).toBe('▶︎'); // paused
+  });
+
+  it('renders the pause glyph with a text-presentation selector so it inherits theme color', async () => {
+    const { el } = await mount();
+    // Force the playing state; the play/pause control should render ⏸ + VS15.
+    (el as unknown as { playbackState: string }).playbackState = 'playing';
+    el.requestUpdate();
+    await el.updateComplete;
+    const btn = el.shadowRoot!.querySelector('.playpause')!;
+    expect(btn.textContent).toContain('⏸︎'); // ⏸ + VS15
   });
 
   it('reflects the theme property to a host attribute', async () => {
@@ -1028,7 +1038,7 @@ describe('<byom-player>', () => {
     clickRow(el, 0); // active row → toggle, not reload
     await settle(el);
     expect(provider.loadedIndex.length).toBe(loadsBefore); // no reload
-    expect(el.shadowRoot!.querySelector('.playpause')!.textContent!.trim()).toBe('▶'); // paused
+    expect(el.shadowRoot!.querySelector('.playpause')!.textContent!.trim()).toBe('▶︎'); // paused
   });
 
   describe('video expand toggle', () => {
