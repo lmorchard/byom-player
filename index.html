@@ -77,14 +77,60 @@
         color: #666;
       }
       byom-player {
+        width: 100%;
         max-width: 32rem;
         /* Fill-by-default: give the host a height so it runs as an app shell
            (unconstrained hosts are content-sized and would sprawl on long lists). */
         height: calc(100dvh - 4rem);
       }
+      /* Hamburger toggle for the config panel — only on narrow viewports, so the
+         player gets the full width for mobile layout testing. */
+      #panel-toggle {
+        display: none;
+      }
+      @media (max-width: 48rem) {
+        body {
+          grid-template-columns: 1fr;
+          padding: 1rem;
+        }
+        #panel-toggle {
+          display: block;
+          position: fixed;
+          top: 0.5rem;
+          right: 0.5rem;
+          z-index: 1000;
+          width: 2.5rem;
+          height: 2.5rem;
+          padding: 0;
+          font-size: 1.2rem;
+          line-height: 1;
+        }
+        .panel {
+          position: fixed;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          width: min(22rem, 88vw);
+          z-index: 999;
+          overflow: auto;
+          border-radius: 0;
+          transform: translateX(100%);
+          transition: transform 0.2s ease;
+        }
+        body.show-panel .panel {
+          transform: translateX(0);
+        }
+        #host {
+          min-width: 0;
+        }
+        byom-player {
+          height: calc(100dvh - 2rem);
+        }
+      }
     </style>
   </head>
   <body>
+    <button type="button" id="panel-toggle" aria-label="Toggle config panel">☰</button>
     <div class="panel">
       <h1>byom-player dev harness</h1>
       <form id="cfg">
@@ -129,6 +175,11 @@
       const form = document.getElementById('cfg');
       const host = document.getElementById('host');
       const status = document.getElementById('status');
+
+      // Hamburger: slide the config panel in/out on narrow viewports.
+      document.getElementById('panel-toggle').addEventListener('click', () => {
+        document.body.classList.toggle('show-panel');
+      });
 
       // The playlists the harness offers, authored as <byom-playlist> children so
       // the component's real top-level picker is exercised.
