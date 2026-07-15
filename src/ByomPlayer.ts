@@ -1365,6 +1365,9 @@ export class ByomPlayer extends LitElement {
       /* Cap so a short shell still leaves room for the tracklist; the 16:9 box
          letterboxes within when capped. */
       max-height: 30vh;
+      /* The box's width is derived from the 30vh height cap (via aspect-ratio),
+         so on players wider than the box it must center rather than pin left. */
+      margin-inline: auto;
       background: var(--byom-surface);
       border-radius: calc(var(--byom-border-radius) / 2);
       overflow: hidden;
