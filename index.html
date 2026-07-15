@@ -79,6 +79,9 @@
       byom-player {
         width: 100%;
         max-width: 32rem;
+        /* border-box so the declared height absorbs the player's own :host
+           padding — otherwise it adds on top and overflows the viewport. */
+        box-sizing: border-box;
         /* Fill-by-default: give the host a height so it runs as an app shell
            (unconstrained hosts are content-sized and would sprawl on long lists). */
         height: calc(100dvh - 4rem);
@@ -89,6 +92,14 @@
         display: none;
       }
       @media (max-width: 48rem) {
+        /* The config panel is an off-canvas drawer parked at translateX(100%);
+           clip horizontal overflow so that parked position can't create a
+           scrollbar. The player manages its own internal scrolling, so the
+           document never needs to scroll on narrow. */
+        html,
+        body {
+          overflow-x: hidden;
+        }
         body {
           grid-template-columns: 1fr;
           padding: 1rem;
@@ -97,7 +108,7 @@
           display: block;
           position: fixed;
           top: 0.5rem;
-          right: 0.5rem;
+          left: 0.5rem;
           z-index: 1000;
           width: 2.5rem;
           height: 2.5rem;
