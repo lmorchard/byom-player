@@ -153,6 +153,9 @@ export class ByomPlayer extends LitElement {
   @state() private preview = false;
   @state() private playlists: PlaylistEntry[] = [];
   @state() private view: 'list' | 'settings' = 'list';
+  // Collapsed by default; only meaningful on narrow players (CSS gates the
+  // floating-mini vs. full-width layout). Ephemeral — never persisted.
+  @state() private videoExpanded = false;
   @state() private draft: UserSettings = { providers: {} };
   @state() private authState: AuthState | null = null;
   @state() private filterQuery = '';
@@ -693,6 +696,10 @@ export class ByomPlayer extends LitElement {
     if (this.controller) this.controller.setShuffle(!this.controller.shuffle);
   }
 
+  private toggleVideoExpanded(): void {
+    this.videoExpanded = !this.videoExpanded;
+  }
+
   private onSeekInput(): void {
     this.seeking = true;
   }
@@ -970,7 +977,7 @@ export class ByomPlayer extends LitElement {
               : nothing
           }
         </div>
-        <div class="stage" part="stage">
+        <div class="stage ${this.videoExpanded ? 'video-expanded' : ''}" part="stage">
           <div class="tracklist-empty">
             ${rows.length === 0 && q ? html`<p class="no-matches">No tracks match "${q}"</p>` : nothing}
           </div>
@@ -983,7 +990,20 @@ export class ByomPlayer extends LitElement {
               @rangeChanged=${this.onRangeChanged}
             ></lit-virtualizer>
           </div>
-          <div class="video" part="video"></div>
+          <div class="video-wrap" part="video-wrap">
+            <div class="video" part="video"></div>
+            <button
+              class="video-toggle"
+              part="video-toggle"
+              type="button"
+              @click=${this.toggleVideoExpanded}
+              aria-expanded=${this.videoExpanded ? 'true' : 'false'}
+              aria-label=${this.videoExpanded ? 'Collapse video' : 'Expand video'}
+              title=${this.videoExpanded ? 'Collapse video' : 'Expand video'}
+            >
+              ${this.videoExpanded ? '×' : '⤢'}
+            </button>
+          </div>
         </div>
       </div>
       <div class="settings-overlay" ?hidden=${this.view === 'list'} @click=${this.onOverlayClick}>
@@ -1355,6 +1375,20 @@ export class ByomPlayer extends LitElement {
       width: 100%;
       height: 100%;
       border: 0;
+    }
+    /* The embed lives inside a positioned wrapper so a corner toggle can anchor
+       to it. Wrapper reserves space like the old .video flex child did, and the
+       whole region hides when no embed is mounted. */
+    .video-wrap {
+      position: relative;
+      flex: 0 0 auto;
+    }
+    .video-wrap:has(.video:empty) {
+      display: none;
+    }
+    /* Toggle only appears on narrow players (see the @container block). */
+    .video-toggle {
+      display: none;
     }
     /* Transport footer: prev/play-pause/next + inline seek + shuffle. */
     .transport {

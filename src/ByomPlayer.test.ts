@@ -1030,6 +1030,46 @@ describe('<byom-player>', () => {
     expect(provider.loadedIndex.length).toBe(loadsBefore); // no reload
     expect(el.shadowRoot!.querySelector('.playpause')!.textContent!.trim()).toBe('▶'); // paused
   });
+
+  describe('video expand toggle', () => {
+    const expandedOf = (el: ByomPlayer) =>
+      (el as unknown as { videoExpanded: boolean }).videoExpanded;
+
+    it('toggles videoExpanded and reflects state on the button', async () => {
+      const { el } = await mount();
+      const stage = () => el.shadowRoot!.querySelector('.stage')!;
+      const toggle = () => el.shadowRoot!.querySelector<HTMLButtonElement>('.video-toggle')!;
+
+      // Default collapsed.
+      expect(expandedOf(el)).toBe(false);
+      expect(stage().classList.contains('video-expanded')).toBe(false);
+      expect(toggle().getAttribute('aria-expanded')).toBe('false');
+      expect(toggle().getAttribute('aria-label')).toBe('Expand video');
+
+      // The embed host is a sibling of the toggle, never its child (provider
+      // mount targets `.video`). happy-dom's querySelector doesn't support
+      // `:scope`, so check direct children explicitly instead.
+      const wrap = el.shadowRoot!.querySelector('.video-wrap')!;
+      const wrapChildren = Array.from(wrap.children);
+      expect(wrapChildren.some((c) => c.classList.contains('video'))).toBe(true);
+      expect(wrapChildren.some((c) => c.classList.contains('video-toggle'))).toBe(true);
+      expect(toggle().querySelector('.video')).toBeNull();
+
+      // Tap to expand.
+      toggle().click();
+      await el.updateComplete;
+      expect(expandedOf(el)).toBe(true);
+      expect(stage().classList.contains('video-expanded')).toBe(true);
+      expect(toggle().getAttribute('aria-expanded')).toBe('true');
+      expect(toggle().getAttribute('aria-label')).toBe('Collapse video');
+
+      // Tap to collapse.
+      toggle().click();
+      await el.updateComplete;
+      expect(expandedOf(el)).toBe(false);
+      expect(stage().classList.contains('video-expanded')).toBe(false);
+    });
+  });
 });
 
 // Real-world-ish geometry from live verification: ~39px rows, a ~472px tall
