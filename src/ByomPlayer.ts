@@ -1133,7 +1133,7 @@ export class ByomPlayer extends LitElement {
       --byom-warn: #b06a00;
       --byom-font: system-ui, sans-serif;
       --byom-border-radius: 8px;
-      --byom-video-scale: 0.525;
+      --byom-video-scale: 0.42;
 
       display: block;
       background: var(--byom-bg);
