@@ -1001,12 +1001,35 @@ describe('<byom-player>', () => {
     expect(desc.innerHTML).toContain('<strong>great</strong>');
   });
 
-  it('renders a meta line with track count, total duration, and date range', async () => {
+  it('renders a meta line with author, track count, total duration, and date range', async () => {
     const { el } = await mount();
-    const meta = el.shadowRoot!.querySelector('.meta-line')!.textContent!;
+    const line = el.shadowRoot!.querySelector('.meta-line')!;
+    const meta = line.textContent!;
+    expect(meta).toContain('Les'); // author folded into the front
     expect(meta).toContain('3 tracks');
     expect(meta).toContain('4 min'); // 60+120+60s = 4 min
     expect(meta).toContain('Jul 2026 – Sep 2026'); // date (created) – date_updated
+    // Author precedes the track count, dot-separated.
+    expect(meta.indexOf('Les')).toBeLessThan(meta.indexOf('3 tracks'));
+    // The skinning API `creator` part still resolves, on a span inside the line.
+    const creatorPart = line.querySelector('[part~="creator"]')!;
+    expect(creatorPart).toBeTruthy();
+    expect(creatorPart.textContent).toContain('Les');
+  });
+
+  it('omits the author segment (and its separator) when the playlist has no creator', async () => {
+    // mount() takes no args; it reads whatever the per-test `fetch` mock returns
+    // (default set in beforeEach). Re-mock fetch to a creator-less manifest first.
+    const noCreator = structuredClone(jspf);
+    delete (noCreator.playlist as { creator?: string }).creator;
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      json: async () => noCreator,
+    } as Response);
+    const { el } = await mount();
+    const meta = el.shadowRoot!.querySelector('.meta-line')!.textContent!.trim();
+    expect(meta).not.toContain('Les');
+    expect(meta.startsWith('3 tracks')).toBe(true); // no leading separator
+    expect(el.shadowRoot!.querySelector('[part~="creator"]')).toBeNull();
   });
 
   it('numbers rows by real playlist position, even while filtered', async () => {

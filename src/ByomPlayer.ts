@@ -610,14 +610,23 @@ export class ByomPlayer extends LitElement {
     else this.selectTrack(index);
   }
 
-  // "{n} tracks · {total duration} · {created – updated}", each part conditional.
+  // "{author} · {n} tracks · {total duration} · {created – updated}", each part
+  // conditional. The author is a <span part="creator"> so skins can still target
+  // it after the merge; its styling is uniform with the rest of the line.
   private renderMetaLine(pl: Playlist) {
-    const parts: string[] = [`${pl.tracks.length} ${pl.tracks.length === 1 ? 'track' : 'tracks'}`];
+    const stats: string[] = [`${pl.tracks.length} ${pl.tracks.length === 1 ? 'track' : 'tracks'}`];
     const total = sumDurationMs(pl.tracks);
-    if (total != null) parts.push(formatTotalDuration(total));
+    if (total != null) stats.push(formatTotalDuration(total));
     const date = formatDateRange(pl.dateCreated, pl.dateUpdated);
-    if (date) parts.push(date);
-    return html`<p class="meta-line" part="meta-line">${parts.join(' · ')}</p>`;
+    if (date) stats.push(date);
+    const statsText = stats.join(' · ');
+    return html`<p class="meta-line" part="meta-line">
+      ${
+        pl.creator
+          ? html`<span class="author" part="creator">${pl.creator}</span>${statsText ? ' · ' : ''}`
+          : nothing
+      }${statsText}
+    </p>`;
   }
 
   private async onPlaylistChange(e: Event): Promise<void> {
@@ -837,7 +846,6 @@ export class ByomPlayer extends LitElement {
                   </div>`
                 : html`<h2 class="title" part="title">${pl.title}</h2>`
             }
-            ${pl.creator ? html`<p class="creator" part="creator">${pl.creator}</p>` : nothing}
             ${this.renderMetaLine(pl)}
           </div>
           ${
@@ -1309,11 +1317,6 @@ export class ByomPlayer extends LitElement {
       font: inherit;
       opacity: 0;
       cursor: pointer;
-    }
-    .creator {
-      margin: 0.15rem 0 0;
-      color: var(--byom-text-muted);
-      font-size: 0.9rem;
     }
     .meta-line {
       margin: 0.3rem 0 0;
