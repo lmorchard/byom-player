@@ -1001,6 +1001,35 @@ describe('<byom-player>', () => {
     expect(desc.innerHTML).toContain('<strong>great</strong>');
   });
 
+  it('shows a description toggle only when the clamped text overflows', async () => {
+    const { el } = await mount();
+    // No overflow measured (happy-dom) → no toggle.
+    expect(el.shadowRoot!.querySelector('.desc-toggle')).toBeNull();
+    // Simulate an overflowing clamped description.
+    (el as unknown as { descOverflows: boolean }).descOverflows = true;
+    el.requestUpdate();
+    await el.updateComplete;
+    const toggle = el.shadowRoot!.querySelector('.desc-toggle')!;
+    expect(toggle).toBeTruthy();
+    expect(toggle.textContent).toContain('more');
+  });
+
+  it('expands and collapses the description via the toggle', async () => {
+    const { el } = await mount();
+    (el as unknown as { descOverflows: boolean }).descOverflows = true;
+    el.requestUpdate();
+    await el.updateComplete;
+    const desc = el.shadowRoot!.querySelector('.description')!;
+    expect(desc.classList.contains('is-collapsed')).toBe(true);
+    (el.shadowRoot!.querySelector('.desc-toggle') as HTMLButtonElement).click();
+    await el.updateComplete;
+    expect(desc.classList.contains('is-collapsed')).toBe(false);
+    expect(el.shadowRoot!.querySelector('.desc-toggle')!.textContent).toContain('less');
+    (el.shadowRoot!.querySelector('.desc-toggle') as HTMLButtonElement).click();
+    await el.updateComplete;
+    expect(desc.classList.contains('is-collapsed')).toBe(true);
+  });
+
   it('renders a meta line with author, track count, total duration, and date range', async () => {
     const { el } = await mount();
     const line = el.shadowRoot!.querySelector('.meta-line')!;

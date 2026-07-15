@@ -156,6 +156,9 @@ export class ByomPlayer extends LitElement {
   // Collapsed by default; only meaningful on narrow players (CSS gates the
   // floating-mini vs. full-width layout). Ephemeral — never persisted.
   @state() private videoExpanded = false;
+  // Narrow-player description collapse. Both ephemeral — never persisted.
+  @state() private descExpanded = false;
+  @state() private descOverflows = false;
   @state() private draft: UserSettings = { providers: {} };
   @state() private authState: AuthState | null = null;
   @state() private filterQuery = '';
@@ -173,6 +176,7 @@ export class ByomPlayer extends LitElement {
   // superseded call (rapid track changes) bails instead of yanking the scroll.
   private centerToken = 0;
   private commitTimer: ReturnType<typeof setTimeout> | null = null;
+  private descResizeObserver?: ResizeObserver;
   private commitDelayMs = 600; // debounce before auto-applying a field edit
   // How many tracks past the playing one the availability prescan looks ahead.
   private static readonly AVAIL_LOOKAHEAD = 10;
@@ -180,6 +184,16 @@ export class ByomPlayer extends LitElement {
   async connectedCallback(): Promise<void> {
     super.connectedCallback();
     document.addEventListener('keydown', this.onGlobalKeydown);
+    // Re-evaluate description overflow on width changes (rotation, resize,
+    // crossing the 30rem breakpoint). Guarded: happy-dom lacks ResizeObserver.
+    // Set up here (not firstUpdated) so it re-establishes if the element is
+    // detached and re-attached. Idempotent: only create once per connection.
+    if (typeof ResizeObserver !== 'undefined' && !this.descResizeObserver) {
+      this.descResizeObserver = new ResizeObserver(() => {
+        requestAnimationFrame(() => this.measureDescOverflow());
+      });
+      this.descResizeObserver.observe(this);
+    }
     this.settings = loadSettings();
     // Persisted theme wins over the host default (mirrors the provider rule).
     if (this.settings.theme) this.theme = this.settings.theme;
@@ -309,6 +323,8 @@ export class ByomPlayer extends LitElement {
     this.availQueue = null;
     this.controller?.dispose();
     this.controller = null;
+    this.descResizeObserver?.disconnect();
+    this.descResizeObserver = undefined;
   }
 
   // On a provider session change (link/unlink), drop stale availability: un-mark
@@ -521,6 +537,11 @@ export class ByomPlayer extends LitElement {
       this.centerActiveTrack();
       this.syncAvailabilityChecks();
     }
+    if (changed.has('playlist')) {
+      // New annotation: collapse and re-measure once the new DOM settles.
+      this.descExpanded = false;
+      void this.updateComplete.then(() => this.measureDescOverflow());
+    }
   }
 
   // Scroll the virtualized list so the active row is centered.
@@ -709,6 +730,25 @@ export class ByomPlayer extends LitElement {
     this.videoExpanded = !this.videoExpanded;
   }
 
+  private toggleDescExpanded(): void {
+    this.descExpanded = !this.descExpanded;
+    // On collapse, the clamp is reapplied — re-measure once it settles so the
+    // toggle disappears if the text no longer overflows at this width.
+    if (!this.descExpanded) {
+      void this.updateComplete.then(() => this.measureDescOverflow());
+    }
+  }
+
+  // Whether the collapsed (line-clamped) description overflows its 3-line box.
+  // Only meaningful while collapsed: an expanded description has no clamp, so we
+  // leave the last value in place to keep the "less" toggle available.
+  // happy-dom (tests) has no layout engine → heights are 0 → stays false.
+  private measureDescOverflow(): void {
+    if (this.descExpanded) return;
+    const desc = this.renderRoot.querySelector('.description') as HTMLElement | null;
+    this.descOverflows = desc ? desc.scrollHeight > desc.clientHeight + 1 : false;
+  }
+
   private onSeekInput(): void {
     this.seeking = true;
   }
@@ -850,8 +890,25 @@ export class ByomPlayer extends LitElement {
           </div>
           ${
             pl.annotation
-              ? html`<div class="description" part="description">
-                  ${unsafeHTML(renderMarkdownInline(pl.annotation))}
+              ? html`<div class="desc-block" part="description-block">
+                  <div
+                    class="description ${this.descExpanded ? '' : 'is-collapsed'}"
+                    part="description"
+                  >
+                    ${unsafeHTML(renderMarkdownInline(pl.annotation))}
+                  </div>
+                  ${
+                    this.descOverflows
+                      ? html`<button
+                          class="desc-toggle"
+                          part="control description-toggle"
+                          @click=${this.toggleDescExpanded}
+                          aria-expanded=${this.descExpanded ? 'true' : 'false'}
+                        >
+                          ${this.descExpanded ? '▴ less' : '▾ more'}
+                        </button>`
+                      : nothing
+                  }
                 </div>`
               : nothing
           }
@@ -1235,10 +1292,10 @@ export class ByomPlayer extends LitElement {
       --byom-border: #44475a;
     }
     /* Header grid: cover art (left, spanning both rows) + text column
-       (title/creator/meta on row 1, description on row 2) + settings gear (right,
-       spanning both rows). At narrow container width the head restacks: the cover
-       shrinks and the description drops to its own full-width row (see @container
-       below). */
+       (title + meta line — author, track stats — on row 1, description on row 2)
+       + settings gear (right, spanning both rows). At narrow container width the
+       head restacks: the cover shrinks and the description drops to its own
+       full-width row (see @container below). */
     .head {
       display: grid;
       grid-template-columns: auto minmax(0, 1fr) auto;
@@ -1324,12 +1381,18 @@ export class ByomPlayer extends LitElement {
       font-size: 0.78rem;
       font-variant-numeric: tabular-nums;
     }
-    .description {
+    .desc-block {
       grid-area: desc;
       margin: 0.35rem 0 0;
+    }
+    .description {
       color: var(--byom-text-muted);
       font-size: 0.82rem;
       line-height: 1.4;
+    }
+    /* Toggle is hidden by default (wide players never clamp). */
+    .desc-toggle {
+      display: none;
     }
     /* Narrow container: cover shrinks and the description takes its own
        full-width row beneath the cover + title/meta. */
@@ -1343,6 +1406,26 @@ export class ByomPlayer extends LitElement {
         width: 52px;
         height: 52px;
         font-size: 1.4rem;
+      }
+      /* Collapse long descriptions to 3 lines on narrow players. */
+      .description.is-collapsed {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .desc-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        margin-top: 0.15rem;
+        padding: 0;
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+        color: var(--byom-accent);
+        font: inherit;
+        font-size: 0.78rem;
       }
     }
     .description a {
