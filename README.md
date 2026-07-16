@@ -33,7 +33,7 @@ downloadable release asset, or build it yourself (see Development):
 ```html
 <script
   type="module"
-  src="https://cdn.jsdelivr.net/npm/@lmorchard/byom-player@1.0.0/dist/byom-player.js"
+  src="https://cdn.jsdelivr.net/npm/@lmorchard/byom-player@1.0.3/dist/byom-player.js"
 ></script>
 
 <byom-player src="/playlists/road-trip.jspf.json" provider="subsonic"></byom-player>
