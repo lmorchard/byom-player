@@ -739,7 +739,7 @@ export class ByomPlayer extends LitElement {
     }
   }
 
-  // Whether the collapsed (line-clamped) description overflows its 3-line box.
+  // Whether the collapsed description overflows its capped (max-height) box.
   // Only meaningful while collapsed: an expanded description has no clamp, so we
   // leave the last value in place to keep the "less" toggle available.
   // happy-dom (tests) has no layout engine → heights are 0 → stays false.
@@ -1407,18 +1407,22 @@ export class ByomPlayer extends LitElement {
         height: 52px;
         font-size: 1.4rem;
       }
-      /* Collapse long descriptions to 3 lines on narrow players. */
+      /* Collapse long descriptions on narrow players to ~2 lines, the lower
+         portion fading out via the mask gradient (no ellipsis, so the text
+         dissolves rather than getting cut with "…"). */
       .description.is-collapsed {
-        display: -webkit-box;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;
+        max-height: calc(1.4em * 2);
         overflow: hidden;
+        -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
+        mask-image: linear-gradient(to bottom, #000 55%, transparent);
       }
       .desc-toggle {
-        display: inline-flex;
+        display: flex;
         align-items: center;
         gap: 0.25rem;
-        margin-top: 0.15rem;
+        /* A <button> shrink-wraps to its content even when block-level, so
+           auto inline margins (not justify-content) are what center it. */
+        margin: 0 auto 0;
         padding: 0;
         background: transparent;
         border: 0;
@@ -1426,6 +1430,14 @@ export class ByomPlayer extends LitElement {
         color: var(--byom-accent);
         font: inherit;
         font-size: 0.78rem;
+      }
+      /* When collapsed, lift the toggle up so it overlaps the faded tail of the
+         description — the mask makes that text transparent, so the centered
+         toggle reads cleanly there and we reclaim ~a line of vertical space.
+         Only when collapsed: expanded text is fully opaque and mustn't be
+         covered. */
+      .description.is-collapsed + .desc-toggle {
+        margin-top: -0.45rem;
       }
     }
     .description a {
