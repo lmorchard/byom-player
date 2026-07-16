@@ -923,10 +923,20 @@ describe('<byom-player>', () => {
     await el['controller']!.start(0);
     await el.updateComplete;
     const btn = el.shadowRoot!.querySelector('.playpause') as HTMLButtonElement;
-    expect(btn.textContent!.trim()).toBe('⏸'); // playing
+    expect(btn.textContent!.trim()).toBe('⏸︎'); // playing
     btn.click();
     await el.updateComplete;
-    expect(btn.textContent!.trim()).toBe('▶'); // paused
+    expect(btn.textContent!.trim()).toBe('▶︎'); // paused
+  });
+
+  it('renders the pause glyph with a text-presentation selector so it inherits theme color', async () => {
+    const { el } = await mount();
+    // Force the playing state; the play/pause control should render ⏸ + VS15.
+    (el as unknown as { playbackState: string }).playbackState = 'playing';
+    el.requestUpdate();
+    await el.updateComplete;
+    const btn = el.shadowRoot!.querySelector('.playpause')!;
+    expect(btn.textContent).toContain('⏸︎'); // ⏸ + VS15
   });
 
   it('reflects the theme property to a host attribute', async () => {
@@ -991,12 +1001,64 @@ describe('<byom-player>', () => {
     expect(desc.innerHTML).toContain('<strong>great</strong>');
   });
 
-  it('renders a meta line with track count, total duration, and date range', async () => {
+  it('shows a description toggle only when the clamped text overflows', async () => {
     const { el } = await mount();
-    const meta = el.shadowRoot!.querySelector('.meta-line')!.textContent!;
+    // No overflow measured (happy-dom) → no toggle.
+    expect(el.shadowRoot!.querySelector('.desc-toggle')).toBeNull();
+    // Simulate an overflowing clamped description.
+    (el as unknown as { descOverflows: boolean }).descOverflows = true;
+    el.requestUpdate();
+    await el.updateComplete;
+    const toggle = el.shadowRoot!.querySelector('.desc-toggle')!;
+    expect(toggle).toBeTruthy();
+    expect(toggle.textContent).toContain('more');
+  });
+
+  it('expands and collapses the description via the toggle', async () => {
+    const { el } = await mount();
+    (el as unknown as { descOverflows: boolean }).descOverflows = true;
+    el.requestUpdate();
+    await el.updateComplete;
+    const desc = el.shadowRoot!.querySelector('.description')!;
+    expect(desc.classList.contains('is-collapsed')).toBe(true);
+    (el.shadowRoot!.querySelector('.desc-toggle') as HTMLButtonElement).click();
+    await el.updateComplete;
+    expect(desc.classList.contains('is-collapsed')).toBe(false);
+    expect(el.shadowRoot!.querySelector('.desc-toggle')!.textContent).toContain('less');
+    (el.shadowRoot!.querySelector('.desc-toggle') as HTMLButtonElement).click();
+    await el.updateComplete;
+    expect(desc.classList.contains('is-collapsed')).toBe(true);
+  });
+
+  it('renders a meta line with author, track count, total duration, and date range', async () => {
+    const { el } = await mount();
+    const line = el.shadowRoot!.querySelector('.meta-line')!;
+    const meta = line.textContent!;
+    expect(meta).toContain('Les'); // author folded into the front
     expect(meta).toContain('3 tracks');
     expect(meta).toContain('4 min'); // 60+120+60s = 4 min
     expect(meta).toContain('Jul 2026 – Sep 2026'); // date (created) – date_updated
+    // Author precedes the track count, dot-separated.
+    expect(meta.indexOf('Les')).toBeLessThan(meta.indexOf('3 tracks'));
+    // The skinning API `creator` part still resolves, on a span inside the line.
+    const creatorPart = line.querySelector('[part~="creator"]')!;
+    expect(creatorPart).toBeTruthy();
+    expect(creatorPart.textContent).toContain('Les');
+  });
+
+  it('omits the author segment (and its separator) when the playlist has no creator', async () => {
+    // mount() takes no args; it reads whatever the per-test `fetch` mock returns
+    // (default set in beforeEach). Re-mock fetch to a creator-less manifest first.
+    const noCreator = structuredClone(jspf);
+    delete (noCreator.playlist as { creator?: string }).creator;
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      json: async () => noCreator,
+    } as Response);
+    const { el } = await mount();
+    const meta = el.shadowRoot!.querySelector('.meta-line')!.textContent!.trim();
+    expect(meta).not.toContain('Les');
+    expect(meta.startsWith('3 tracks')).toBe(true); // no leading separator
+    expect(el.shadowRoot!.querySelector('[part~="creator"]')).toBeNull();
   });
 
   it('numbers rows by real playlist position, even while filtered', async () => {
@@ -1028,7 +1090,7 @@ describe('<byom-player>', () => {
     clickRow(el, 0); // active row → toggle, not reload
     await settle(el);
     expect(provider.loadedIndex.length).toBe(loadsBefore); // no reload
-    expect(el.shadowRoot!.querySelector('.playpause')!.textContent!.trim()).toBe('▶'); // paused
+    expect(el.shadowRoot!.querySelector('.playpause')!.textContent!.trim()).toBe('▶︎'); // paused
   });
 
   describe('video expand toggle', () => {
