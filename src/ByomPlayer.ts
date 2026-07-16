@@ -26,6 +26,28 @@ import {
 
 type ProviderFactory = (name: string, config: Record<string, unknown>) => AudioProvider;
 
+// Filled media-control icons (24-unit viewBox, fill: currentColor), sized via
+// CSS. Rendered as inline SVG rather than Unicode glyphs (⏸ ▶ ⏮ ⏭) because
+// those carry an emoji-presentation default that some platforms (notably iOS)
+// render as colored glyphs, ignoring the theme color — a VS15 text-presentation
+// selector doesn't reliably override it. SVG + currentColor always inherits the
+// theme color. Shared between the transport controls and the active-row glyph.
+const MEDIA_ICON = {
+  prev: html`<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M7 6h2v12H7zM18 6 9.5 12 18 18z" />
+  </svg>`,
+  next: html`<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M6 6 14.5 12 6 18zM15 6h2v12h-2z" />
+  </svg>`,
+  play: html`<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M8 5v14l11-7z" />
+  </svg>`,
+  pause: html`<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <rect x="6.5" y="5" width="4" height="14" rx="1" />
+    <rect x="13.5" y="5" width="4" height="14" rx="1" />
+  </svg>`,
+};
+
 // Pure arithmetic behind centerActiveTrack: given the active row's ACTUAL top
 // offset within the scroller's scroll space and the scroller's geometry, return
 // the scrollTop that centers the row, clamped to the scrollable range. rowTop is
@@ -798,9 +820,9 @@ export class ByomPlayer extends LitElement {
     const orphaned = isOrphan(t);
     const state = this.trackState(i, orphaned);
     // The active row's glyph mirrors playback; any other row offers play.
-    // VS15 (︎) forces monochrome text presentation so the glyph inherits
-    // the theme color instead of rendering as a colored emoji.
-    const glyph = state === 'active' ? (playing ? '⏸︎' : '▶︎') : '▶︎';
+    // Inline SVG (not a Unicode glyph) so it renders monochrome in the theme
+    // color rather than as a colored emoji — see MEDIA_ICON.
+    const glyph = state === 'active' && playing ? MEDIA_ICON.pause : MEDIA_ICON.play;
     return html`
       <li
         class=${this.trackClasses(i, orphaned)}
@@ -944,18 +966,18 @@ export class ByomPlayer extends LitElement {
         <div class="transport" part="transport">
           <div class="ctl-group">
             <button class="prev" part="control prev" @click=${this.prev} aria-label="Previous">
-              ${'⏮︎'}
+              ${MEDIA_ICON.prev}
             </button>
             <button
               class="playpause"
               part="control play"
               @click=${this.togglePlay}
-              aria-label="Play/Pause"
+              aria-label=${playing ? 'Pause' : 'Play'}
             >
-              ${playing ? '⏸︎' : '▶︎'}
+              ${playing ? MEDIA_ICON.pause : MEDIA_ICON.play}
             </button>
             <button class="next" part="control next" @click=${this.next} aria-label="Next">
-              ${'⏭︎'}
+              ${MEDIA_ICON.next}
             </button>
           </div>
           <div class="seek" part="progress">
@@ -1610,6 +1632,14 @@ export class ByomPlayer extends LitElement {
     .transport button:hover {
       background: color-mix(in srgb, var(--byom-text) 10%, transparent);
     }
+    /* Media icons size to each button's font-size (prev/next 1.3rem, playpause
+       1.6rem), matching the metrics of the glyphs they replace. Shuffle keeps
+       its own more-specific size rule. */
+    .transport button svg {
+      width: 1em;
+      height: 1em;
+      display: block;
+    }
     .transport .playpause {
       font-size: 1.6rem;
       color: var(--byom-on-accent);
@@ -1746,12 +1776,19 @@ export class ByomPlayer extends LitElement {
       display: none;
       font-size: 0.85rem;
     }
+    .num .glyph svg {
+      width: 1em;
+      height: 1em;
+      display: block;
+    }
     /* Hover a playable row → its number becomes a play glyph. */
     .tracklist li:not(.active):not(.unavailable):not(.pending):hover .num .idx {
       visibility: hidden;
     }
     .tracklist li:not(.active):not(.unavailable):not(.pending):hover .num .glyph {
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       position: absolute;
       inset: 0;
       color: var(--byom-text);
@@ -1815,7 +1852,9 @@ export class ByomPlayer extends LitElement {
       display: none;
     }
     .tracklist li.active .num .glyph {
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       color: var(--byom-accent);
     }
     .tracklist li.active .t-title {
