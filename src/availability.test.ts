@@ -175,3 +175,64 @@ describe('AvailabilityQueue', () => {
     expect(q.request([0, 1, 2])).toEqual([]); // done indices stay done
   });
 });
+
+describe('full sweep', () => {
+  const many: Track[] = Array.from({ length: 5 }, (_, i) => ({ title: `T${i}`, artist: 'A' }));
+
+  // A provider representing a collection you own.
+  function collectionProvider(): AudioProvider {
+    return { ...providerWith(async () => 'unavailable'), isCollection: true };
+  }
+
+  it('queues every track, not just a visible window', () => {
+    const q = new AvailabilityQueue(collectionProvider(), many, () => {}, { delayMs: 0 });
+    expect(q.requestAll()).toHaveLength(5);
+  });
+
+  // retain() exists to keep the viewport-driven queue focused on what is on
+  // screen. A deliberate full sweep has to outrank it, or scrolling would
+  // silently cancel the scan.
+  it('is not pruned by retain()', async () => {
+    const seen: number[] = [];
+    const q = new AvailabilityQueue(collectionProvider(), many, (i) => seen.push(i), {
+      delayMs: 0,
+    });
+    q.requestAll();
+    expect(q.retain(new Set([0]))).toEqual([]);
+    await tick();
+    expect([...seen].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  it('stopSweep keeps results already gathered', async () => {
+    const q = new AvailabilityQueue(collectionProvider(), many, () => {}, { delayMs: 0 });
+    q.requestAll();
+    await tick();
+    const before = q.checkedCount;
+    expect(before).toBeGreaterThan(0);
+    q.stopSweep();
+    expect(q.checkedCount).toBe(before);
+  });
+
+  it('reports progress and completion', async () => {
+    const q = new AvailabilityQueue(collectionProvider(), many, () => {}, { delayMs: 0 });
+    expect(q.complete).toBe(false);
+    q.requestAll();
+    await tick();
+    expect(q.checkedCount).toBe(5);
+    expect(q.complete).toBe(true);
+  });
+
+  // A collection server has no third-party quota to burn, so it scans far
+  // faster than a public catalogue.
+  it('derives a short cooldown for a collection provider, a polite one otherwise', () => {
+    const gap = (q: AvailabilityQueue) => (q as unknown as { delayMs: number }).delayMs;
+    const coll = new AvailabilityQueue(collectionProvider(), many, () => {});
+    const pub = new AvailabilityQueue(
+      providerWith(async () => 'available'),
+      many,
+      () => {},
+    );
+    expect(gap(pub)).toBe(300);
+    expect(gap(coll)).toBeLessThan(gap(pub));
+  });
+});

@@ -1163,3 +1163,82 @@ describe('computeCenterOffset', () => {
     expect(computeCenterOffset(4001, rowH, clientH, 50000)).toBe(3784.5);
   });
 });
+
+describe('shopping list gate', () => {
+  // Same lifecycle the other component tests rely on: without the fetch stub
+  // the manifest never loads, so provider init never runs and activeProvider
+  // stays null.
+  beforeEach(() => {
+    localStorage.clear();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ json: async () => jspf } as Response);
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.innerHTML = '';
+  });
+
+  // Make the mounted provider present itself as a collection and let the
+  // component settle, since provider init resolves asynchronously.
+  async function mountCollection() {
+    const { el, provider } = await mount();
+    await settle(el);
+    (provider as unknown as { isCollection: boolean }).isCollection = true;
+    el.requestUpdate();
+    await el.updateComplete;
+    return { el, provider };
+  }
+
+  // Every provider that can check availability returns the same 'unavailable',
+  // but it only means "you don't own this" for a collection. A shopping list
+  // built from a streaming catalogue's misses would assert something false, so
+  // this gate is the feature's correctness boundary.
+  it('offers no shopping control for a non-collection provider', async () => {
+    const { el } = await mount();
+    await settle(el);
+    expect(el.shadowRoot!.querySelector('.shop-btn')).toBeNull();
+  });
+
+  it('offers it once the provider declares itself a collection', async () => {
+    const { el } = await mountCollection();
+    expect(el.shadowRoot!.querySelector('.shop-btn')).not.toBeNull();
+  });
+
+  // The firm constraint from the design: a full sweep is expensive and must
+  // never begin on its own.
+  it('renders no panel until it is summoned', async () => {
+    const { el } = await mountCollection();
+    expect(el.shadowRoot!.querySelector('.shopping')).toBeNull();
+    el.shadowRoot!.querySelector<HTMLButtonElement>('.shop-btn')!.click();
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.shopping')).not.toBeNull();
+  });
+
+  it('summoning the panel is what starts the full sweep', async () => {
+    // Built by hand rather than via mount(): the queue is armed during provider
+    // init, so checkAvailability has to be present before the element connects.
+    const provider = new ControllableProvider();
+    (provider as AudioProvider).checkAvailability = async () => 'unavailable';
+    (provider as unknown as { isCollection: boolean }).isCollection = true;
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = () => provider;
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    document.body.appendChild(el);
+    await settle(el);
+    await settle(el);
+
+    const checked = () =>
+      (el as unknown as { availQueue: { checkedCount: number } | null }).availQueue?.checkedCount ??
+      0;
+
+    el.shadowRoot!.querySelector<HTMLButtonElement>('.shop-btn')!.click();
+    await el.updateComplete;
+    await settle(el);
+
+    // Every track in the fixture is checked, and every one came back missing,
+    // so the panel lists them rather than just claiming to have scanned.
+    expect(checked()).toBe(3);
+    expect(el.shadowRoot!.querySelectorAll('.shop-album').length).toBeGreaterThan(0);
+  });
+});

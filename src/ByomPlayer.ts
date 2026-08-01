@@ -16,6 +16,7 @@ import { PlaybackController } from './controller';
 import { createProvider } from './providers/registry';
 import { detectSpotifyPreview } from './providers/spotify/preview';
 import { AvailabilityQueue } from './availability';
+import { buildShoppingList, toMarkdown, searchUrlFor } from './shoppingList';
 import { renderPurchaseLink } from './purchaseLink';
 import { loadSettings, saveSettings, effectiveProviderConfig, type UserSettings } from './settings';
 import {
@@ -124,8 +125,12 @@ export class ByomPlayer extends LitElement {
   @property({ type: Boolean }) debug = false;
   /** Gently pre-check each track's availability in the background after load. */
   @property({ type: Boolean }) prescan = true;
-  /** Delay (ms) between background availability checks. */
-  @property({ type: Number }) prescanDelayMs = 300;
+  /**
+   * Delay (ms) between background availability checks. Leave unset to let the
+   * provider decide: a collection you own scans fast (no quota to burn), a
+   * public catalogue is paced politely. Set it to override either.
+   */
+  @property({ type: Number }) prescanDelayMs?: number;
   /** Comma-separated allowlist of selectable providers (defaults to all). */
   @property() providers = '';
   /** Hide the in-component settings gear/panel. */
@@ -153,7 +158,8 @@ export class ByomPlayer extends LitElement {
   // track (see providers/spotify/preview). Drives the transport preview badge.
   @state() private preview = false;
   @state() private playlists: PlaylistEntry[] = [];
-  @state() private view: 'list' | 'settings' = 'list';
+  @state() private view: 'list' | 'settings' | 'shopping' = 'list';
+  @state() private copied = false;
   // Collapsed by default; only meaningful on narrow players (CSS gates the
   // floating-mini vs. full-width layout). Ephemeral — never persisted.
   @state() private videoExpanded = false;
@@ -235,6 +241,53 @@ export class ByomPlayer extends LitElement {
   private closeSettings(): void {
     this.flushCommit(); // commit any pending debounced field edit before closing
     this.view = 'list';
+  }
+
+  // Only a collection you own can answer "what am I missing?" — see
+  // AudioProvider.isCollection.
+  private get canShop(): boolean {
+    return this.activeProvider?.isCollection === true;
+  }
+
+  // Summoning the panel is what starts a full sweep. It never begins on its
+  // own: scanning every track is expensive, and the viewport-driven prescan
+  // stays exactly as it is while the panel is closed.
+  private openShopping(): void {
+    this.view = 'shopping';
+    this.availQueue?.requestAll();
+  }
+
+  // Stop queueing new checks but keep what has been gathered, so closing
+  // mid-sweep costs nothing and re-opening resumes.
+  private closeShopping(): void {
+    this.availQueue?.stopSweep();
+    this.view = 'list';
+  }
+
+  private get shoppingList() {
+    return buildShoppingList(this.playlist?.tracks ?? [], this.availability);
+  }
+
+  private async copyShoppingList(): Promise<void> {
+    const md = toMarkdown(this.shoppingList, this.playlist?.title || 'playlist');
+    try {
+      await navigator.clipboard.writeText(md);
+      this.copied = true;
+      setTimeout(() => (this.copied = false), 1500);
+    } catch {
+      // Clipboard can be blocked (permissions, insecure origin). Download is
+      // still available, so fail quietly rather than throwing in a click.
+    }
+  }
+
+  private downloadShoppingList(): void {
+    const md = toMarkdown(this.shoppingList, this.playlist?.title || 'playlist');
+    const url = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'shopping-list.md';
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   private async refreshAvailability(): Promise<void> {
@@ -454,6 +507,10 @@ export class ByomPlayer extends LitElement {
       prov,
       this.playlist.tracks,
       (i, status) => this.onAvailabilityResult(i, status),
+      // Undefined when the host hasn't specified a pace, which lets the queue
+      // apply its collection-aware default. The property is deliberately
+      // optional rather than defaulting to 300 here: a non-undefined fallback
+      // would silently defeat that default for every provider.
       { delayMs: this.prescanDelayMs },
     );
     this.syncAvailabilityChecks(); // seed with the current visible + playback window
@@ -915,6 +972,33 @@ export class ByomPlayer extends LitElement {
               : nothing
           }
           ${
+            this.canShop
+              ? html`<button
+                  class="gear shop-btn"
+                  part="control shop"
+                  @click=${this.openShopping}
+                  aria-label="What's missing from my collection"
+                  title="What's missing from my collection"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="22"
+                    height="22"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <circle cx="9" cy="20" r="1.4" />
+                    <circle cx="18" cy="20" r="1.4" />
+                    <path d="M2 3h3l2.4 12.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 7H6" />
+                  </svg>
+                </button>`
+              : nothing
+          }
+          ${
             this.noSettings
               ? nothing
               : html`<button
@@ -1075,8 +1159,19 @@ export class ByomPlayer extends LitElement {
           </div>
         </div>
       </div>
-      <div class="settings-overlay" ?hidden=${this.view === 'list'} @click=${this.onOverlayClick}>
+      <div
+        class="settings-overlay"
+        ?hidden=${this.view !== 'settings'}
+        @click=${this.onOverlayClick}
+      >
         ${this.renderSettings()}
+      </div>
+      <div
+        class="settings-overlay shopping-overlay"
+        ?hidden=${this.view !== 'shopping'}
+        @click=${this.onShoppingOverlayClick}
+      >
+        ${this.view === 'shopping' ? this.renderShopping() : nothing}
       </div>
     `;
   }
@@ -1084,6 +1179,10 @@ export class ByomPlayer extends LitElement {
   // Close when the backdrop (not the settings card) is clicked.
   private onOverlayClick(e: Event): void {
     if ((e.target as HTMLElement).classList.contains('settings-overlay')) this.closeSettings();
+  }
+
+  private onShoppingOverlayClick(e: Event): void {
+    if ((e.target as HTMLElement).classList.contains('shopping-overlay')) this.closeShopping();
   }
 
   private renderField(provider: string, f: ProviderField) {
@@ -1097,6 +1196,77 @@ export class ByomPlayer extends LitElement {
         @input=${(e: Event) => this.onDraftField(provider, f.key, e)}
       />
     </label>`;
+  }
+
+  // The shopping list: what this collection doesn't have, grouped so it can be
+  // acted on. Rendered from the same availability map the tracklist marks use,
+  // so it reflects the sweep as it progresses rather than waiting for the end.
+  private renderShopping() {
+    const list = this.shoppingList;
+    const total = this.playlist?.tracks.length ?? 0;
+    const checked = this.availQueue?.checkedCount ?? 0;
+    const done = this.availQueue?.complete ?? false;
+
+    return html`<div class="settings shopping" @click=${(e: Event) => e.stopPropagation()}>
+      <div class="settings-head">
+        <h2>Missing from your collection</h2>
+        <button class="close" @click=${this.closeShopping} aria-label="Close">×</button>
+      </div>
+
+      <p class="shop-progress" role="status">
+        ${
+          done
+            ? html`Checked all ${total} track${total === 1 ? '' : 's'}.`
+            : html`Checking… ${checked} / ${total}`
+        }
+        ${
+          list.uncheckedCount > 0
+            ? html`<span class="shop-warn"> ${list.uncheckedCount} couldn't be checked</span>`
+            : nothing
+        }
+      </p>
+
+      ${
+        list.albums.length === 0
+          ? html`<p class="shop-empty">
+              ${done ? 'Nothing missing — your collection has all of it.' : 'Nothing missing yet.'}
+            </p>`
+          : html`<ul class="shop-albums">
+              ${list.albums.map(
+                (a) =>
+                  html`<li class="shop-album">
+                    <a
+                      class="shop-album-title"
+                      href=${a.purchaseUrl ?? searchUrlFor(a)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      >${a.album ? html`${a.artist} — ${a.album}` : html`${a.artist}`}</a
+                    >
+                    <span class="shop-count"
+                      >${a.tracks.length} track${a.tracks.length === 1 ? '' : 's'}</span
+                    >
+                    <ul class="shop-tracks">
+                      ${a.tracks.map((t) => html`<li>${t.title}</li>`)}
+                    </ul>
+                  </li>`,
+              )}
+            </ul>`
+      }
+
+      <div class="shop-actions">
+        <button @click=${this.copyShoppingList} ?disabled=${list.albums.length === 0}>
+          ${this.copied ? 'Copied' : 'Copy as Markdown'}
+        </button>
+        <button @click=${this.downloadShoppingList} ?disabled=${list.albums.length === 0}>
+          Download
+        </button>
+      </div>
+
+      <p class="shop-caveat">
+        A miss can be a metadata mismatch rather than a gap — your collection may have the track
+        under a different spelling. Worth a look before buying.
+      </p>
+    </div>`;
   }
 
   private renderSettings() {
@@ -1906,6 +2076,67 @@ export class ByomPlayer extends LitElement {
       color: var(--byom-text);
     }
     /* Modal overlay: covers the player + blocks interaction with it while open. */
+    /* Shopping list panel. Reuses the settings overlay/card so it inherits the
+       existing backdrop, sizing and theming rather than inventing a second
+       modal treatment. */
+    .shopping {
+      max-height: 80vh;
+      overflow: auto;
+    }
+    .shop-progress {
+      margin: 0 0 0.5rem;
+      font-size: 0.85rem;
+      opacity: 0.8;
+    }
+    .shop-warn {
+      margin-left: 0.5rem;
+      opacity: 0.75;
+    }
+    .shop-empty {
+      opacity: 0.75;
+    }
+    .shop-albums {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .shop-album {
+      padding: 0.5rem 0;
+      border-top: 1px solid color-mix(in srgb, var(--byom-text) 12%, transparent);
+    }
+    .shop-album-title {
+      font-weight: 600;
+      color: inherit;
+      text-decoration: none;
+      border-bottom: 1px solid color-mix(in srgb, var(--byom-text) 35%, transparent);
+    }
+    .shop-album-title:hover,
+    .shop-album-title:focus-visible {
+      border-bottom-color: currentColor;
+    }
+    .shop-count {
+      margin-left: 0.5rem;
+      font-size: 0.8rem;
+      opacity: 0.6;
+    }
+    .shop-tracks {
+      margin: 0.25rem 0 0 1rem;
+      padding: 0;
+      list-style: none;
+      font-size: 0.85rem;
+      opacity: 0.85;
+    }
+    .shop-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    .shop-caveat {
+      margin: 0.75rem 0 0;
+      font-size: 0.78rem;
+      opacity: 0.65;
+    }
+
     .settings-overlay {
       position: absolute;
       inset: 0;

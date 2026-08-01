@@ -26,6 +26,8 @@ export function firstTrackPartKey(data: unknown): string | null {
 // SubsonicProvider; no engine seam.
 export class PlexProvider implements AudioProvider {
   name = 'plex';
+  // A collection you own: see AudioProvider.isCollection.
+  isCollection = true;
 
   private readonly audio = new Audio();
   private readonly cfg: PlexConfig;

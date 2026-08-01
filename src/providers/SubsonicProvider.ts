@@ -38,6 +38,8 @@ const SCROBBLE_MAX_DELAY_S = 240;
 // plays the resulting stream via an HTML5 Audio element.
 export class SubsonicProvider implements AudioProvider {
   name = 'subsonic';
+  // A collection you own: see AudioProvider.isCollection.
+  isCollection = true;
 
   private readonly audio = new Audio();
   private readonly cfg: SubsonicConfig;

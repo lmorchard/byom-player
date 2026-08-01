@@ -73,6 +73,8 @@ export function pickAudioItemId(data: unknown, artist: string): string | null {
 // than Plex's PIN flow.
 export class JellyfinProvider implements AudioProvider {
   name = 'jellyfin';
+  // A collection you own: see AudioProvider.isCollection.
+  isCollection = true;
 
   private readonly audio = new Audio();
   private readonly cfg: JellyfinConfig;
