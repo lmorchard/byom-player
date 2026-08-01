@@ -20,6 +20,23 @@ const BANDCAMP: Store = { id: 'bandcamp', label: 'Bandcamp', glyph: 'bc' };
 const APPLE: Store = { id: 'apple', label: 'Apple Music', glyph: '⌥' };
 const OTHER: Store = { id: 'other', label: 'the store', glyph: '↗' };
 
+// safeHttpUrl returns the URL only when it is an ordinary web link.
+//
+// A manifest is data, and byom-player is a reusable component that a host may
+// point at a JSPF it does not control. Without this, a crafted `purchase_url`
+// of `javascript:...` would become a clickable link in the tracklist and in the
+// shopping list. Anything that isn't http(s) — including a relative or
+// unparseable value — is discarded rather than rendered.
+export function safeHttpUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' || u.protocol === 'http:' ? url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // storeFor maps a purchase URL to the store it belongs to.
 //
 // Known limitation: artists can point a custom domain at Bandcamp, and some do
@@ -49,13 +66,14 @@ export function storeFor(url: string | undefined): Store {
 // Enter on the focused anchor fires a click as well, so this covers the
 // keyboard path too.
 export function renderPurchaseLink(t: Track): TemplateResult {
-  if (!t.purchaseUrl) return html`<span class="buy buy-empty" aria-hidden="true"></span>`;
-  const store = storeFor(t.purchaseUrl);
+  const href = safeHttpUrl(t.purchaseUrl);
+  if (!href) return html`<span class="buy buy-empty" aria-hidden="true"></span>`;
+  const store = storeFor(href);
   return html`<a
     class="buy"
     part="track-buy"
     data-store=${store.id}
-    href=${t.purchaseUrl}
+    href=${href}
     target="_blank"
     rel="noopener noreferrer"
     title=${`Buy on ${store.label}`}

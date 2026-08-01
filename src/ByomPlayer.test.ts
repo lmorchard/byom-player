@@ -1163,3 +1163,107 @@ describe('computeCenterOffset', () => {
     expect(computeCenterOffset(4001, rowH, clientH, 50000)).toBe(3784.5);
   });
 });
+
+describe('shopping list gate', () => {
+  // Same lifecycle the other component tests rely on: without the fetch stub
+  // the manifest never loads, so provider init never runs.
+  beforeEach(() => {
+    localStorage.clear();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ json: async () => jspf } as Response);
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.innerHTML = '';
+  });
+
+  // Built by hand rather than via mount(): the availability queue is armed
+  // during provider init, so checkAvailability has to be in place before the
+  // element connects.
+  async function mountWith(opts: {
+    isCollection?: boolean;
+    canCheck?: boolean;
+    prescan?: boolean;
+  }) {
+    const provider = new ControllableProvider();
+    if (opts.canCheck !== false) {
+      (provider as AudioProvider).checkAvailability = async () => 'unavailable';
+    }
+    if (opts.isCollection) {
+      (provider as unknown as { isCollection: boolean }).isCollection = true;
+    }
+    const el = document.createElement('byom-player') as ByomPlayer;
+    el.src = '/playlist.jspf.json';
+    el.providerFactory = () => provider;
+    el.skipDelayMs = 0;
+    el.prescanDelayMs = 0;
+    if (opts.prescan === false) el.prescan = false;
+    document.body.appendChild(el);
+    await settle(el);
+    await settle(el);
+    return { el, provider };
+  }
+
+  const shopBtn = (el: ByomPlayer) => el.shadowRoot!.querySelector<HTMLButtonElement>('.shop-btn');
+
+  // Every provider that can check availability returns the same 'unavailable',
+  // but it only means "you don't own this" for a collection. A shopping list
+  // built from a streaming catalogue's misses would assert something false.
+  it('offers nothing for a non-collection provider', async () => {
+    const { el } = await mountWith({ isCollection: false });
+    expect(shopBtn(el)).toBeNull();
+  });
+
+  it('offers it for a collection provider that can check availability', async () => {
+    const { el } = await mountWith({ isCollection: true });
+    expect(shopBtn(el)).not.toBeNull();
+  });
+
+  // A button that opens a panel which can never progress is worse than no
+  // button: it looks live and does nothing.
+  it('offers nothing when the provider cannot check availability', async () => {
+    const { el } = await mountWith({ isCollection: true, canCheck: false });
+    expect(shopBtn(el)).toBeNull();
+  });
+
+  it('offers nothing when prescan is disabled, since no queue is armed', async () => {
+    const { el } = await mountWith({ isCollection: true, prescan: false });
+    expect(shopBtn(el)).toBeNull();
+  });
+
+  // The firm constraint from the design: a full sweep is expensive and must
+  // never begin on its own.
+  it('renders no panel until it is summoned', async () => {
+    const { el } = await mountWith({ isCollection: true });
+    expect(el.shadowRoot!.querySelector('.shopping')).toBeNull();
+    shopBtn(el)!.click();
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.shopping')).not.toBeNull();
+  });
+
+  it('summoning the panel is what sweeps the whole playlist', async () => {
+    const { el } = await mountWith({ isCollection: true });
+    const checked = () =>
+      (el as unknown as { availQueue: { checkedCount: number } | null }).availQueue?.checkedCount ??
+      0;
+
+    shopBtn(el)!.click();
+    await el.updateComplete;
+    await settle(el);
+
+    // Every track checked, every one missing, so the panel lists them rather
+    // than merely claiming to have scanned.
+    expect(checked()).toBe(3);
+    expect(el.shadowRoot!.querySelectorAll('.shop-album').length).toBeGreaterThan(0);
+  });
+
+  it('presents the panel as a modal dialog with an accessible name', async () => {
+    const { el } = await mountWith({ isCollection: true });
+    shopBtn(el)!.click();
+    await el.updateComplete;
+    const panel = el.shadowRoot!.querySelector('.shopping')!;
+    expect(panel.getAttribute('role')).toBe('dialog');
+    expect(panel.getAttribute('aria-modal')).toBe('true');
+    const labelledBy = panel.getAttribute('aria-labelledby')!;
+    expect(el.shadowRoot!.querySelector(`#${labelledBy}`)).not.toBeNull();
+  });
+});

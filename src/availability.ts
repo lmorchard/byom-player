@@ -12,6 +12,11 @@ export interface AvailabilityQueueOptions {
 // index can be dropped via retain() so the caller can keep the queue focused on
 // what's currently relevant (the visible window) rather than a long tail of
 // scrolled-past rows. It is a no-op for providers that can't check availability.
+/** Cooldown between uncached checks against a public catalogue with a quota. */
+export const PUBLIC_GAP_MS = 300;
+/** Cooldown against a collection you own — no quota to burn. */
+export const COLLECTION_GAP_MS = 50;
+
 export class AvailabilityQueue {
   private readonly check?: (t: Track) => Promise<AvailabilityStatus>;
   private readonly isCached?: (t: Track) => boolean;
@@ -22,6 +27,7 @@ export class AvailabilityQueue {
   private inFlight: number | null = null; // the index currently being checked
   private draining = false;
   private disposed = false;
+  private sweeping = false; // a full sweep is in flight; retain() must not prune it
 
   constructor(
     provider: AudioProvider,
@@ -31,7 +37,11 @@ export class AvailabilityQueue {
   ) {
     this.check = provider.checkAvailability?.bind(provider);
     this.isCached = provider.isResolutionCached?.bind(provider);
-    this.delayMs = opts.delayMs ?? 300;
+    // A collection server is yours: no third-party quota to be polite about, so
+    // a full sweep can run an order of magnitude faster. On a ~8.6k-track
+    // playlist that is the difference between ~43 minutes and ~7. An explicit
+    // delayMs from the host still wins.
+    this.delayMs = opts.delayMs ?? (provider.isCollection ? COLLECTION_GAP_MS : PUBLIC_GAP_MS);
   }
 
   request(indices: Iterable<number>): number[] {
@@ -52,7 +62,38 @@ export class AvailabilityQueue {
   // dropped indices. Checked (`done`) indices and the one in-flight check are
   // untouched — the in-flight check finishes and caches its result. Dropped
   // indices become eligible again on a later request() (they were never checked).
+  // requestAll queues every track, for an explicit full sweep. Unlike the
+  // viewport-driven path this is never pruned by retain(), because the caller
+  // wants the whole playlist checked rather than just what is on screen.
+  //
+  // Only ever called in response to a deliberate user action — a sweep is
+  // expensive and must not start on its own.
+  requestAll(): number[] {
+    this.sweeping = true;
+    return this.request(this.tracks.map((_, i) => i));
+  }
+
+  // Stop adding work without discarding what has already been checked, so
+  // closing the panel mid-sweep costs nothing and re-summoning resumes.
+  stopSweep(): void {
+    this.sweeping = false;
+    this.pending.length = 0;
+    this.queued.clear();
+  }
+
+  // How many tracks have a settled result. The panel shows this as progress;
+  // it counts checks, not links, so it rises even when everything is present.
+  get checkedCount(): number {
+    return this.done.size;
+  }
+
+  // True once every track has a result, so the panel can stop saying "scanning".
+  get complete(): boolean {
+    return this.done.size >= this.tracks.length;
+  }
+
   retain(keep: Set<number>): number[] {
+    if (this.sweeping) return []; // a full sweep outranks the visible window
     const dropped: number[] = [];
     for (let n = this.pending.length - 1; n >= 0; n--) {
       const i = this.pending[n];

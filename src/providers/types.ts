@@ -16,6 +16,23 @@ export type AvailabilityStatus = 'available' | 'unavailable' | 'unknown';
 // both resolution (turning a Track into something playable) and playback.
 export interface AudioProvider {
   name: string;
+  // True when this provider is a personal music collection you control
+  // (Subsonic, Jellyfin, Plex) rather than a public catalogue you stream
+  // (YouTube, Spotify).
+  //
+  // Two things follow from it, and both follow from the same fact — the server
+  // is yours:
+  //
+  //   - `unavailable` means "you don't own this", which buying the record
+  //     fixes. On a streaming catalogue the same value means "couldn't resolve
+  //     it", which buying does not fix, so only collection providers get the
+  //     shopping list.
+  //   - There is no third-party quota to burn, so availability scans run at a
+  //     much shorter cooldown.
+  //
+  // One flag rather than two settings: they would only ever drift apart, and
+  // no coherent provider wants one without the other.
+  isCollection?: boolean;
   initialize(): Promise<void>;
   load(track: Track): Promise<void>;
   play(): Promise<void>;
