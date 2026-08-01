@@ -971,61 +971,63 @@ export class ByomPlayer extends LitElement {
                 </div>`
               : nothing
           }
-          ${
-            this.canShop
-              ? html`<button
-                  class="gear shop-btn"
-                  part="control shop"
-                  @click=${this.openShopping}
-                  aria-label="What's missing from my collection"
-                  title="What's missing from my collection"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    width="22"
-                    height="22"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
+          <div class="hdr-actions">
+            ${
+              this.canShop
+                ? html`<button
+                    class="shop-btn"
+                    part="control shop"
+                    @click=${this.openShopping}
+                    aria-label="What's missing from my collection"
+                    title="What's missing from my collection"
                   >
-                    <circle cx="9" cy="20" r="1.4" />
-                    <circle cx="18" cy="20" r="1.4" />
-                    <path d="M2 3h3l2.4 12.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 7H6" />
-                  </svg>
-                </button>`
-              : nothing
-          }
-          ${
-            this.noSettings
-              ? nothing
-              : html`<button
-                  class="gear"
-                  part="control gear"
-                  @click=${this.openSettings}
-                  aria-label="Settings"
-                  title="Settings"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    width="24"
-                    height="24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="22"
+                      height="22"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <circle cx="9" cy="20" r="1.4" />
+                      <circle cx="18" cy="20" r="1.4" />
+                      <path d="M2 3h3l2.4 12.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 7H6" />
+                    </svg>
+                  </button>`
+                : nothing
+            }
+            ${
+              this.noSettings
+                ? nothing
+                : html`<button
+                    class="gear"
+                    part="control gear"
+                    @click=${this.openSettings}
+                    aria-label="Settings"
+                    title="Settings"
                   >
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path
-                      d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
-                    ></path>
-                  </svg>
-                </button>`
-          }
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="24"
+                      height="24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="12" r="3"></circle>
+                      <path
+                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+                      ></path>
+                    </svg>
+                  </button>`
+            }
+          </div>
         </div>
         <div class="transport" part="transport">
           <div class="ctl-group">
@@ -2056,8 +2058,17 @@ export class ByomPlayer extends LitElement {
       color: var(--byom-accent);
       font-size: 0.85rem;
     }
-    .gear {
+    /* Both header buttons share the one 'gear' grid cell. Giving the shopping
+       shopping button .gear directly made it inherit grid-area and stack
+       invisibly underneath the settings gear. */
+    .hdr-actions {
       grid-area: gear;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .gear,
+    .shop-btn {
       flex: 0 0 auto;
       display: block;
       background: transparent;
@@ -2067,12 +2078,14 @@ export class ByomPlayer extends LitElement {
       margin-top: 0.15rem; /* nudge the icon down to the title's cap height */
       cursor: pointer;
     }
-    .gear svg {
+    .gear svg,
+    .shop-btn svg {
       display: block;
       width: 1.5rem;
       height: 1.5rem;
     }
-    .gear:hover {
+    .gear:hover,
+    .shop-btn:hover {
       color: var(--byom-text);
     }
     /* Modal overlay: covers the player + blocks interaction with it while open. */
