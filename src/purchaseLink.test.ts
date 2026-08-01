@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { render } from 'lit';
 import type { Track } from './types';
-import { storeFor, renderPurchaseLink } from './purchaseLink';
+import { storeFor, renderPurchaseLink, safeHttpUrl } from './purchaseLink';
 
 describe('storeFor', () => {
   it('identifies Bandcamp artist subdomains', () => {
@@ -122,5 +122,52 @@ describe('renderPurchaseLink', () => {
     // Occupies the same slot so rows stay aligned, and is hidden from AT.
     expect(slot.getAttribute('aria-hidden')).toBe('true');
     expect(slot.classList.contains('buy')).toBe(true);
+  });
+});
+
+describe('safeHttpUrl', () => {
+  // A manifest is data, and this component can be pointed at a JSPF the host
+  // does not control. Without this guard a crafted purchase_url becomes a
+  // clickable link in the tracklist.
+  it('rejects non-http(s) schemes', () => {
+    for (const bad of [
+      'javascript:alert(1)',
+      // eslint-disable-next-line no-script-url
+      'JavaScript:alert(1)',
+      'data:text/html,<script>alert(1)</script>',
+      'vbscript:msgbox(1)',
+      'file:///etc/passwd',
+    ]) {
+      expect(safeHttpUrl(bad)).toBeUndefined();
+    }
+  });
+
+  it('rejects relative and unparseable values', () => {
+    for (const bad of ['/album/x', 'not a url', '', undefined]) {
+      expect(safeHttpUrl(bad as string | undefined)).toBeUndefined();
+    }
+  });
+
+  it('passes ordinary web links through unchanged', () => {
+    for (const good of [
+      'https://beachhouse.bandcamp.com/album/otm',
+      'http://example.com/x',
+      'https://www.discogs.com/release/1-A-B',
+    ]) {
+      expect(safeHttpUrl(good)).toBe(good);
+    }
+  });
+
+  it('renders no anchor at all for an unsafe purchase URL', () => {
+    const host = document.createElement('span');
+    document.body.appendChild(host);
+    render(
+      // eslint-disable-next-line no-script-url
+      renderPurchaseLink({ title: 'T', artist: 'A', purchaseUrl: 'javascript:alert(1)' }),
+      host,
+    );
+    expect(host.querySelector('a')).toBeNull();
+    expect(host.querySelector('.buy-empty')).not.toBeNull();
+    host.remove();
   });
 });

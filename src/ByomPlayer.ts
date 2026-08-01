@@ -243,10 +243,15 @@ export class ByomPlayer extends LitElement {
     this.view = 'list';
   }
 
-  // Only a collection you own can answer "what am I missing?" — see
-  // AudioProvider.isCollection.
+  // Only a collection you own can answer "what am I missing?" (see
+  // AudioProvider.isCollection) — and only if a sweep is actually possible.
+  //
+  // The queue is armed only when prescan is on and the provider implements
+  // checkAvailability. Without that second condition the button would render
+  // for a collection provider with prescan disabled, open a panel, and sit at
+  // 0/N forever: a control that looks live and does nothing.
   private get canShop(): boolean {
-    return this.activeProvider?.isCollection === true;
+    return this.activeProvider?.isCollection === true && this.availQueue !== null;
   }
 
   // Summoning the panel is what starts a full sweep. It never begins on its
@@ -286,8 +291,16 @@ export class ByomPlayer extends LitElement {
     const a = document.createElement('a');
     a.href = url;
     a.download = 'shopping-list.md';
+    // Some browsers need the anchor in the document for a programmatic click,
+    // and revoking synchronously can invalidate the blob before the download
+    // starts — so clean up on the next turn of the event loop instead.
+    a.style.display = 'none';
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => {
+      a.remove();
+      URL.revokeObjectURL(url);
+    }, 0);
   }
 
   private async refreshAvailability(): Promise<void> {
@@ -1209,9 +1222,16 @@ export class ByomPlayer extends LitElement {
     const checked = this.availQueue?.checkedCount ?? 0;
     const done = this.availQueue?.complete ?? false;
 
-    return html`<div class="settings shopping" @click=${(e: Event) => e.stopPropagation()}>
+    return html`<div
+      class="settings shopping"
+      part="shopping"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="shopping-title"
+      @click=${(e: Event) => e.stopPropagation()}
+    >
       <div class="settings-head">
-        <h2>Missing from your collection</h2>
+        <h2 id="shopping-title">Missing from your collection</h2>
         <button class="close" @click=${this.closeShopping} aria-label="Close">×</button>
       </div>
 
