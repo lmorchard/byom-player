@@ -189,3 +189,35 @@ describe('loadManifest', () => {
     expect(pl.tracks[1].image).toBeUndefined();
   });
 });
+
+describe('purchase_url', () => {
+  const NS = 'https://github.com/lmorchard/byom-sync';
+  const load = (ext: unknown) =>
+    loadManifest({ playlist: { track: [{ title: 'T', creator: 'A', extension: ext }] } }).tracks[0];
+
+  it('reads a purchase_url from the byom extension', () => {
+    const t = load({ [NS]: [{ purchase_url: 'https://beachhouse.bandcamp.com/album/x' }] });
+    expect(t.purchaseUrl).toBe('https://beachhouse.bandcamp.com/album/x');
+  });
+
+  // The realistic post-resolver case: a track carries both a resolved YouTube
+  // id and a purchase link in the same extension element.
+  it('coexists with resolved ids in one extension element', () => {
+    const t = load({
+      [NS]: [{ resolved: { youtube: 'abc123' }, purchase_url: 'https://x.bandcamp.com/album/y' }],
+    });
+    expect(t.resolvedIds?.youtube).toBe('abc123');
+    expect(t.purchaseUrl).toBe('https://x.bandcamp.com/album/y');
+  });
+
+  it('is undefined for generic JSPF with no byom extension', () => {
+    expect(load(undefined).purchaseUrl).toBeUndefined();
+    expect(load({}).purchaseUrl).toBeUndefined();
+  });
+
+  it('ignores a non-string or empty value', () => {
+    expect(load({ [NS]: [{ purchase_url: 42 }] }).purchaseUrl).toBeUndefined();
+    expect(load({ [NS]: [{ purchase_url: '' }] }).purchaseUrl).toBeUndefined();
+    expect(load({ [NS]: [{ purchase_url: null }] }).purchaseUrl).toBeUndefined();
+  });
+});

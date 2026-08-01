@@ -16,6 +16,7 @@ import { PlaybackController } from './controller';
 import { createProvider } from './providers/registry';
 import { detectSpotifyPreview } from './providers/spotify/preview';
 import { AvailabilityQueue } from './availability';
+import { renderPurchaseLink } from './purchaseLink';
 import { loadSettings, saveSettings, effectiveProviderConfig, type UserSettings } from './settings';
 import {
   parseProviderList,
@@ -829,6 +830,7 @@ export class ByomPlayer extends LitElement {
             state === 'unavailable' ? '✕' : t.durationMs ? ByomPlayer.formatTime(t.durationMs) : ''
           }</span
         >
+        ${renderPurchaseLink(t)}
       </li>
     `;
   }
@@ -1725,7 +1727,7 @@ export class ByomPlayer extends LitElement {
       cursor: pointer;
       display: grid;
       /* First column fits up to a 4-digit track number (8000+ track playlists). */
-      grid-template-columns: 2.2rem var(--byom-track-art-size, 2rem) 1fr auto;
+      grid-template-columns: 2.2rem var(--byom-track-art-size, 2rem) 1fr auto auto;
       align-items: center;
       gap: 0.6rem;
       padding: 0.3rem 0.5rem 0.3rem 0.4rem;
@@ -1734,6 +1736,38 @@ export class ByomPlayer extends LitElement {
     }
     .tracklist li:hover {
       background: color-mix(in srgb, var(--byom-text) 8%, transparent);
+    }
+
+    /* Both the link and its empty placeholder occupy the same slot, so a row
+       with no purchase link lines up with one that has it. */
+    .buy,
+    .buy-empty {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 1.6rem;
+      height: 1.4rem;
+      font-size: 0.7rem;
+      line-height: 1;
+      border-radius: calc(var(--byom-border-radius) / 3);
+      text-decoration: none;
+      /* Quiet by default: this appears on ~83% of rows, so it must not compete
+         with the title. It gains contrast on hover/focus. */
+      color: color-mix(in srgb, var(--byom-text) 45%, transparent);
+      border: 1px solid color-mix(in srgb, var(--byom-text) 18%, transparent);
+    }
+    .buy-empty {
+      border-color: transparent;
+    }
+    .buy:hover,
+    .buy:focus-visible {
+      color: var(--byom-text);
+      border-color: color-mix(in srgb, var(--byom-text) 45%, transparent);
+      background: color-mix(in srgb, var(--byom-text) 10%, transparent);
+    }
+    .buy:focus-visible {
+      outline: 2px solid var(--byom-accent, currentColor);
+      outline-offset: 1px;
     }
     .num {
       position: relative;
