@@ -23,6 +23,11 @@ export interface Track {
   // Provider ids resolved ahead of time (by byom-sync) and carried in the
   // manifest extension, so the player can skip an on-demand lookup.
   resolvedIds?: { youtube?: string };
+  // A best-effort "where to buy this" link, resolved by byom-sync's
+  // `resolve purchase` and carried in the same manifest extension. Album-scoped
+  // upstream, so every track on an album shares one URL. Absent for tracks no
+  // store matched, and for generic JSPF with no byom extension.
+  purchaseUrl?: string;
 }
 
 export interface Playlist {

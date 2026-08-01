@@ -51,7 +51,17 @@ function mapTrack(t: JspfTrack): Track {
     spotifyUrl: t.location?.[0],
     syncState: readSyncState(t.extension),
     resolvedIds: readResolved(t.extension),
+    purchaseUrl: readPurchaseURL(t.extension),
   };
+}
+
+// readPurchaseURL pulls byom-sync's "where to buy this" link out of the
+// extension. A sibling of `resolved`, not nested inside it. Accepts only a
+// non-empty string; anything else is ignored, as with resolved ids.
+function readPurchaseURL(extension?: Record<string, unknown[]>): string | undefined {
+  const body = extension?.[BYOM_EXT_NS]?.[0] as any;
+  const url = body?.purchase_url;
+  return typeof url === 'string' && url !== '' ? url : undefined;
 }
 
 // readResolved pulls pre-resolved provider ids from the byom-sync extension
